@@ -14,6 +14,13 @@ const navIcon = {
   reports: FileText,
 };
 
+const actionMeta = [
+  { label: 'Check in', hint: 'Start day', className: 'action-blue' },
+  { label: 'Sales', hint: 'New visit', className: 'action-coral' },
+  { label: 'Service', hint: 'Work report', className: 'action-teal' },
+  { label: 'Leave', hint: 'Request', className: 'action-yellow' },
+];
+
 function App() {
   return (
     <main className="app-shell">
@@ -43,20 +50,28 @@ function App() {
           <div className="attention-card">
             <div>
               <p className="muted">Today</p>
-              <strong>3 things need attention</strong>
+              <strong>Ready for field work</strong>
             </div>
             <Bell size={20} />
           </div>
 
+          <div className="section-title action-title">
+            <h3>Quick actions</h3>
+            <span>4 tasks</span>
+          </div>
+
           <div className="action-grid">
-            {formModules.map((module, index) => (
-              <article key={module.slug} className="action-card">
-                <div className="icon-pill">{index === 0 ? <MapPin /> : index === 1 ? <Plus /> : index === 2 ? <ClipboardList /> : <CalendarCheck />}</div>
-                <h3>{module.title}</h3>
-                <p>{module.description}</p>
-                {module.supportsDrafts && <span className="chip chip-soft">Save draft</span>}
-              </article>
-            ))}
+            {formModules.map((module, index) => {
+              const meta = actionMeta[index];
+              return (
+                <article key={module.slug} className={`action-card compact-action ${meta.className}`}>
+                  <div className="icon-pill">{index === 0 ? <MapPin /> : index === 1 ? <Plus /> : index === 2 ? <ClipboardList /> : <CalendarCheck />}</div>
+                  <h3>{meta.label}</h3>
+                  <p>{meta.hint}</p>
+                  {module.supportsDrafts && <span className="mini-dot">Draft</span>}
+                </article>
+              );
+            })}
           </div>
 
           <section className="panel">

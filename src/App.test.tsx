@@ -8,10 +8,11 @@ describe('Crystal Bio MVP shell', () => {
     render(<App />);
 
     expect(screen.getByText('Crystal Bio Field Hub')).toBeInTheDocument();
-    expect(screen.getByText('Daily Check-in')).toBeInTheDocument();
-    expect(screen.getByText('Sales Visit')).toBeInTheDocument();
-    expect(screen.getByText('Service Visit')).toBeInTheDocument();
-    expect(screen.getByText('Leave Request')).toBeInTheDocument();
+    expect(screen.getByText('Quick actions')).toBeInTheDocument();
+    expect(screen.getByText('Check in')).toBeInTheDocument();
+    expect(screen.getByText('Sales')).toBeInTheDocument();
+    expect(screen.getByText('Service')).toBeInTheDocument();
+    expect(screen.getAllByText('Leave').length).toBeGreaterThan(0);
   });
 
   it('shows selected bottom navigation with icons', () => {
