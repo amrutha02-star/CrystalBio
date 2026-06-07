@@ -891,6 +891,741 @@ Once the actual forms are shared, the following must be finalized:
 
 ---
 
+## Current Convogenie Forms Reviewed
+
+The existing forms shared for Crystal Bio are:
+
+- Attendance/Login: `https://console.convogenie.ai/forms/crystal-bio-login`
+- Sales Report: `https://console.convogenie.ai/forms/crystal-bio-sales`
+- Service Report: `https://console.convogenie.ai/forms/crystal-bio-service`
+- Leave Request: `https://console.convogenie.ai/forms/crystal-bio-leave`
+
+These forms should be treated as the starting data structure, not copied exactly as long forms. The app should convert them into cleaner mobile pages with saved entries, follow-ups, reporting, and admin visibility.
+
+---
+
+## Form Field Mapping
+
+### 1. Attendance / Login Form
+
+Current fields identified:
+
+- Team member name
+- Visit location
+- GPS/location support
+- Login note / notes
+
+Recommended app handling:
+
+- This becomes the agent’s daily attendance/check-in screen.
+- Agent name should be auto-filled after login.
+- Date and time should be auto-captured.
+- Location can be captured if permission is given.
+- Notes should be optional.
+- Admin should see who checked in, who did not check in, and where/when they checked in.
+
+Suggested app page name:
+
+**Daily Check-in**
+
+---
+
+### 2. Sales Report Form
+
+Current fields identified:
+
+- Sales executive name
+- Visit location
+- GPS/location support
+- Account name
+- Lead source
+  - Existing customer
+  - Referral
+  - IndiaMART
+  - Website
+  - Phone call
+  - Field visit
+  - Other
+- Customer name and designation
+- Customer phone number
+- Customer email ID
+- Customer department and address
+- Product type
+  - Laboratory equipment
+  - Hospital equipment
+  - Biotech instrument
+  - Consumables
+  - Maintenance / service
+  - Installation support
+  - Other requirement
+- Brand name
+- Equipment name
+- Quote submitted: yes/no
+- Budgetary proposal: yes/no
+- Project quote status
+  - New inquiry
+  - Quote pending
+  - Quote submitted
+  - Budgetary quote
+  - Negotiation
+  - Closed won
+  - Closed lost
+  - Follow up later
+- Fund status
+  - Available
+  - Pending approval
+  - Budget requested
+  - Tender / procurement
+  - Unknown
+  - Not applicable
+- Closing date
+- Support required: yes/no
+- Probability percentage
+- Remarks and timeline
+- Photos
+- Notes for office team
+
+Recommended app handling:
+
+- This should become a multi-step sales entry, not one long form.
+- Existing customers/accounts should become searchable over time.
+- A sales entry should remain open if it needs follow-up.
+- Quote status, fund status, closing date, and probability should feed sales pipeline reports.
+- Photos should be optional unless the client confirms they are mandatory.
+- Support required should create an internal attention item for admin/office team.
+
+Suggested app page name:
+
+**New Sales Visit** / **Sales Follow-up**
+
+---
+
+### 3. Service Report Form
+
+Current fields identified:
+
+- Engineer name
+- Visit location
+- GPS/location support
+- Customer name
+- Customer phone number
+- Customer department and address
+- Service type
+  - Installation
+  - Preventive maintenance
+  - Breakdown
+  - Repair
+  - Calibration
+  - Demo
+  - Training
+  - Other
+- Brand name
+- Equipment name
+- Serial number
+- Work done
+- Support required: yes/no
+- Next action
+- Photos
+- Notes for office team
+
+Recommended app handling:
+
+- This should become a service job entry.
+- Serial number and equipment name are important for future service history.
+- Work done and next action should form the service timeline.
+- If support is required, admin/office should see it as an action item.
+- The same service case should be updateable across multiple visits.
+
+Suggested app page name:
+
+**New Service Visit** / **Service Follow-up**
+
+---
+
+### 4. Leave Request Form
+
+Current fields identified:
+
+- Team member name
+- Leave reason
+- Approved by
+- Attendance note
+- Notes
+
+Recommended app handling:
+
+- Team member name should be auto-filled.
+- Leave request should include date/date range, because this is required for proper reporting.
+- “Approved by” should not be filled by the agent in the final app. It should be assigned when admin approves/rejects the request.
+- Agent should see status: Pending, Approved, Rejected.
+- Admin should see pending leave requests and approve/reject them.
+
+Suggested app page name:
+
+**Apply for Leave**
+
+---
+
+## Recommended App Page Breakdown
+
+Because this is a large system, it should not be built as one huge form. It should be broken into clear pages.
+
+### Agent Pages
+
+#### 1. Login Page
+
+Purpose:
+
+- Let agents sign in using their email ID.
+- Identify whether the person is sales, service, admin, or manager.
+
+Fields/actions:
+
+- Email ID
+- OTP/password/magic link depending on final auth choice
+- Continue button
+
+---
+
+#### 2. Agent Home Page
+
+Purpose:
+
+- Give agents one simple place to start their day.
+
+Main cards/actions:
+
+- Daily Check-in
+- New Sales Visit
+- New Service Visit
+- Continue Follow-up
+- Apply for Leave
+- My Entries
+
+Summary cards:
+
+- Reports submitted today
+- Pending follow-ups
+- Drafts
+- Leave status
+
+---
+
+#### 3. Daily Check-in Page
+
+Purpose:
+
+- Replace the current attendance/login form.
+
+Fields:
+
+- Agent name: auto-filled
+- Date/time: auto-filled
+- Location: optional/permission-based
+- Notes: optional
+
+Admin use:
+
+- See who checked in today.
+- See who did not check in.
+- Connect attendance with field reporting.
+
+---
+
+#### 4. Sales Entry Page
+
+Purpose:
+
+- Capture sales visit details in a clean step-by-step flow.
+
+Recommended steps:
+
+1. Customer/account details
+2. Requirement/product details
+3. Quote and fund status
+4. Probability and closing date
+5. Remarks, support required, photos
+6. Review and submit/save draft
+
+Important statuses:
+
+- New inquiry
+- Quote pending
+- Quote submitted
+- Negotiation
+- Follow-up later
+- Closed won
+- Closed lost
+
+---
+
+#### 5. Service Entry Page
+
+Purpose:
+
+- Capture service/engineering visit details.
+
+Recommended steps:
+
+1. Customer details
+2. Equipment details
+3. Service type
+4. Work done
+5. Next action/support required
+6. Photos and notes
+7. Review and submit/save draft
+
+Important statuses:
+
+- Installation
+- Preventive maintenance
+- Breakdown
+- Repair
+- Calibration
+- Demo
+- Training
+- Completed
+- Follow-up required
+
+---
+
+#### 6. Follow-Up Timeline Page
+
+Purpose:
+
+- Allow second/third visits to continue the same case instead of creating confusing duplicate entries.
+
+This page should show:
+
+- Customer/site name
+- Current status
+- Previous updates
+- Last visit date
+- Next follow-up date
+- Add progress update button
+
+---
+
+#### 7. My Entries Page
+
+Purpose:
+
+- Let agents see all their submitted and draft entries.
+
+Filters:
+
+- All
+- Sales
+- Service
+- Drafts
+- Follow-up
+- Completed
+- Overdue
+
+Each card should show:
+
+- Customer/site name
+- Sales/service label
+- Status
+- Last updated
+- Next follow-up date
+
+---
+
+#### 8. Leave Request Page
+
+Purpose:
+
+- Replace the current leave form with a proper approval flow.
+
+Fields:
+
+- Agent name: auto-filled
+- Leave date/date range
+- Leave reason
+- Note
+- Submit request
+
+Agent sees:
+
+- Pending
+- Approved
+- Rejected
+
+---
+
+#### 9. My Reports Page
+
+Purpose:
+
+- Let agents see their own daily/weekly/monthly performance.
+
+Includes:
+
+- Sales visits
+- Service visits
+- Follow-ups
+- Completed work
+- Pending work
+- Leave summary
+- Missed submissions
+
+---
+
+### Admin Pages
+
+#### 1. Admin Dashboard
+
+Purpose:
+
+- Owner/admin gets complete visibility.
+
+Shows:
+
+- Active agents today
+- Check-ins today
+- Sales reports today
+- Service reports today
+- Pending follow-ups
+- Overdue follow-ups
+- Leave requests pending
+- Missing submissions
+- Support required items
+
+---
+
+#### 2. Sales Reports Page
+
+Purpose:
+
+- View and filter all sales activity.
+
+Filters:
+
+- Date
+- Agent
+- Account/customer
+- Lead source
+- Product type
+- Quote status
+- Fund status
+- Probability
+- Closing date
+- Follow-up status
+
+---
+
+#### 3. Service Reports Page
+
+Purpose:
+
+- View and filter all service activity.
+
+Filters:
+
+- Date
+- Engineer
+- Customer
+- Service type
+- Equipment
+- Serial number
+- Support required
+- Completed/follow-up status
+
+---
+
+#### 4. Agent Detail Page
+
+Purpose:
+
+- See one person’s full activity.
+
+Shows:
+
+- Check-ins
+- Sales visits
+- Service visits
+- Leave history
+- Drafts
+- Missed reports
+- Follow-ups
+- Error/support issues
+
+---
+
+#### 5. Leave Approval Page
+
+Purpose:
+
+- Admin approves/rejects leave.
+
+Shows:
+
+- Agent name
+- Dates requested
+- Reason
+- Notes
+- Approve/reject buttons
+- Admin comment
+
+---
+
+#### 6. Reports and Exports Page
+
+Purpose:
+
+- Generate/download daily, weekly, and monthly reports.
+
+Report types:
+
+- Daily summary
+- Weekly Saturday report
+- Monthly 1st-day report
+- Agent-wise report
+- Sales pipeline report
+- Service work report
+- Leave/attendance report
+
+Formats:
+
+- PDF for owner/client
+- Excel for operations/admin
+
+---
+
+#### 7. Notification Settings Page
+
+Purpose:
+
+- Control Telegram and email alerts.
+
+Settings:
+
+- Owner Telegram recipient
+- Which events trigger Telegram alerts
+- Weekly email recipients
+- Monthly email recipients
+- Agent report emails
+- Failed delivery alerts
+
+---
+
+#### 8. Issue Command Center
+
+Purpose:
+
+- Monitor app problems and agent frustration.
+
+Tracks:
+
+- Failed submissions
+- Photo upload failures
+- Emails not sent
+- Telegram alerts not sent
+- Agents stuck with drafts
+- Login failures
+- Missing check-ins
+- Report generation failures
+
+---
+
+## Build Phase Plan
+
+### Phase 0: Final Requirements and Form Cleanup
+
+Goal:
+
+- Confirm the exact fields from current forms and clean them into app-friendly flows.
+
+Tasks:
+
+- Review all forms with client.
+- Decide required vs optional fields.
+- Decide dropdowns vs typing fields.
+- Decide if GPS/photos are mandatory or optional.
+- Confirm owner Telegram alert rules.
+- Confirm weekly/monthly email recipients.
+- Confirm agent email list.
+
+Outcome:
+
+- Final field map and screen flow ready.
+
+---
+
+### Phase 1: Core Agent App
+
+Goal:
+
+- Build the simplest usable version for field agents.
+
+Includes:
+
+- Login
+- Agent home
+- Daily check-in
+- Sales entry
+- Service entry
+- Leave request
+- Save draft
+- Submit confirmation
+- My Entries
+
+Why this comes first:
+
+- The biggest risk is agent frustration. The first build must prove the boys can actually use it comfortably.
+
+---
+
+### Phase 2: Admin Dashboard
+
+Goal:
+
+- Give owner/admin visibility into all submitted data.
+
+Includes:
+
+- Admin login
+- Dashboard summary
+- All sales reports
+- All service reports
+- Agent-wise view
+- Leave approval
+- Filters
+- Basic export
+
+Why this comes second:
+
+- Once agents can submit properly, admin needs to see and manage the data.
+
+---
+
+### Phase 3: Follow-Up and Case Timeline
+
+Goal:
+
+- Handle second/third visits cleanly.
+
+Includes:
+
+- Open case status
+- Add progress update
+- Timeline view
+- Next follow-up date
+- Pending/overdue follow-up tracking
+- Completed/closed status
+
+Why this is separate:
+
+- Follow-up logic is important and should not be rushed into the first form build.
+
+---
+
+### Phase 4: Telegram and Email Reporting
+
+Goal:
+
+- Automate owner and agent reporting.
+
+Includes:
+
+- Immediate owner Telegram alerts
+- Weekly Saturday owner/admin email
+- Monthly 1st-day owner/admin email
+- Agent personal email reports
+- Report delivery tracking
+- Failed email/Telegram retry
+
+Why this comes after core data:
+
+- Reports are only useful after the data structure is stable.
+
+---
+
+### Phase 5: Monitoring and Issue Command Center
+
+Goal:
+
+- Avoid another failed rollout like the WhatsApp form system.
+
+Includes:
+
+- Track failed submissions
+- Track drafts not completed
+- Track photo upload issues
+- Track login failures
+- Track report/email/Telegram failures
+- Plain-English issue alerts
+- Admin issue dashboard
+
+Why this matters:
+
+- The system must catch problems before agents become frustrated.
+
+---
+
+### Phase 6: Polish, Testing, and Rollout
+
+Goal:
+
+- Make the app feel reliable and easy for non-technical users.
+
+Includes:
+
+- Mobile UI polish
+- Spacing and typography cleanup
+- Button size and readability checks
+- Real-agent test run
+- Fix confusing fields
+- Add help text
+- Final client demo
+- Rollout plan
+
+---
+
+## Recommended First MVP Scope
+
+The first MVP should not try to include every advanced feature.
+
+Must include:
+
+- Email login
+- Daily check-in
+- Sales report
+- Service report
+- Leave request
+- Save draft
+- My Entries
+- Admin dashboard
+- Leave approval
+- Basic reports
+
+Should include if time allows:
+
+- Follow-up timeline
+- Telegram alerts
+- Weekly email
+
+Can wait until next phase:
+
+- Advanced analytics
+- Route planning
+- Complex AI summaries
+- Deep monitoring automation
+- Fully offline mode
+
+---
+
+## Key Product Decision
+
+The current forms are useful for knowing what data must be collected, but the final app should not feel like four separate long forms.
+
+The final app should feel like:
+
+**A simple daily work app where agents check in, submit sales/service work, continue follow-ups, request leave, and always see what they submitted.**
+
+---
+
 ## Recommended Version Plan
 
 ### Version 1
