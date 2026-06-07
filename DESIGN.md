@@ -301,6 +301,21 @@ Every form step should have:
 - clear next/back buttons
 - simple progress indicator
 
+### Strict separation: attendance vs visit entries
+
+Check-in/check-out is an attendance flow only. It must stay strictly separate from sales visit and service entry forms.
+
+Rules:
+
+- Check-in starts the field day; it does not collect customer visit details.
+- Check-out ends the field day; it may summarize counts, but should not merge visit content into attendance.
+- Sales visits are separate entries, one per customer/visit.
+- Service visits are separate entries, one per issue/site/visit.
+- A visit entry can be marked as Sales only, Service only, or Both when the field visit covers both sales and service work.
+- Even when visit type is Both, it remains one visit entry and must not merge into attendance check-in/check-out.
+- Agents can add visit entries after check-in, but those entries remain independent records with their own drafts, photos, notes, and statuses.
+- Daily reports can combine the data later in the backend/reporting layer, but the agent-facing forms must remain separate.
+
 ### My entries
 
 Should show recent submissions in plain language:

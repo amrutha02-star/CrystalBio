@@ -70,7 +70,7 @@
     <section class="intro">
       <p class="eyebrow">Next agent flow</p>
       <h1>Check-in becomes check-out later</h1>
-      <p>Once the agent checks in, the home action can change to “Check out”. This keeps the app simple: one clear attendance action at a time.</p>
+      <p>Once the agent checks in, the home action can change to “Check out”. Sales, service, or both-type visit entries stay separate from attendance.</p>
     </section>
 
     <section class="phones">
@@ -80,7 +80,7 @@
         <div class="hero"><div><p class="muted">Step 1 of 1</p><strong>Start your field day</strong><p>Confirm location and choose your first work plan.</p></div><div class="line-art"></div></div>
         <div class="map"><div class="pin"></div></div>
         <div class="field"><label>Current location</label><div>Auto-detected near customer route</div></div>
-        <div class="field"><label>Today’s work type</label><div class="chips"><span class="chip">Sales visits</span><span class="chip">Service calls</span></div></div>
+        <div class="field"><label>Today’s general plan</label><div class="chips"><span class="chip">Sales route</span><span class="chip">Service calls</span></div></div>
         <div class="field"><label>Opening note</label><div>Optional short note before starting the day</div></div>
         <button class="primary">Check in now</button>
         <button class="secondary">Save as draft</button>
@@ -93,10 +93,11 @@
         <div class="section"><h3>Quick next steps</h3><span>Active</span></div>
         <div class="timeline">
           <div class="step"><div class="dot">✓</div><div><strong>Checked in</strong><p>Location captured automatically</p></div></div>
-          <div class="step"><div class="dot light">2</div><div><strong>Add visit update</strong><p>Sales or service report when done</p></div></div>
+          <div class="step"><div class="dot light">2</div><div><strong>Add visit entry</strong><p>Choose Sales, Service, or Both for that specific visit</p></div></div>
           <div class="step"><div class="dot light">3</div><div><strong>Check out</strong><p>End the day when field work is complete</p></div></div>
         </div>
-        <button class="primary">Add visit update</button>
+        <div class="field"><label>Visit entry type</label><div class="chips"><span class="chip">Sales</span><span class="chip">Service</span><span class="chip">Both</span></div></div>
+        <button class="primary">Add visit entry</button>
         <button class="secondary">Check out later</button>
       </article>
 
