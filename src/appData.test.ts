@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formModules, buildPhases, agentNavItems, getRequiredMvpModules } from './appData';
+import { formModules, buildPhases, agentNavItems, getRequiredMvpModules, roleAccess } from './appData';
 
 describe('Crystal Bio product model', () => {
   it('maps the four existing Convogenie forms into app modules', () => {
@@ -27,11 +27,23 @@ describe('Crystal Bio product model', () => {
     expect(buildPhases[4].title).toContain('Telegram and Email Reporting');
   });
 
-  it('exposes a simple agent navigation model', () => {
-    expect(agentNavItems).toContain('Home');
-    expect(agentNavItems).toContain('Entries');
-    expect(agentNavItems).toContain('Leave');
+  it('exposes a simple agent navigation model with selected-state friendly items', () => {
+    expect(agentNavItems.map((item) => item.label)).toContain('Home');
+    expect(agentNavItems.map((item) => item.label)).toContain('Entries');
+    expect(agentNavItems.map((item) => item.label)).toContain('Leave');
     expect(agentNavItems.length).toBeLessThanOrEqual(5);
+  });
+
+  it('keeps admin as a role inside the same app, not a separate PDF-style page', () => {
+    expect(roleAccess.owner.canSubmitForms).toBe(true);
+    expect(roleAccess.owner.canViewAdminDashboard).toBe(true);
+    expect(roleAccess.agent.canViewAdminDashboard).toBe(false);
+  });
+
+  it('keeps internal monitoring visible to Amrutha/project team, not field agents or client owner', () => {
+    expect(roleAccess.projectMonitor.canViewIssueCommandCenter).toBe(true);
+    expect(roleAccess.owner.canViewIssueCommandCenter).toBe(false);
+    expect(roleAccess.agent.canViewIssueCommandCenter).toBe(false);
   });
 
   it('defines a realistic MVP scope', () => {

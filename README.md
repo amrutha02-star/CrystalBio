@@ -12,9 +12,10 @@ Current prototype includes:
 - Service Visit action
 - Leave Request action
 - My Entries preview
-- Admin command view
+- Admin command/app-mode view
 - Automatic report cards
-- Issue Command Center preview
+- Internal Issue Command Center preview for project team only
+- Bottom navigation with icons and selected state
 - Phased build plan
 
 Local commands:

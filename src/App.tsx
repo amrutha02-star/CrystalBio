@@ -1,10 +1,17 @@
-import { AlertTriangle, Bell, CalendarCheck, CheckCircle2, ClipboardList, Mail, MapPin, Plus, UserRound } from 'lucide-react';
+import { AlertTriangle, Bell, CalendarCheck, CheckCircle2, ClipboardList, FileText, Home, Mail, MapPin, Plus, UserRound } from 'lucide-react';
 import { adminMetrics, agentNavItems, buildPhases, formModules, getRequiredMvpModules, sampleEntries } from './appData';
 
 const toneClass: Record<string, string> = {
   warning: 'chip chip-warning',
   info: 'chip chip-info',
   soft: 'chip chip-soft',
+};
+
+const navIcon = {
+  home: Home,
+  entries: ClipboardList,
+  leave: CalendarCheck,
+  reports: FileText,
 };
 
 function App() {
@@ -69,20 +76,40 @@ function App() {
           </section>
 
           <nav className="bottom-nav">
-            {agentNavItems.map((item) => <span key={item}>{item}</span>)}
+            {agentNavItems.map((item) => {
+              const Icon = navIcon[item.icon];
+              return (
+                <span
+                  key={item.label}
+                  className={item.selected ? 'nav-item nav-item-selected' : 'nav-item'}
+                  aria-label={item.selected ? `${item.label} selected` : item.label}
+                >
+                  <Icon size={17} />
+                  {item.label}
+                </span>
+              );
+            })}
           </nav>
         </div>
 
-        <div className="desktop-panel">
-          <div className="section-title large">
+        <div className="admin-app-panel">
+          <div className="role-switch-card">
             <div>
-              <p className="eyebrow">Owner/Admin</p>
-              <h2>Admin command view</h2>
+              <p className="eyebrow">Owner app mode</p>
+              <h2>Same app, different access</h2>
+              <p>Switch between filling forms and reviewing team activity.</p>
             </div>
-            <span className="chip chip-info">Live visibility</span>
+            <span className="chip chip-info">Owner can submit forms too</span>
           </div>
 
-          <div className="metric-grid">
+          <div className="mode-tabs" aria-label="Admin mode tabs">
+            <span className="mode-tab mode-tab-active">Dashboard</span>
+            <span className="mode-tab">Submit</span>
+            <span className="mode-tab">Reports</span>
+            <span className="mode-tab">Leave</span>
+          </div>
+
+          <div className="metric-grid app-metric-grid">
             {adminMetrics.map((metric) => (
               <article className="metric-card" key={metric.label}>
                 <p>{metric.label}</p>
@@ -92,18 +119,28 @@ function App() {
             ))}
           </div>
 
-          <section className="report-stack">
+          <section className="app-list-card">
+            <div className="section-title">
+              <h3>Needs attention</h3>
+              <span>Today</span>
+            </div>
+            <div className="admin-row"><strong>2 agents missing check-in</strong><span className="chip chip-warning">Follow up</span></div>
+            <div className="admin-row"><strong>4 service reports need office support</strong><span className="chip chip-info">Support</span></div>
+            <div className="admin-row"><strong>3 leave requests waiting</strong><span className="chip chip-soft">Approve</span></div>
+          </section>
+
+          <section className="report-stack compact-reports">
             <h3>Automatic reports</h3>
             <div className="report-card"><Mail size={18} /> Saturday weekly email</div>
             <div className="report-card"><Mail size={18} /> Monthly 1st-day report</div>
-            <div className="report-card"><Bell size={18} /> Immediate Telegram alerts for important updates</div>
+            <div className="report-card"><Bell size={18} /> Telegram alerts for important updates</div>
           </section>
 
-          <section className="issue-card">
+          <section className="internal-monitor-card">
             <div>
-              <p className="eyebrow">Monitoring</p>
+              <p className="eyebrow">Internal monitoring</p>
               <h3>Issue Command Center</h3>
-              <p>Tracks failed submissions, stuck drafts, photo upload issues, report delivery failures, and login problems in plain English.</p>
+              <p>Visible to Amrutha/project team, not field agents or client owner.</p>
             </div>
             <AlertTriangle />
           </section>

@@ -73,7 +73,46 @@ export const formModules: AppModule[] = [
   },
 ];
 
-export const agentNavItems = ['Home', 'Entries', 'Leave', 'Reports'];
+export type NavItem = {
+  label: string;
+  icon: 'home' | 'entries' | 'leave' | 'reports';
+  selected?: boolean;
+};
+
+export type RoleAccess = {
+  canSubmitForms: boolean;
+  canViewOwnEntries: boolean;
+  canViewAdminDashboard: boolean;
+  canViewIssueCommandCenter: boolean;
+};
+
+export const agentNavItems: NavItem[] = [
+  { label: 'Home', icon: 'home', selected: true },
+  { label: 'Entries', icon: 'entries' },
+  { label: 'Leave', icon: 'leave' },
+  { label: 'Reports', icon: 'reports' },
+];
+
+export const roleAccess: Record<'agent' | 'owner' | 'projectMonitor', RoleAccess> = {
+  agent: {
+    canSubmitForms: true,
+    canViewOwnEntries: true,
+    canViewAdminDashboard: false,
+    canViewIssueCommandCenter: false,
+  },
+  owner: {
+    canSubmitForms: true,
+    canViewOwnEntries: true,
+    canViewAdminDashboard: true,
+    canViewIssueCommandCenter: false,
+  },
+  projectMonitor: {
+    canSubmitForms: false,
+    canViewOwnEntries: false,
+    canViewAdminDashboard: false,
+    canViewIssueCommandCenter: true,
+  },
+};
 
 export const buildPhases: BuildPhase[] = [
   {
