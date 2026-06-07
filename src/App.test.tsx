@@ -7,8 +7,8 @@ describe('Crystal Bio agent view shell', () => {
   it('renders the focused agent home with compact quick actions', () => {
     render(<App />);
 
-    expect(screen.getByText('Crystal Bio Field Hub')).toBeInTheDocument();
-    expect(screen.getByText('Agent view iteration')).toBeInTheDocument();
+    expect(screen.getByText('Agent home screen')).toBeInTheDocument();
+    expect(screen.getByText('Approved direction')).toBeInTheDocument();
     expect(screen.getByText('Quick actions')).toBeInTheDocument();
     expect(screen.getByText('Check in')).toBeInTheDocument();
     expect(screen.getByText('Sales')).toBeInTheDocument();
