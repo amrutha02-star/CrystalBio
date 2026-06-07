@@ -312,7 +312,9 @@ Rules:
 - Sales visits are separate entries, one per customer/visit.
 - Service visits are separate entries, one per issue/site/visit.
 - A visit entry can be marked as Sales only, Service only, or Both when the field visit covers both sales and service work.
-- Even when visit type is Both, it remains one visit entry and must not merge into attendance check-in/check-out.
+- For UI selection, do not show a separate “Both” option. Show two selectable fields/chips: “Sales visit” and “Service visit”. If both are selected, the visit/plan is both.
+- Selected plan/type chips must turn soft green so non-technical users can clearly see what is selected.
+- Even when both Sales visit and Service visit are selected, it remains one visit entry and must not merge into attendance check-in/check-out.
 - Agents can add visit entries after check-in, but those entries remain independent records with their own drafts, photos, notes, and statuses.
 - Daily reports can combine the data later in the backend/reporting layer, but the agent-facing forms must remain separate.
 
