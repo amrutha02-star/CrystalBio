@@ -1,5 +1,5 @@
-import { AlertTriangle, Bell, CalendarCheck, CheckCircle2, ClipboardList, FileText, Home, Mail, MapPin, Plus, UserRound } from 'lucide-react';
-import { adminMetrics, agentNavItems, buildPhases, formModules, getRequiredMvpModules, sampleEntries } from './appData';
+import { Bell, CalendarCheck, ClipboardList, FileText, Home, MapPin, Plus, UserRound } from 'lucide-react';
+import { agentNavItems, formModules, sampleEntries } from './appData';
 
 const toneClass: Record<string, string> = {
   warning: 'chip chip-warning',
@@ -15,29 +15,22 @@ const navIcon = {
 };
 
 const actionMeta = [
-  { label: 'Check in', hint: 'Start day', className: 'action-blue' },
-  { label: 'Sales', hint: 'New visit', className: 'action-coral' },
-  { label: 'Service', hint: 'Work report', className: 'action-teal' },
-  { label: 'Leave', hint: 'Request', className: 'action-yellow' },
+  { label: 'Check in', hint: 'Start day', className: 'action-mint' },
+  { label: 'Sales', hint: 'New visit', className: 'action-peach' },
+  { label: 'Service', hint: 'Report', className: 'action-sky' },
+  { label: 'Leave', hint: 'Request', className: 'action-cream' },
 ];
 
 function App() {
   return (
-    <main className="app-shell">
-      <section className="hero-card">
-        <div>
-          <p className="eyebrow">Crystal Bio Equipment</p>
-          <h1>Crystal Bio Field Hub</h1>
-          <p className="hero-copy">
-            Mobile-first MVP for sales and service agents to check in, submit visits, continue follow-ups, request leave, and see their own entries.
-          </p>
-        </div>
-        <div className="hero-badge">
-          <CheckCircle2 size={20} /> Phase 1 build started
-        </div>
+    <main className="app-shell agent-only-shell">
+      <section className="preview-note">
+        <p className="eyebrow">Agent view iteration</p>
+        <h1>Crystal Bio Field Hub</h1>
+        <p>Focusing only on the field-agent home screen before moving to admin.</p>
       </section>
 
-      <section className="phone-grid">
+      <section className="agent-preview-wrap">
         <div className="phone-frame agent-phone" aria-label="Agent app preview">
           <header className="phone-header">
             <div>
@@ -47,10 +40,11 @@ function App() {
             <div className="avatar"><UserRound size={22} /></div>
           </header>
 
-          <div className="attention-card">
+          <div className="planner-hero-card">
             <div>
               <p className="muted">Today</p>
               <strong>Ready for field work</strong>
+              <span>Check in first, then add sales or service updates.</span>
             </div>
             <Bell size={20} />
           </div>
@@ -74,12 +68,12 @@ function App() {
             })}
           </div>
 
-          <section className="panel">
+          <section className="panel entries-panel">
             <div className="section-title">
               <h3>My Entries</h3>
               <span>View all</span>
             </div>
-            {sampleEntries.map((entry) => (
+            {sampleEntries.slice(0, 2).map((entry) => (
               <div className="entry-row" key={entry.customer}>
                 <div>
                   <strong>{entry.customer}</strong>
@@ -105,88 +99,6 @@ function App() {
               );
             })}
           </nav>
-        </div>
-
-        <div className="admin-app-panel">
-          <div className="role-switch-card">
-            <div>
-              <p className="eyebrow">Owner app mode</p>
-              <h2>Same app, different access</h2>
-              <p>Switch between filling forms and reviewing team activity.</p>
-            </div>
-            <span className="chip chip-info">Owner can submit forms too</span>
-          </div>
-
-          <div className="mode-tabs" aria-label="Admin mode tabs">
-            <span className="mode-tab mode-tab-active">Dashboard</span>
-            <span className="mode-tab">Submit</span>
-            <span className="mode-tab">Reports</span>
-            <span className="mode-tab">Leave</span>
-          </div>
-
-          <div className="metric-grid app-metric-grid">
-            {adminMetrics.map((metric) => (
-              <article className="metric-card" key={metric.label}>
-                <p>{metric.label}</p>
-                <strong>{metric.value}</strong>
-                <span>{metric.detail}</span>
-              </article>
-            ))}
-          </div>
-
-          <section className="app-list-card">
-            <div className="section-title">
-              <h3>Needs attention</h3>
-              <span>Today</span>
-            </div>
-            <div className="admin-row"><strong>2 agents missing check-in</strong><span className="chip chip-warning">Follow up</span></div>
-            <div className="admin-row"><strong>4 service reports need office support</strong><span className="chip chip-info">Support</span></div>
-            <div className="admin-row"><strong>3 leave requests waiting</strong><span className="chip chip-soft">Approve</span></div>
-          </section>
-
-          <section className="report-stack compact-reports">
-            <h3>Automatic reports</h3>
-            <div className="report-card"><Mail size={18} /> Saturday weekly email</div>
-            <div className="report-card"><Mail size={18} /> Monthly 1st-day report</div>
-            <div className="report-card"><Bell size={18} /> Telegram alerts for important updates</div>
-          </section>
-
-          <section className="internal-monitor-card">
-            <div>
-              <p className="eyebrow">Internal monitoring</p>
-              <h3>Issue Command Center</h3>
-              <p>Visible to Amrutha/project team, not field agents or client owner.</p>
-            </div>
-            <AlertTriangle />
-          </section>
-        </div>
-      </section>
-
-      <section className="phase-section">
-        <div className="section-title large">
-          <div>
-            <p className="eyebrow">Build plan</p>
-            <h2>Phased delivery so the app does not become overwhelming</h2>
-          </div>
-        </div>
-        <div className="phase-grid">
-          {buildPhases.map((phase) => (
-            <article key={phase.title} className="phase-card">
-              <h3>{phase.title}</h3>
-              <p>{phase.goal}</p>
-              <ul>
-                {phase.deliverables.slice(0, 4).map((item) => <li key={item}>{item}</li>)}
-              </ul>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="mvp-card">
-        <p className="eyebrow">MVP scope</p>
-        <h2>First version must prove agents can use it comfortably</h2>
-        <div className="mvp-list">
-          {getRequiredMvpModules().map((module) => <span key={module}>{module}</span>)}
         </div>
       </section>
     </main>
