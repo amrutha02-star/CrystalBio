@@ -301,6 +301,17 @@ Every form step should have:
 - clear next/back buttons
 - simple progress indicator
 
+### Sales visit / opportunity tracker flow
+
+Sales should not start with a “New visit or existing?” decision. The first sales screen should let the agent search customer/previous entry, show recent customers, and offer “Create new customer” only if the search does not find one.
+
+The preferred sales flow is two main screens:
+
+1. Sales visit search — search previous customer/opportunity or create new customer.
+2. Sales opportunity page — add today’s visit update, then optionally update customer details, requirement, quote/deal status, photos/notes, and visit history.
+
+Avoid turning sales into 5–6 separate mobile screens. Use compact cards/expandable sections so the agent can update only what changed.
+
 ### Strict separation: attendance vs visit entries
 
 Check-in/check-out is an attendance flow only. It must stay strictly separate from sales visit and service entry forms.
