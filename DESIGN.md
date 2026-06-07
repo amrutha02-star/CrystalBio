@@ -303,14 +303,21 @@ Every form step should have:
 
 ### Sales visit / opportunity tracker flow
 
-Sales should not start with a “New visit or existing?” decision. The first sales screen should let the agent search customer/previous entry, show recent customers, and offer “Create new customer” only if the search does not find one.
+Sales should not start with a “New visit or existing?” decision, and should not use a biased “Find customer” heading. Use one open-ended Sales Visit entry screen where the agent can either search previous entries or create a new sales visit entry.
 
 The preferred sales flow is two main screens:
 
-1. Sales visit search — search previous customer/opportunity or create new customer.
-2. Sales opportunity page — add today’s visit update, then optionally update customer details, requirement, quote/deal status, photos/notes, and visit history.
+1. Sales visit — search previous customer/opportunity or create a new sales visit entry from the same screen.
+2. Sales opportunity — add today’s visit update, then optionally update customer details, requirement, quote/deal status, photos/notes, and visit history.
 
 Avoid turning sales into 5–6 separate mobile screens. Use compact cards/expandable sections so the agent can update only what changed.
+
+Sales opportunity backend/data rules:
+
+- Current visit location/GPS is mandatory for every visit update.
+- Customer details fields need enough space for real names, phone numbers, emails, department, and address; avoid tiny two-column cards for long values.
+- Follow-up must be explicit: “Follow-up needed”, “No follow-up”, or a closing/status option. Do not assume every visit needs follow-up.
+- Do not show a separate “Save draft” button if every save can store incomplete data. Use one “Save visit update” action and treat incomplete entries as saved updates in the backend.
 
 ### Strict separation: attendance vs visit entries
 
