@@ -326,6 +326,24 @@ Sales opportunity backend/data rules:
 - Client-required sections such as Customer details, Requirement, Quote/deal status, and Photos should be collapsible cards, not status-labelled chips like “can update later”.
 - Photo entry should be simple: Camera and Upload. Do not force category choices such as visiting card/site/equipment/other at the first photo action.
 
+### Service visit tracker flow
+
+Service reports should follow the same corrected journey logic as sales, but with service-specific records.
+
+Service form field mapping:
+
+- Engineer name comes from login/session; do not ask it inside the service form.
+- Current service visit location/GPS is mandatory for every service visit update.
+- Service visit date and next visit/follow-up date need visible calendar/date selectors.
+- Customer details: customer name, phone, department/address.
+- Equipment details: service type, brand name, equipment/model, serial number.
+- Service update: work done, support required yes/no, next action, notes for office.
+- Photos: Camera and Upload only as primary actions.
+- Multiple visits are stored as service visit updates under the same customer/equipment service record.
+- Save service update must be visible near the current task; prefer sticky bottom save above nav.
+
+Service-specific statuses can include: Open, Pending parts, Revisit needed, Closed, No follow-up.
+
 ### Strict separation: attendance vs visit entries
 
 Check-in/check-out is an attendance flow only. It must stay strictly separate from sales visit and service entry forms.
