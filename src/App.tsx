@@ -39,7 +39,7 @@ function App() {
           <header className="phone-header">
             <div>
               <p className="muted">Good morning</p>
-              <h2>Rahul</h2>
+              <h2>{'{Agent Name}'}</h2>
             </div>
             <div className="avatar"><UserRound size={21} /></div>
           </header>
@@ -48,7 +48,7 @@ function App() {
             <div>
               <p className="muted">Today</p>
               <strong>Ready for field work</strong>
-              <span>Check in first. Add visits as the day moves.</span>
+              <span>Check in first. After check-in this changes to Check out.</span>
             </div>
             <div className="hero-scribble" aria-hidden="true" />
           </section>
@@ -75,7 +75,7 @@ function App() {
 
           <section className="panel entries-panel">
             <div className="section-title">
-              <h3>My entries</h3>
+              <h3>Recent visits</h3>
               <span>View all</span>
             </div>
             {sampleEntries.slice(0, 2).map((entry) => (

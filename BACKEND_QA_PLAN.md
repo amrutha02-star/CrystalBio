@@ -143,13 +143,21 @@ The testing agent must check:
 
 ## Testing output
 
-Each QA run should produce:
+Each QA run should produce and document on GitHub:
 
 - pass/fail checklist
 - screenshot evidence for failed journeys
 - console/API error logs
+- GitHub issues for confirmed bugs
+- fix/retest history for bugs that were corrected
 - plain-English issue summary
 - priority recommendation
+
+## Agent roles
+
+- Testing Agent: required. Tests journeys, creates GitHub issues, records evidence, and retests fixes.
+- Bug-Fixer Agent: recommended once backend starts. Fixes only confirmed issues and moves them back to Testing Agent for retest.
+- The Bug-Fixer Agent must not close or verify its own bugs.
 
 ## Non-negotiable logic checks
 

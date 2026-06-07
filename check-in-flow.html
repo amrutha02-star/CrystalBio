@@ -71,21 +71,20 @@
   <main class="board">
     <section class="intro">
       <p class="eyebrow">Next agent flow</p>
-      <h1>Check-in becomes check-out later</h1>
-      <p>Once the agent checks in, the home action can change to “Check out”. Sales visit and Service visit stay separate from attendance, and both can be selected together when needed.</p>
+      <h1>Attendance stays separate from visits</h1>
+      <p>Check-in only starts the field day. After check-in, agents can add Sales or Service visits separately. Check-out captures the end location and closes attendance.</p>
     </section>
 
     <section class="phones">
       <article class="phone">
         <div class="status"><span>9:41</span><span>●●●</span></div>
         <div class="top"><div class="back">‹</div><div><p class="muted">Before field work</p><h2>Check in</h2></div><div class="avatar">R</div></div>
-        <div class="hero"><div><p class="muted">Step 1 of 1</p><strong>Start your field day</strong><p>Confirm location and choose your first work plan.</p></div><div class="line-art"></div></div>
+        <div class="hero"><div><p class="muted">Step 1 of 1</p><strong>Start your field day</strong><p>Confirm current location. Visit entries are added separately after check-in.</p></div><div class="line-art"></div></div>
         <div class="map"><div class="pin"></div></div>
         <div class="field"><label>Current location</label><div>Auto-detected near customer route</div></div>
-        <div class="field"><label>Today’s plan</label><div class="chips"><span class="chip selected">Sales visit</span><span class="chip selected">Service visit</span></div></div>
-        <div class="field"><label>Opening note</label><div>Optional short note before starting the day</div></div>
+        <div class="field"><label>Attendance note</label><div>Optional short note before starting the day</div></div>
         <button class="primary">Check in now</button>
-        <button class="secondary">Save as draft</button>
+        <button class="secondary">GPS failed? Retry location</button>
       </article>
 
       <article class="phone">
@@ -98,9 +97,9 @@
           <div class="step"><div class="dot light">2</div><div><strong>Add visit entry</strong><p>Select Sales visit, Service visit, or select both for that visit</p></div></div>
           <div class="step"><div class="dot light">3</div><div><strong>Check out</strong><p>End the day when field work is complete</p></div></div>
         </div>
-        <div class="field"><label>Visit entry type</label><div class="chips"><span class="chip selected">Sales visit</span><span class="chip">Service visit</span></div></div>
+        <div class="field"><label>Separate visit entries</label><div class="chips"><span class="chip selected">Sales visit</span><span class="chip">Service visit</span></div></div>
         <button class="primary">Add visit entry</button>
-        <button class="secondary">Check out later</button>
+        <button class="secondary">Check out when done</button>
       </article>
 
       <article class="phone">
@@ -109,6 +108,7 @@
         <div class="hero"><div><p class="muted">Final step</p><strong>Finish your field day</strong><p>Close attendance and send today’s summary.</p></div><div class="line-art"></div></div>
         <div class="field"><label>Check-in time</label><div>9:42 AM</div></div>
         <div class="field"><label>Visits submitted</label><div>3 sales visits • 1 service report</div></div>
+        <div class="field"><label>Current checkout location</label><div>📍 Capture GPS before check-out</div></div>
         <div class="field"><label>Closing note</label><div>Optional: pending follow-up, customer issue, or stock note</div></div>
         <div class="note">After check-out, the system can auto-create the daily report for the agent and admin.</div>
         <button class="primary">Check out now</button>
