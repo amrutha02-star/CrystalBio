@@ -88,8 +88,8 @@ export type RoleAccess = {
 
 export const agentNavItems: NavItem[] = [
   { label: 'Home', icon: 'home', selected: true },
-  { label: 'Entries', icon: 'entries' },
-  { label: 'Leave', icon: 'leave' },
+  { label: 'Visits', icon: 'entries' },
+  { label: 'Attendance', icon: 'leave' },
   { label: 'Reports', icon: 'reports' },
 ];
 

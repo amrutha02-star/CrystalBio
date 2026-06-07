@@ -277,17 +277,18 @@ Bottom nav must clearly show selected state.
 
 Required items:
 
-- Home
-- Entries
-- Leave
+- Home / Today
+- Visits
+- Attendance
 - Reports
 
 Rules:
 
-- icons required
+- icons required above labels, matching the approved home screen nav style
 - selected state must be obvious
 - labels should remain visible for non-tech-savvy users
 - do not use icon-only navigation for agents
+- use “Attendance”, not “Leave”, because this section covers check-in/check-out logs, attendance history, leave requests, and leave status
 
 ### Forms
 

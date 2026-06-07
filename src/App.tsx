@@ -18,7 +18,7 @@ const actionMeta = [
   { label: 'Check in', hint: 'Start day', className: 'action-mint' },
   { label: 'Sales', hint: 'New visit', className: 'action-peach' },
   { label: 'Service', hint: 'Report', className: 'action-sky' },
-  { label: 'Leave', hint: 'Request', className: 'action-cream' },
+  { label: 'Attendance', hint: 'Logs & leave', className: 'action-cream' },
 ];
 
 const actionIcon = [MapPin, Plus, ClipboardList, CalendarCheck];

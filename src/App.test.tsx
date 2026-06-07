@@ -13,15 +13,15 @@ describe('Crystal Bio agent view shell', () => {
     expect(screen.getByText('Check in')).toBeInTheDocument();
     expect(screen.getByText('Sales')).toBeInTheDocument();
     expect(screen.getByText('Service')).toBeInTheDocument();
-    expect(screen.getAllByText('Leave').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Attendance').length).toBeGreaterThan(0);
   });
 
   it('keeps agent bottom navigation clear with a selected home state', () => {
     render(<App />);
 
     expect(screen.getByLabelText('Home selected')).toBeInTheDocument();
-    expect(screen.getByLabelText('Entries')).toBeInTheDocument();
-    expect(screen.getByLabelText('Leave')).toBeInTheDocument();
+    expect(screen.getByLabelText('Visits')).toBeInTheDocument();
+    expect(screen.getByLabelText('Attendance')).toBeInTheDocument();
     expect(screen.getByLabelText('Reports')).toBeInTheDocument();
   });
 

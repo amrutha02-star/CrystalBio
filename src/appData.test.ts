@@ -29,8 +29,8 @@ describe('Crystal Bio product model', () => {
 
   it('exposes a simple agent navigation model with selected-state friendly items', () => {
     expect(agentNavItems.map((item) => item.label)).toContain('Home');
-    expect(agentNavItems.map((item) => item.label)).toContain('Entries');
-    expect(agentNavItems.map((item) => item.label)).toContain('Leave');
+    expect(agentNavItems.map((item) => item.label)).toContain('Visits');
+    expect(agentNavItems.map((item) => item.label)).toContain('Attendance');
     expect(agentNavItems.length).toBeLessThanOrEqual(5);
   });
 
