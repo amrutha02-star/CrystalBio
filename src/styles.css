@@ -1,0 +1,183 @@
+:root {
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #14211d;
+  background: #eef5ef;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 320px; background: radial-gradient(circle at top left, #dff4da 0, #f6f8f5 38%, #edf4f5 100%); }
+button, input, textarea, select { font: inherit; }
+
+.app-shell {
+  width: min(1180px, 100%);
+  margin: 0 auto;
+  padding: 24px 16px 42px;
+}
+
+.hero-card, .mvp-card, .desktop-panel, .phase-section {
+  border: 1px solid rgba(31, 70, 55, 0.08);
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 24px 70px rgba(39, 68, 56, 0.12);
+  backdrop-filter: blur(18px);
+  border-radius: 34px;
+}
+
+.hero-card {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: center;
+  padding: 30px;
+  margin-bottom: 24px;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  color: #3e7b5c;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+h1, h2, h3, p { margin-top: 0; }
+h1 { font-size: clamp(2rem, 5vw, 4.2rem); line-height: 0.95; letter-spacing: -0.055em; margin-bottom: 18px; }
+h2 { font-size: clamp(1.45rem, 3vw, 2.2rem); letter-spacing: -0.04em; margin-bottom: 8px; }
+h3 { letter-spacing: -0.025em; margin-bottom: 8px; }
+.hero-copy { max-width: 720px; color: #5b6f67; font-size: 1.06rem; line-height: 1.7; margin-bottom: 0; }
+
+.hero-badge, .chip, .icon-pill, .avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.hero-badge {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: #d7f36a;
+  padding: 12px 16px;
+  font-weight: 800;
+}
+
+.phone-grid {
+  display: grid;
+  grid-template-columns: minmax(320px, 430px) 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+.phone-frame {
+  border-radius: 42px;
+  padding: 18px;
+  background: #f8fbf7;
+  border: 10px solid #18261f;
+  min-height: 820px;
+  box-shadow: 0 28px 80px rgba(21, 39, 30, 0.25);
+  position: relative;
+  overflow: hidden;
+}
+
+.phone-header, .section-title, .entry-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+}
+
+.muted { color: #708078; margin-bottom: 4px; font-size: 0.9rem; }
+.avatar { width: 46px; height: 46px; border-radius: 18px; background: #d7f36a; }
+
+.attention-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 18px 0;
+  padding: 18px;
+  border-radius: 26px;
+  background: linear-gradient(135deg, #163325, #245b3b);
+  color: white;
+}
+.attention-card .muted { color: rgba(255,255,255,0.7); }
+
+.action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.action-card, .panel, .metric-card, .phase-card, .report-card, .issue-card {
+  border: 1px solid rgba(42, 83, 65, 0.08);
+  border-radius: 26px;
+  background: white;
+  box-shadow: 0 14px 36px rgba(37, 59, 50, 0.08);
+}
+.action-card { padding: 15px; min-height: 180px; }
+.action-card p { color: #67766f; font-size: 0.86rem; line-height: 1.45; }
+.icon-pill { width: 42px; height: 42px; border-radius: 16px; background: #eaf7e8; color: #2f7a50; margin-bottom: 12px; }
+.icon-pill svg { width: 20px; }
+
+.chip { border-radius: 999px; padding: 7px 10px; font-size: 0.74rem; font-weight: 800; white-space: nowrap; }
+.chip-soft { background: #eef2ef; color: #62726a; }
+.chip-warning { background: #fff0bd; color: #7c5b00; }
+.chip-info { background: #dff1ff; color: #15537a; }
+
+.panel { padding: 16px; margin-top: 16px; }
+.section-title.large { margin-bottom: 18px; }
+.section-title span { color: #2f7a50; font-weight: 800; font-size: 0.85rem; }
+.entry-row { padding: 12px 0; border-top: 1px solid #edf1ee; }
+.entry-row:first-of-type { border-top: 0; }
+.entry-row p { color: #728078; margin: 4px 0 0; font-size: 0.86rem; }
+
+.bottom-nav {
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  bottom: 18px;
+  display: flex;
+  justify-content: space-around;
+  padding: 14px;
+  border-radius: 24px;
+  background: rgba(255,255,255,0.92);
+  box-shadow: 0 8px 24px rgba(26, 43, 35, 0.12);
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.desktop-panel { padding: 26px; }
+.metric-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 18px; }
+.metric-card { padding: 18px; }
+.metric-card p, .metric-card span { color: #6b7d75; margin-bottom: 8px; }
+.metric-card strong { display: block; font-size: 2.3rem; letter-spacing: -0.04em; }
+.metric-card span { font-size: 0.84rem; }
+
+.report-stack, .issue-card { margin-top: 16px; }
+.report-stack h3 { margin-bottom: 12px; }
+.report-card { display: flex; align-items: center; gap: 10px; padding: 16px; margin-bottom: 10px; font-weight: 800; }
+.issue-card { display: flex; justify-content: space-between; gap: 20px; padding: 20px; background: #fff9e8; }
+.issue-card p:last-child { color: #75694d; line-height: 1.55; margin-bottom: 0; }
+.issue-card svg { color: #b48312; flex-shrink: 0; }
+
+.phase-section { margin-top: 24px; padding: 28px; }
+.phase-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.phase-card { padding: 18px; }
+.phase-card p { color: #66766e; line-height: 1.55; }
+.phase-card ul { margin: 0; padding-left: 18px; color: #365246; }
+.phase-card li { margin-bottom: 6px; }
+
+.mvp-card { margin-top: 24px; padding: 28px; }
+.mvp-list { display: flex; flex-wrap: wrap; gap: 10px; }
+.mvp-list span { padding: 11px 14px; border-radius: 999px; background: white; color: #264235; font-weight: 800; box-shadow: 0 8px 20px rgba(32, 53, 43, 0.08); }
+
+@media (max-width: 900px) {
+  .hero-card { flex-direction: column; align-items: flex-start; border-radius: 28px; padding: 24px; }
+  .phone-grid { grid-template-columns: 1fr; }
+  .phone-frame { min-height: 780px; }
+  .metric-grid, .phase-grid { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 560px) {
+  .app-shell { padding: 14px 10px 28px; }
+  .hero-card, .desktop-panel, .phase-section, .mvp-card { border-radius: 24px; padding: 20px; }
+  .phone-frame { border-width: 7px; border-radius: 34px; padding: 14px; }
+  .action-grid, .metric-grid, .phase-grid { grid-template-columns: 1fr; }
+  .action-card { min-height: auto; }
+}

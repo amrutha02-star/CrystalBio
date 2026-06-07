@@ -1,5 +1,33 @@
 # Field Agent Reporting Platform
 
+## Prototype App Status
+
+A first mobile-first React/Vite prototype has been started in this repository.
+
+Current prototype includes:
+
+- Agent home preview
+- Daily Check-in action
+- Sales Visit action
+- Service Visit action
+- Leave Request action
+- My Entries preview
+- Admin command view
+- Automatic report cards
+- Issue Command Center preview
+- Phased build plan
+
+Local commands:
+
+```bash
+npm install
+npm test
+npm run build
+npm run dev
+```
+
+---
+
 ## Purpose
 
 This platform is designed for companies with service and sales agents who work on the field, where the owner/admin currently has limited visibility into what actually happens during visits.
