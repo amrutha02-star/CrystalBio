@@ -317,7 +317,9 @@ Sales opportunity backend/data rules:
 
 - Current visit location/GPS is mandatory for every visit update.
 - Sales executive/agent name is not asked inside each visit form; attach it automatically from the logged-in user in the backend.
-- Every repeat visit must have a visible “New visit update” / “Add another visit update” entry point. Each saved update becomes one item in visit history with visit number, time, location, notes, and next action.
+- Every repeat visit must have a visible “New visit update” / “Add another visit update” entry point. Each saved update becomes one item in visit history with visit number, visit date, visit time, location/GPS, notes, next action, follow-up date if applicable, and photos.
+- Any date shown or stored must have an input affordance: visit date, follow-up date, and expected closing date need a visible date selector/calendar field. Default visit date can be today, but it must still be changeable.
+- Save must be visually available near the user’s current task. On mobile, prefer a sticky bottom save action above the nav for visit update and opportunity detail pages; do not bury save below a long section.
 - Customer details fields need enough space for real names, phone numbers, emails, department, and address; avoid tiny two-column cards for long values.
 - Follow-up must be explicit: “Follow-up needed”, “No follow-up”, or a closing/status option. Do not assume every visit needs follow-up.
 - Do not show a separate “Save draft” button if every save can store incomplete data. Use one “Save visit update” action and treat incomplete entries as saved updates in the backend.
