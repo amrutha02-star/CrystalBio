@@ -2,6 +2,8 @@
 
 ## Prototype App Status
 
+**Design rule:** all Crystal Bio UI work must follow [`DESIGN.md`](./DESIGN.md). Agent-side screens must be visually approved before admin-side polish continues.
+
 A first mobile-first React/Vite prototype has been started in this repository.
 
 Current prototype includes:

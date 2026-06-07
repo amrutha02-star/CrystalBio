@@ -1,0 +1,359 @@
+---
+version: alpha
+name: Crystal Bio Field Hub
+description: Calm field-work companion for non-technical service and sales agents; soft planner-inspired mobile UI with warm, clean, professional restraint.
+colors:
+  primary: "#111015"
+  secondary: "#F4D983"
+  tertiary: "#9AAD8F"
+  ink: "#111015"
+  inkSoft: "#3A3640"
+  textMuted: "#8B858F"
+  canvasWarm: "#F4D983"
+  canvasCream: "#FFF8E8"
+  surface: "#FFFFFF"
+  surfaceSoft: "#F8F7F4"
+  line: "#EFEAE2"
+  sage: "#9AAD8F"
+  sageSoft: "#EEF4EC"
+  mint: "#D9F7DE"
+  peach: "#F4B39B"
+  peachSoft: "#FFF0E8"
+  sky: "#C8DDF1"
+  skySoft: "#EEF6FC"
+  warning: "#F6D982"
+  danger: "#D95B46"
+  success: "#4E8E57"
+typography:
+  display:
+    fontFamily: Inter
+    fontSize: 40px
+    fontWeight: 850
+    lineHeight: 1.0
+    letterSpacing: "-0.05em"
+  h1:
+    fontFamily: Inter
+    fontSize: 28px
+    fontWeight: 850
+    lineHeight: 1.08
+    letterSpacing: "-0.04em"
+  h2:
+    fontFamily: Inter
+    fontSize: 22px
+    fontWeight: 820
+    lineHeight: 1.15
+    letterSpacing: "-0.035em"
+  cardTitle:
+    fontFamily: Inter
+    fontSize: 18px
+    fontWeight: 820
+    lineHeight: 1.2
+    letterSpacing: "-0.025em"
+  body:
+    fontFamily: Inter
+    fontSize: 15px
+    fontWeight: 500
+    lineHeight: 1.5
+    letterSpacing: "-0.01em"
+  caption:
+    fontFamily: Inter
+    fontSize: 12px
+    fontWeight: 700
+    lineHeight: 1.3
+    letterSpacing: "0em"
+rounded:
+  sm: 12px
+  md: 18px
+  lg: 24px
+  xl: 32px
+  phone: 42px
+spacing:
+  xs: 6px
+  sm: 10px
+  md: 14px
+  lg: 20px
+  xl: 28px
+components:
+  screen-background:
+    backgroundColor: "{colors.canvasWarm}"
+    textColor: "{colors.ink}"
+  phone-surface:
+    backgroundColor: "{colors.surface}"
+    textColor: "{colors.ink}"
+    rounded: "{rounded.phone}"
+    padding: 18px
+  card-default:
+    backgroundColor: "{colors.surface}"
+    textColor: "{colors.ink}"
+    rounded: "{rounded.lg}"
+    padding: 16px
+  card-soft:
+    backgroundColor: "{colors.surfaceSoft}"
+    textColor: "{colors.ink}"
+    rounded: "{rounded.xl}"
+    padding: 18px
+  button-primary:
+    backgroundColor: "{colors.ink}"
+    textColor: "{colors.surface}"
+    rounded: "{rounded.md}"
+    padding: 14px
+  nav-selected:
+    backgroundColor: "{colors.ink}"
+    textColor: "{colors.surface}"
+    rounded: "{rounded.md}"
+    padding: 10px
+---
+
+## Overview
+
+Crystal Bio Field Hub must feel like a **calm daily work companion**, not an enterprise dashboard, PDF report, or complicated CRM.
+
+The field agents are not tech-savvy, so the UI must reduce thinking. The product should feel friendly, soft, and trustworthy while staying professional enough for a healthcare/field-operations client.
+
+The visual reference direction is:
+
+- soft planner/task app
+- warm cream/yellow environment
+- white phone surfaces and cards
+- black primary text and actions
+- very limited pastel accents
+- rounded cards with generous spacing
+- simple line icons and optional hand-drawn illustrations
+
+The most important design rule: **agent screens first, admin later**. Do not optimize for admin density until agent workflows are visually approved.
+
+## Colors
+
+### Core palette
+
+- **Ink `#111015`**: main text, selected nav, primary CTAs. This gives the UI confidence and avoids washed-out pastel weakness.
+- **Warm canvas `#F4D983`**: outer background / brand warmth. Use sparingly inside the phone.
+- **Cream `#FFF8E8`**: soft background sections, empty states, warm panels.
+- **White `#FFFFFF`**: main app surface and most cards.
+- **Sage `#9AAD8F`**: Crystal Bio’s professional green reference. Use as a quiet brand anchor, not as the whole interface.
+- **Mint, peach, sky**: gentle status/accent colors only.
+
+### Color rules
+
+1. Do **not** make every action card a loud different color.
+2. Use one primary visual area per screen.
+3. Prefer white cards with small pastel accents over fully colored cards.
+4. Black/ink should carry hierarchy; color should guide, not decorate.
+5. Avoid dull hospital green as the dominant background.
+6. Avoid neon, saturated blue, bright orange, and corporate gradient overload.
+
+## Typography
+
+Use rounded, modern sans typography. Inter is acceptable for implementation.
+
+Typography should feel:
+
+- bold but friendly
+- highly readable on mobile
+- short and plain-language
+- never dense or document-like
+
+### Copy rules
+
+Use labels agents understand immediately:
+
+- “Check in” instead of “Attendance submission”
+- “Sales” instead of “Sales report form”
+- “Service” instead of “Service report form”
+- “Leave” instead of “Leave management”
+- “My entries” instead of “Submission history”
+
+Avoid long descriptions on the home screen. If explanation is needed, show it inside the form step, not on the dashboard.
+
+## Layout
+
+### Agent home layout
+
+The agent home must be compact and glanceable.
+
+Recommended structure:
+
+1. Small greeting/header
+2. One calm status card for today
+3. Compact 2x2 quick-action area
+4. Short “My entries” preview
+5. Bottom navigation
+
+### Scrolling rule
+
+The initial agent home should not feel like a long scroll page. On a normal phone screen, the user should immediately see:
+
+- greeting
+- today status
+- all 4 main actions
+- at least part of recent entries or bottom nav
+
+If the screen feels like a landing page, it is wrong.
+
+### Grid rule
+
+Use a 2x2 quick-action grid for primary field tasks:
+
+- Check in
+- Sales
+- Service
+- Leave
+
+Cards should be compact, not oversized. Each card needs:
+
+- icon
+- short label
+- optional 1–2 word hint
+
+Do not include long paragraphs inside quick-action cards.
+
+## Elevation & Depth
+
+Use soft shadows only.
+
+- Cards should feel lightly raised, not floating dramatically.
+- Avoid hard borders unless the element is interactive or selected.
+- Use shadow + rounded corners to separate content.
+- Avoid heavy dashboard panels and table-like containers on agent screens.
+
+Preferred shadow style:
+
+- low opacity black
+- large blur
+- subtle vertical offset
+
+## Shapes
+
+The design language is very rounded.
+
+- Phone frame: very rounded, 34–42px
+- Main cards: 24–32px
+- Buttons: 18–24px
+- Chips: pill shape
+- Icons: simple rounded line icons
+
+Avoid sharp corporate corners.
+
+## Components
+
+### Phone frame / app canvas
+
+The app preview should look like a real mobile app screen, not a web report.
+
+Rules:
+
+- white/cream app surface
+- soft warm environment outside phone
+- rounded black phone border only for preview/demo; real app should not need a phone border
+
+### Today status card
+
+Purpose: reassure the agent what to do next.
+
+Good examples:
+
+- “Ready for field work”
+- “Check in first”
+- “2 visits planned today”
+
+Keep it calm and short.
+
+### Quick action cards
+
+Must be highly tappable.
+
+Rules:
+
+- 2x2 grid
+- short labels
+- icon first
+- no long text
+- use mostly white or very soft tinted backgrounds
+- pastel accent may appear as an icon pill or small tag
+
+### Bottom navigation
+
+Bottom nav must clearly show selected state.
+
+Required items:
+
+- Home
+- Entries
+- Leave
+- Reports
+
+Rules:
+
+- icons required
+- selected state must be obvious
+- labels should remain visible for non-tech-savvy users
+- do not use icon-only navigation for agents
+
+### Forms
+
+Forms must be split into steps. Avoid showing one long form.
+
+Every form step should have:
+
+- one clear question group
+- large input/tap targets
+- save draft support for sales/service
+- clear next/back buttons
+- simple progress indicator
+
+### My entries
+
+Should show recent submissions in plain language:
+
+- customer/site name
+- type: Sales or Service
+- status: Draft, Sent, Follow-up
+- next action/date if available
+
+Do not show spreadsheet/table UI on mobile.
+
+### Admin screens
+
+Admin screens are paused until the agent side is approved.
+
+When resumed, admin must still live inside the same app with role-based access. It should not look like a PDF, static report, or document export.
+
+### Monitoring screens
+
+Monitoring is for project/internal team only. It must not be visible to field agents or normal client users.
+
+## Do's and Don'ts
+
+### Do
+
+- Prioritize the agent’s first 5 seconds on the screen.
+- Keep screens warm, clean, and calm.
+- Use black/ink for hierarchy and CTAs.
+- Use pastel colors carefully and consistently.
+- Keep quick actions short and tappable.
+- Show selected nav state clearly.
+- Build and review agent screens before admin screens.
+
+### Don’t
+
+- Do not use a long scrolling dashboard for the agent home.
+- Do not make the UI look like a PDF/report.
+- Do not use too many bright colors at once.
+- Do not make every card a different saturated color.
+- Do not use dull green as the whole visual identity.
+- Do not expose monitoring/debugging UI to client users.
+- Do not start admin polish before agent UX is approved.
+
+## Implementation Checklist
+
+Before any Crystal Bio UI change is accepted, verify:
+
+- Does it follow the palette above?
+- Is the home screen compact?
+- Are the 4 agent actions visible quickly?
+- Are labels plain and non-technical?
+- Is selected navigation obvious?
+- Does it avoid PDF/report styling?
+- Does it avoid excessive scrolling?
+- Is monitoring hidden from client users?
+- Has the screen been tested in a phone-width preview?
