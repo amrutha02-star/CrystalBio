@@ -26,39 +26,39 @@ colors:
   success: "#4E8E57"
 typography:
   display:
-    fontFamily: Inter
+    fontFamily: Google Sans
     fontSize: 40px
-    fontWeight: 850
+    fontWeight: 500
     lineHeight: 1.0
-    letterSpacing: "-0.05em"
+    letterSpacing: "-0.02em"
   h1:
-    fontFamily: Inter
+    fontFamily: Google Sans
     fontSize: 28px
-    fontWeight: 850
+    fontWeight: 500
     lineHeight: 1.08
-    letterSpacing: "-0.04em"
+    letterSpacing: "-0.015em"
   h2:
-    fontFamily: Inter
+    fontFamily: Google Sans
     fontSize: 22px
-    fontWeight: 820
+    fontWeight: 500
     lineHeight: 1.15
-    letterSpacing: "-0.035em"
+    letterSpacing: "-0.02em"
   cardTitle:
-    fontFamily: Inter
+    fontFamily: Google Sans
     fontSize: 18px
-    fontWeight: 820
+    fontWeight: 500
     lineHeight: 1.2
-    letterSpacing: "-0.025em"
+    letterSpacing: "-0.015em"
   body:
-    fontFamily: Inter
+    fontFamily: Google Sans
     fontSize: 15px
     fontWeight: 500
     lineHeight: 1.5
     letterSpacing: "-0.01em"
   caption:
-    fontFamily: Inter
+    fontFamily: Google Sans
     fontSize: 12px
-    fontWeight: 700
+    fontWeight: 500
     lineHeight: 1.3
     letterSpacing: "0em"
 rounded:
@@ -144,11 +144,11 @@ The most important design rule: **agent screens first, admin later**. Do not opt
 
 ## Typography
 
-Use rounded, modern sans typography. Inter is acceptable for implementation.
+Use rounded, modern sans typography. Use Google Sans style typography for implementation with mostly regular/medium weights. If Google Sans is not available, fall back to Product Sans, Roboto, Arial, then sans-serif.
 
 Typography should feel:
 
-- bold but friendly
+- clear, friendly, and not heavy
 - highly readable on mobile
 - short and plain-language
 - never dense or document-like
@@ -357,3 +357,8 @@ Before any Crystal Bio UI change is accepted, verify:
 - Does it avoid excessive scrolling?
 - Is monitoring hidden from client users?
 - Has the screen been tested in a phone-width preview?
+
+
+### Typography correction
+
+The UI must not use overly heavy heading weights. Use Google Sans-style rounded typography with medium/semi-bold emphasis. Headings should feel polished and friendly, not chunky or poster-like.
