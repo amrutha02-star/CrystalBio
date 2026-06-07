@@ -207,6 +207,42 @@ Leave statuses:
 
 ---
 
+## Recommended Screen List
+
+### Agent Screens
+
+The first version should include these agent-facing screens:
+
+1. Login
+2. Agent Home
+3. New Field Entry
+4. Save Draft / Review Entry
+5. Follow-Up Timeline
+6. My Entries
+7. Entry Detail
+8. Apply for Leave
+9. Leave Status
+10. My Reports
+11. Profile / Logout
+
+### Admin Screens
+
+The first version should include these admin-facing screens:
+
+1. Admin Login
+2. Admin Dashboard
+3. All Reports
+4. Agent-Wise Reports
+5. Agent Detail Page
+6. Pending Follow-Ups
+7. Missing Submissions
+8. Leave Approval
+9. Report Downloads
+10. Notification Settings
+11. Issue Command Center
+
+---
+
 ## Admin App Features
 
 ### 1. Admin Dashboard
@@ -277,6 +313,29 @@ Simple statuses:
 - Fixed
 - Needs Decision
 
+### 6. Notification Settings
+
+Admin should be able to control reporting and alert rules without needing a developer.
+
+Settings should include:
+
+- Owner Telegram alert recipient(s)
+- Which events trigger Telegram alerts
+- Weekly report email recipients
+- Monthly report email recipients
+- Agent report email rules
+- Whether reports include PDF, Excel, or both
+- Whether missed submissions should alert owner/admin
+- Whether leave requests should alert owner/admin
+- Quiet hours, if the owner does not want late-night alerts
+
+Default recommendation:
+
+- Owner gets only important Telegram alerts, not every small action.
+- Admin dashboard stores all activity.
+- Weekly and monthly emails are always sent automatically.
+- Agents receive only their own reports.
+
 ---
 
 ## Reporting System
@@ -335,6 +394,14 @@ Recommendation: Start with important updates only, not every tiny action, so Tel
 ## Daily Report
 
 Purpose: daily visibility.
+
+Daily reports should be generated automatically for each agent and for the admin/owner view.
+
+Default recommendation:
+
+- Keep daily reports available inside the admin dashboard.
+- Send immediate Telegram alerts for important updates.
+- Send a daily email only if the client specifically wants it, because daily emails can become noisy.
 
 Daily report should include:
 
@@ -410,6 +477,34 @@ Monthly report should include:
 Example subject:
 
 **Monthly Field Report — June 2026**
+
+---
+
+## Email and Telegram Delivery Rules
+
+### Owner / Admin Delivery
+
+- Immediate Telegram alerts when forms are submitted or meaningful progress is updated.
+- Weekly all-agent report email every Saturday.
+- Monthly all-agent report email on the 1st day of every month for the previous month.
+- Critical platform issue alerts in plain English.
+
+### Agent Delivery
+
+- Each agent receives reports only for their own work.
+- Each agent’s report should go to their registered email ID.
+- Agents should not receive other agents’ data.
+
+### Delivery Tracking
+
+The system should track whether each Telegram alert and email was successfully sent.
+
+If delivery fails, the system should:
+
+1. Retry automatically.
+2. Log the failure.
+3. Alert admin if it still fails.
+4. Keep the report available inside the dashboard.
 
 ---
 
@@ -657,6 +752,37 @@ The system should apply technical judgment and ask the business owner only for d
 
 ---
 
+## What Is Possible vs Not Recommended
+
+### Possible and Recommended
+
+- Track agent logins and report submissions.
+- Track forms started but not submitted.
+- Save partial entries as drafts.
+- Detect failed photo uploads and failed submissions.
+- Detect missed daily updates.
+- Detect failed Telegram/email delivery.
+- Notify owner/admin in plain English.
+- Generate daily, weekly, and monthly reports automatically.
+- Create issue reports for developers.
+- Prepare fixes and test them before release.
+
+### Not Recommended
+
+- Letting AI directly change the live production app without testing.
+- Relying only on AI chat/forms instead of structured buttons and saved entries.
+- Monitoring agents in a way that feels like personal surveillance.
+- Sending the owner every small event if it creates too much Telegram noise.
+- Making photos/location mandatory everywhere unless the business truly needs it.
+
+### Important Note About Email Sign-In
+
+Email sign-in helps identify users and connect reports to the right agent, but it does not automatically solve all tracking issues by itself.
+
+The app still needs proper monitoring, draft saving, error logging, and admin visibility.
+
+---
+
 ## Data Storage and Visibility
 
 All data should be stored in a secure online database connected to the app.
@@ -743,6 +869,25 @@ Bad error message:
 Good error message:
 
 “Photo did not upload. Your report is saved as draft. Please try again.”
+
+---
+
+## Open Items To Finalize After Receiving Client Forms
+
+Once the actual forms are shared, the following must be finalized:
+
+- Exact form fields.
+- Which fields are mandatory.
+- Which fields should be dropdowns instead of free typing.
+- Which fields should be auto-filled.
+- Which fields trigger Telegram alerts.
+- Which fields appear in daily, weekly, and monthly reports.
+- Which fields are visible to agents.
+- Which fields are visible only to admin/owner.
+- Whether photos are required or optional.
+- Whether GPS/location is required or optional.
+- Whether agents can edit completed entries or only add progress updates.
+- Report wording and layout for the client’s business type.
 
 ---
 
