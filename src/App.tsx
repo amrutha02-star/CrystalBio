@@ -860,7 +860,10 @@ function App() {
         </div>
 
         <section className="step-card">
-          <div className="step-heading"><span>Step 1</span><strong>Quick service update</strong><small>For the engineer to save at the site.</small></div>
+          <div className="step-heading">
+            <div><span className="step-pill">Step 1</span><h3>Quick service update</h3><p>For the engineer to save at the site.</p></div>
+            <span className={serviceSaveResult ? 'chip chip-soft' : 'chip chip-warning'}>{serviceSaveResult ? 'Saved' : 'Required'}</span>
+          </div>
           <div className="form-card highlighted-card">
             <label>Current visit location</label>
             <p>{isBackendConfigured ? 'Location permission is requested when this update is saved.' : 'Client testing uses sample GPS here. Connected backend mode requests phone location when saving.'}</p>
@@ -874,7 +877,10 @@ function App() {
         </section>
 
         <section className="step-card">
-          <div className="step-heading"><span>Step 2</span><strong>Customer, equipment, issue</strong><small>Can be completed after leaving the customer site.</small></div>
+          <div className="step-heading">
+            <div><span className="step-pill">Step 2</span><h3>Customer, equipment, issue</h3><p>Can be completed after leaving the customer site.</p></div>
+            <span className={serviceStep2Saved ? 'chip chip-soft' : 'chip chip-info'}>{serviceStep2Saved ? 'Saved' : 'Later'}</span>
+          </div>
           <label className="field-card"><span>Contact person</span><input aria-label="Service contact person" value={serviceContactPerson} onChange={(event) => setServiceContactPerson(event.target.value)} placeholder="Optional" /></label>
           <label className="field-card"><span>Phone</span><input aria-label="Service phone" value={servicePhone} onChange={(event) => setServicePhone(event.target.value)} placeholder="Optional" inputMode="tel" /></label>
           <label className="field-card"><span>Email</span><input aria-label="Service email" value={serviceEmail} onChange={(event) => setServiceEmail(event.target.value)} placeholder="Optional" inputMode="email" /></label>
@@ -890,7 +896,10 @@ function App() {
         </section>
 
         <section className="step-card">
-          <div className="step-heading"><span>Step 3</span><strong>Parts, proof, office details</strong><small>For service closure and admin reporting.</small></div>
+          <div className="step-heading">
+            <div><span className="step-pill">Step 3</span><h3>Parts, proof, office details</h3><p>For service closure and admin reporting.</p></div>
+            <span className={serviceStep3Saved ? 'chip chip-soft' : 'chip chip-info'}>{serviceStep3Saved ? 'Saved' : 'Later'}</span>
+          </div>
           <label className="field-card"><span>Parts required</span><input aria-label="Service parts required" value={servicePartsRequired} onChange={(event) => setServicePartsRequired(event.target.value)} placeholder="Optional" /></label>
           <label className="field-card"><span>Parts used</span><input aria-label="Service parts used" value={servicePartsUsed} onChange={(event) => setServicePartsUsed(event.target.value)} placeholder="Optional" /></label>
           <label className="field-card"><span>Machine status</span><input aria-label="Service machine status" value={serviceMachineStatus} onChange={(event) => setServiceMachineStatus(event.target.value)} placeholder="Working / pending / closed" /></label>
@@ -1184,7 +1193,7 @@ function App() {
     const period = adminPeriodData[adminPeriod];
     const changePeriod = (nextPeriod: ReportPeriod) => {
       setAdminPeriod(nextPeriod);
-      setScreenNotice({ title: `${adminPeriodData[nextPeriod].label} view selected`, message: 'Admin summary, metrics, and report numbers updated.', tone: 'success' });
+      setScreenNotice(null);
     };
     const showOverview = adminTab === 'overview';
     const showAgents = adminTab === 'agents';
@@ -1203,8 +1212,6 @@ function App() {
               </div>
               <span className="admin-hero-icon"><UsersRound size={22} /></span>
             </section>
-
-            <button type="button" className="secondary-action admin-submit-action" onClick={() => goToScreen('home')}>Fill my own field form</button>
 
             <div className="admin-filter-row" aria-label="Admin report filters">
               {(['today', 'week', 'month'] as ReportPeriod[]).map((periodOption) => (
@@ -1365,13 +1372,13 @@ function App() {
             {screen === 'admin' ? (
               [
                 { label: 'Overview', tab: 'overview' as AdminTab, icon: Home },
-                { label: 'Submit', tab: 'overview' as AdminTab, screen: 'home' as AppScreen, icon: ClipboardList },
+                { label: 'My form', tab: 'overview' as AdminTab, screen: 'home' as AppScreen, icon: ClipboardList },
                 { label: 'Agents', tab: 'agents' as AdminTab, icon: UsersRound },
                 { label: 'Approvals', tab: 'approvals' as AdminTab, icon: CalendarCheck },
                 { label: 'Reports', tab: 'adminReports' as AdminTab, icon: FileText },
               ].map((item) => {
                 const Icon = item.icon;
-                const isSubmitItem = item.label === 'Submit';
+                const isSubmitItem = item.label === 'My form';
                 const selected = !isSubmitItem && adminTab === (item.tab as AdminTab);
                 return (
                   <button key={item.label} type="button" className={selected ? 'nav-item nav-item-selected' : 'nav-item'} aria-label={selected ? `${item.label} selected` : item.label} onClick={() => isSubmitItem ? goToScreen('home') : openAdminTab(item.tab as AdminTab)}>
