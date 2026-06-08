@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
-import { CalendarCheck, CheckCircle2, ChevronLeft, ClipboardList, Clock3, FileText, Home, MapPin, Plus, Search, UserRound, X } from 'lucide-react';
+import { BarChart3, CalendarCheck, CheckCircle2, ChevronLeft, ClipboardList, Clock3, FileText, Home, MapPin, Plus, Search, UserRound, X } from 'lucide-react';
 import { sampleEntries } from './appData';
 import { crystalBioFrontendApi, type FrontendAttendance, type FrontendLeaveRequest, type FrontendSalesSaveResult, type FrontendSalesNextAction, type FrontendServiceSaveResult, type FrontendServiceNextAction, type FrontendServiceType, type FrontendSession } from './crystalBioFrontendApi';
 
@@ -915,32 +915,65 @@ function App() {
   );
 
   const renderReports = () => {
-    const leaveStatus = leaveRequest?.status ?? 'No active request';
-    const leaveDate = leaveRequest ? `${leaveRequest.fromDate} to ${leaveRequest.toDate}` : 'Nothing pending';
+    const leaveStatus = leaveRequest?.status ?? 'No leave pending';
+    const attendanceLabel = attendance?.status === 'checked_in' ? 'Checked in today' : attendance?.status === 'checked_out' ? 'Checked out today' : 'Not checked in';
+    const thisWeekVisits = 8;
+    const thisMonthVisits = 31;
+    const pendingFollowUps = 3;
+
     return (
-      <ScreenPanel title="My reports" subtitle="Agent can see own daily/weekly/monthly summaries. Admin sees everyone separately.">
-        <div className="report-grid">
-          <div className="metric-card"><strong>2</strong><span>Visits this week</span></div>
-          <div className="metric-card"><strong>1</strong><span>Follow-up due</span></div>
-          <div className="metric-card"><strong>{leaveRequest ? '1' : '0'}</strong><span>Pending leave</span></div>
-        </div>
-        <div className="form-card leave-status-card">
-          <label>Agent leave status</label>
-          <strong>{leaveStatus}</strong>
-          <span>{leaveDate}{leaveRequest ? ` • ${leaveRequest.reason}` : ''}</span>
-        </div>
-        <div className="form-card admin-approval-card">
-          <label>Admin view</label>
-          <strong>Leave approvals</strong>
-          <span>Admin will see all agents’ leave requests here with Approve / Reject actions.</span>
-          <div className="admin-request-row">
-            <div>
-              <b>{session?.agentName ?? 'Agent'}</b>
-              <small>{leaveDate}{leaveRequest ? ` • ${leaveRequest.reason}` : ' • No pending demo request'}</small>
-            </div>
-            <span className="chip chip-warning">{leaveRequest ? leaveRequest.status : 'demo'}</span>
+      <ScreenPanel title="My reports" subtitle="Automatic summaries from attendance, sales visits, service visits, and leave.">
+        <section className="report-hero-card">
+          <div>
+            <p>Current week</p>
+            <strong>{session?.agentName ?? 'Agent'} summary</strong>
+            <span>{attendanceLabel} • 5 working days • {pendingFollowUps} follow-ups pending</span>
           </div>
+          <span className="report-hero-icon"><BarChart3 size={22} /></span>
+        </section>
+
+        <div className="report-period-switch" aria-label="Report period options">
+          <button type="button" className="report-period-active">Today</button>
+          <button type="button">Week</button>
+          <button type="button">Month</button>
         </div>
+
+        <div className="report-metric-grid">
+          <div className="metric-card report-metric-card"><strong>4</strong><span>Visits today</span><small>2 sales • 2 service</small></div>
+          <div className="metric-card report-metric-card"><strong>{thisWeekVisits}</strong><span>This week</span><small>{pendingFollowUps} follow-ups due</small></div>
+          <div className="metric-card report-metric-card"><strong>{thisMonthVisits}</strong><span>This month</span><small>Auto counted</small></div>
+          <div className="metric-card report-metric-card"><strong>{leaveRequest ? '1' : '0'}</strong><span>Leave</span><small>{leaveStatus}</small></div>
+        </div>
+
+        <section className="form-card report-generate-card">
+          <label>Generate my report</label>
+          <p>Agent taps once. The app prepares the report from saved visits, attendance, and leave.</p>
+          <div className="report-generate-actions">
+            <button type="button" onClick={() => setScreenNotice({ title: 'Daily report ready', message: 'Preview generated from today’s demo visits and attendance.', tone: 'success' })}>Daily</button>
+            <button type="button" onClick={() => setScreenNotice({ title: 'Weekly report ready', message: 'Weekly preview generated. Production app can download or send it.', tone: 'success' })}>Weekly</button>
+            <button type="button" onClick={() => setScreenNotice({ title: 'Monthly report ready', message: 'Monthly preview generated from saved field activity.', tone: 'success' })}>Monthly</button>
+          </div>
+        </section>
+
+        <section className="report-preview-card compact-report-preview-card">
+          <div className="report-preview-heading">
+            <div>
+              <label>Report preview</label>
+              <strong>Weekly field report</strong>
+              <span>09 Jun – 15 Jun • 5 sales • 3 service • 5/6 attendance</span>
+            </div>
+            <span className="chip chip-soft">Draft</span>
+          </div>
+        </section>
+
+        <section className="form-card report-notes-card">
+          <label>Optional agent note</label>
+          <textarea aria-label="Optional report note" placeholder="Add one short note for office, if needed" rows={2} />
+        </section>
+
+        <div className="section-label">Recent report items</div>
+        <div className="entry-row"><div><strong>Apollo Diagnostics</strong><p>Sales visit • Quote to be shared</p></div><span className="chip chip-warning">follow-up</span></div>
+        <div className="entry-row"><div><strong>Metro Lab</strong><p>Service visit • Parts required</p></div><span className="chip chip-info">service</span></div>
         <p className="panel-note">These preview numbers are fixed demo values. They will come from backend reports when reports are connected.</p>
       </ScreenPanel>
     );
