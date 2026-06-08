@@ -1305,7 +1305,6 @@ function App() {
               </section>
             )}
             <button type="button" className="primary-action" onClick={() => setScreenNotice({ title: `${adminPeriod === 'today' ? "Today’s" : period.label} admin report ready`, message: 'Admin report generated from saved field activity for client testing.', tone: 'success' })}>Generate {adminPeriod === 'today' ? "today’s" : period.label.toLowerCase()} admin report</button>
-            <p className="panel-note">Admin reports use saved attendance, visits, leave approvals, and follow-ups for client testing.</p>
           </>
         )}
       </ScreenPanel>
