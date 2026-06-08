@@ -69,11 +69,7 @@ function App() {
   const [salesSupportRequired, setSalesSupportRequired] = useState('');
   const [salesRemarksTimeline, setSalesRemarksTimeline] = useState('');
   const [salesOfficeNotes, setSalesOfficeNotes] = useState('');
-  const [salesSitePhoto, setSalesSitePhoto] = useState('');
-  const [salesEquipmentPlatePhoto, setSalesEquipmentPlatePhoto] = useState('');
-  const [salesInstallationPhoto, setSalesInstallationPhoto] = useState('');
-  const [salesIssuePhoto, setSalesIssuePhoto] = useState('');
-  const [salesVisitingCardPhoto, setSalesVisitingCardPhoto] = useState('');
+  const [salesPhotoNote, setSalesPhotoNote] = useState('');
   const [salesStep2Saved, setSalesStep2Saved] = useState(false);
   const [salesStep3Saved, setSalesStep3Saved] = useState(false);
   const [salesSaveResult, setSalesSaveResult] = useState<FrontendSalesSaveResult | null>(null);
@@ -171,11 +167,7 @@ function App() {
     setSalesSupportRequired('');
     setSalesRemarksTimeline('');
     setSalesOfficeNotes('');
-    setSalesSitePhoto('');
-    setSalesEquipmentPlatePhoto('');
-    setSalesInstallationPhoto('');
-    setSalesIssuePhoto('');
-    setSalesVisitingCardPhoto('');
+    setSalesPhotoNote('');
     setSalesStep2Saved(false);
     setSalesStep3Saved(false);
     setSalesSaveResult(null);
@@ -330,11 +322,7 @@ function App() {
         ...(salesSupportRequired.trim() ? { supportRequired: salesSupportRequired.trim() } : {}),
         ...(salesRemarksTimeline.trim() ? { remarksTimeline: salesRemarksTimeline.trim() } : {}),
         ...(salesOfficeNotes.trim() ? { officeNotes: salesOfficeNotes.trim() } : {}),
-        ...(salesSitePhoto.trim() ? { sitePhoto: salesSitePhoto.trim() } : {}),
-        ...(salesEquipmentPlatePhoto.trim() ? { equipmentPlatePhoto: salesEquipmentPlatePhoto.trim() } : {}),
-        ...(salesInstallationPhoto.trim() ? { installationPhoto: salesInstallationPhoto.trim() } : {}),
-        ...(salesIssuePhoto.trim() ? { issuePhoto: salesIssuePhoto.trim() } : {}),
-        ...(salesVisitingCardPhoto.trim() ? { visitingCardPhoto: salesVisitingCardPhoto.trim() } : {}),
+        ...(salesPhotoNote.trim() ? { sitePhoto: salesPhotoNote.trim() } : {}),
       });
       setSalesSaveResult({ ...salesSaveResult, opportunity: { ...salesSaveResult.opportunity, ...opportunity } });
       setSalesStep3Saved(true);
@@ -577,11 +565,17 @@ function App() {
         <label className="field-card"><span>Support required</span><textarea aria-label="Sales support required" value={salesSupportRequired} onChange={(event) => setSalesSupportRequired(event.target.value)} placeholder="Office/product/quote support needed" rows={2} /></label>
         <label className="field-card"><span>Remarks and timeline</span><textarea aria-label="Sales remarks timeline" value={salesRemarksTimeline} onChange={(event) => setSalesRemarksTimeline(event.target.value)} placeholder="Timeline, discussion points, blockers" rows={2} /></label>
         <label className="field-card"><span>Notes for office team</span><textarea aria-label="Sales office notes" value={salesOfficeNotes} onChange={(event) => setSalesOfficeNotes(event.target.value)} placeholder="Internal notes" rows={2} /></label>
-        <label className="field-card"><span>Site photo</span><input aria-label="Sales site photo" value={salesSitePhoto} onChange={(event) => setSalesSitePhoto(event.target.value)} placeholder="Camera/upload file name for preview" /></label>
-        <label className="field-card"><span>Equipment plate photo</span><input aria-label="Sales equipment plate photo" value={salesEquipmentPlatePhoto} onChange={(event) => setSalesEquipmentPlatePhoto(event.target.value)} placeholder="Camera/upload file name for preview" /></label>
-        <label className="field-card"><span>Installation photo</span><input aria-label="Sales installation photo" value={salesInstallationPhoto} onChange={(event) => setSalesInstallationPhoto(event.target.value)} placeholder="Camera/upload file name for preview" /></label>
-        <label className="field-card"><span>Issue photo</span><input aria-label="Sales issue photo" value={salesIssuePhoto} onChange={(event) => setSalesIssuePhoto(event.target.value)} placeholder="Camera/upload file name for preview" /></label>
-        <label className="field-card"><span>Visiting card photo</span><input aria-label="Sales visiting card photo" value={salesVisitingCardPhoto} onChange={(event) => setSalesVisitingCardPhoto(event.target.value)} placeholder="Camera/upload file name for preview" /></label>
+        <div className="field-card photo-action-card">
+          <div>
+            <span>Photos if needed</span>
+            <small>Optional for Sales. Use only when a site, product, or visiting card photo is useful.</small>
+          </div>
+          <div className="photo-actions">
+            <button type="button" className="secondary-action photo-button" onClick={() => setScreenNotice('Camera upload will be connected in the production app.')}>Camera</button>
+            <button type="button" className="secondary-action photo-button" onClick={() => setScreenNotice('File upload will be connected in the production app.')}>Upload</button>
+          </div>
+          <textarea aria-label="Sales photo note" value={salesPhotoNote} onChange={(event) => setSalesPhotoNote(event.target.value)} placeholder="Optional note, e.g. visiting card photo added" rows={2} />
+        </div>
         <button type="button" className="secondary-action" disabled={salesAnySubmitting || !salesSaveResult} onClick={handleSalesStep3Submit}>{isSalesStep3Submitting ? 'Saving…' : 'Save Step 3'}</button>
       </section>
 

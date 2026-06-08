@@ -275,6 +275,10 @@ p { color: var(--muted); line-height: 1.5; }
 }
 .primary-action { background: var(--sage-deep); color: #fffef8; }
 .secondary-action { background: var(--sage-soft); color: var(--sage-deep); }
+.photo-action-card { gap: 10px; }
+.photo-action-card small { color: var(--muted); font-size: 12px; line-height: 1.35; }
+.photo-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.photo-button { min-height: 44px; margin: 0; padding: 10px 12px; border-radius: 15px; }
 .split-actions { display: grid; grid-template-columns: 1fr; gap: 6px; margin-bottom: 6px; }
 .report-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
 .metric-card strong { display: block; font-size: 30px; font-weight: 600; letter-spacing: -0.03em; }
