@@ -2,9 +2,9 @@
 
 ## Status
 
-The agent home screen is now connected to the CrystalBio backend API client for login and attendance.
+The CrystalBio prototype now has frontend/backend coverage for the core demo journeys: login, attendance check-in/check-out, leave request submission, sales/service visit save flows, progressive Step 2/Step 3 patches, and admin reports.
 
-This is the first frontend-to-backend connection step. Sales, service, leave, and admin reports are next.
+The remaining work is demo-readiness QA, UI polish, production-grade storage/auth/photo upload, and hosted deployment — not collecting forms again.
 
 ## What was connected
 
@@ -97,7 +97,7 @@ Screenshot:
 Current result:
 
 - Test files: 9 passed
-- Tests: 42 passed
+- Tests: 60 passed
 - Build: passed
 
 ## Testing Agent findings fixed
@@ -116,24 +116,14 @@ Fixes added:
 - attendance timestamp normalization layer
 - demo-vs-backend copy
 
-## Next screens to connect
+## Current next work
 
 Recommended order:
 
-1. Complete Sales/Service progressive fields
-   - keep current quick save as Step 1
-   - add Step 2 customer/requirement/equipment details
-   - add Step 3 quote/parts/photos/office details
-   - each step must save separately
-2. Admin reports
-   - include daily/weekly/monthly reports
-   - show Step 1/2/3 completion and missing fields
-
-Reason:
-
-- leave request, sales Step 1, and service Step 1 are already workable
-- client sheet fields should not be skipped
-- field agents cannot fill every field while standing at the client place
-- progressive saves preserve usability while still collecting all required details
+1. Run full client-demo readiness QA across agent and admin journeys.
+2. Fix UI friction or unclear states found in QA.
+3. Replace demo/fixed report values with backend-derived report data in the UI.
+4. Add production-grade database/auth/photo storage before live rollout.
+5. Re-test with realistic 12–13 user sample data and around 20 visit reports/day.
 
 See also: `docs/PROGRESSIVE_VISIT_FIELDS.md`

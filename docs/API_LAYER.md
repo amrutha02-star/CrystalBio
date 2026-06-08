@@ -72,6 +72,14 @@ Purpose:
 - Requires visit date, visit time, GPS, note, next action.
 - Requires follow-up date when follow-up is needed.
 
+`PATCH /sales-opportunities/:id`
+
+Purpose:
+
+- Requires bearer token.
+- Saves progressive Sales Step 2 and Step 3 details against the same opportunity.
+- Prevents Step 2/3 updates from creating duplicate visit records.
+
 ### Service
 
 `POST /service-records`
@@ -89,6 +97,14 @@ Purpose:
 - Adds one service visit update under the selected service record.
 - Requires visit date, visit time, GPS, service type, work done, support required, next action.
 - Requires next visit date when parts or next visit are needed.
+
+`PATCH /service-records/:id`
+
+Purpose:
+
+- Requires bearer token.
+- Saves progressive Service Step 2 and Step 3 details against the same service record.
+- Prevents equipment/parts/proof updates from creating duplicate service cases.
 
 ### Admin reports
 
@@ -127,8 +143,8 @@ API tests added:
 
 Current verification:
 
-- Test files: 5 passed
-- Tests: 30 passed
+- Test files: 9 passed
+- Tests: 60 passed
 - Build: passed
 
 ## Testing Agent result
@@ -146,8 +162,8 @@ The API contract is now connected to a local HTTP server and JSON persistence la
 
 Recommended next build step:
 
-1. Add production-ready database or hosted backend storage.
-2. Add real auth/password/OTP.
-3. Add object storage for photos.
-4. Connect frontend screens to live API calls.
-5. Run Testing Agent against complete frontend + backend journeys.
+1. Keep running Testing Agent against complete frontend + backend journeys.
+2. Replace demo/fixed frontend report values with backend-derived report data.
+3. Add production-ready database or hosted backend storage.
+4. Add real auth/password/OTP.
+5. Add object storage for photos.
