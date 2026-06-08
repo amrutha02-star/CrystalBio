@@ -27,34 +27,34 @@ colors:
 typography:
   display:
     fontFamily: Google Sans
-    fontSize: 40px
+    fontSize: 38px
     fontWeight: 500
-    lineHeight: 1.0
-    letterSpacing: "-0.02em"
+    lineHeight: 1.02
+    letterSpacing: "-0.015em"
   h1:
     fontFamily: Google Sans
-    fontSize: 28px
+    fontSize: 24px
     fontWeight: 500
-    lineHeight: 1.08
-    letterSpacing: "-0.015em"
+    lineHeight: 1.12
+    letterSpacing: "-0.01em"
   h2:
     fontFamily: Google Sans
-    fontSize: 22px
+    fontSize: 20px
     fontWeight: 500
-    lineHeight: 1.15
-    letterSpacing: "-0.02em"
+    lineHeight: 1.18
+    letterSpacing: "-0.008em"
   cardTitle:
     fontFamily: Google Sans
-    fontSize: 18px
+    fontSize: 17px
     fontWeight: 500
     lineHeight: 1.2
-    letterSpacing: "-0.015em"
+    letterSpacing: "-0.006em"
   body:
     fontFamily: Google Sans
-    fontSize: 15px
-    fontWeight: 500
+    fontSize: 14px
+    fontWeight: 450
     lineHeight: 1.5
-    letterSpacing: "-0.01em"
+    letterSpacing: "0em"
   caption:
     fontFamily: Google Sans
     fontSize: 12px
