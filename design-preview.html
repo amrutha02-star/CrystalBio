@@ -1,0 +1,403 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Crystal Bio UI/UX Visual Direction</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ink: #151217;
+      --muted: #766f77;
+      --cream: #fff8eb;
+      --butter: #f3dc91;
+      --butter-soft: #fff2c2;
+      --sage: #a9b99b;
+      --sage-soft: #eef4e9;
+      --clay: #d89a7f;
+      --clay-soft: #fff0e8;
+      --sky: #c8dceb;
+      --sky-soft: #edf7fd;
+      --card: #ffffff;
+      --line: #eee7da;
+      --shadow: 0 24px 70px rgba(46, 33, 12, 0.16);
+      font-family: "Google Sans", "Product Sans", "Roboto", Arial, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 12% 10%, rgba(255, 255, 255, 0.55), transparent 28%),
+        linear-gradient(135deg, #f3dc91 0%, #f7e9bc 45%, #fff8eb 100%);
+      min-height: 100vh;
+    }
+
+    .page {
+      width: min(1180px, calc(100% - 28px));
+      margin: 0 auto;
+      padding: 34px 0 54px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 0.9fr 1.1fr;
+      gap: 28px;
+      align-items: center;
+      margin-bottom: 30px;
+    }
+
+    .intro-card, .board-card, .phone {
+      background: rgba(255, 255, 255, 0.78);
+      border: 1px solid rgba(255,255,255,0.8);
+      border-radius: 36px;
+      box-shadow: var(--shadow);
+    }
+
+    .intro-card {
+      padding: 34px;
+      backdrop-filter: blur(14px);
+    }
+
+    .eyebrow {
+      margin: 0 0 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-size: 12px;
+      font-weight: 600;
+      color: #62584a;
+    }
+
+    h1, h2, h3, p { margin-top: 0; }
+    h1 {
+      font-size: clamp(40px, 6vw, 76px);
+      font-weight: 500;
+      line-height: 0.96;
+      letter-spacing: -0.045em;
+      margin-bottom: 20px;
+    }
+    h2 { font-size: 26px; font-weight: 500; letter-spacing: -0.025em; margin-bottom: 10px; }
+    h3 { font-size: 18px; font-weight: 500; letter-spacing: -0.015em; margin-bottom: 6px; }
+    p { color: var(--muted); line-height: 1.58; }
+
+    .decision-list {
+      display: grid;
+      gap: 10px;
+      margin-top: 22px;
+    }
+    .decision {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      padding: 12px 14px;
+      background: #fffaf0;
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      font-weight: 500;
+    }
+    .decision span:first-child { color: #6f7d56; }
+
+    .phone-row {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(280px, 1fr));
+      gap: 18px;
+      align-items: start;
+    }
+
+    .phone {
+      width: min(100%, 390px);
+      min-height: 700px;
+      margin: 0 auto;
+      padding: 18px;
+      border: 9px solid var(--ink);
+      border-radius: 42px;
+      background: #fffdf8;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .phone::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 85% 15%, rgba(243, 220, 145, 0.5), transparent 24%);
+      pointer-events: none;
+    }
+    .phone > * { position: relative; z-index: 1; }
+
+    .statusbar, .topbar, .section-title, .entry-row, .form-line {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+    .statusbar { font-size: 12px; font-weight: 500; padding: 2px 4px 14px; }
+    .topbar { margin-bottom: 16px; }
+    .muted { color: var(--muted); font-size: 13px; font-weight: 500; margin-bottom: 4px; }
+    .avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 16px;
+      background: var(--butter-soft);
+      display: grid;
+      place-items: center;
+      font-weight: 500;
+    }
+
+    .today-card {
+      min-height: 132px;
+      padding: 18px;
+      border-radius: 30px;
+      background: var(--sage-soft);
+      display: grid;
+      grid-template-columns: 1fr 72px;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    .today-card strong { font-weight: 600; font-size: 22px; letter-spacing: -0.025em; display: block; margin-bottom: 8px; }
+    .scribble {
+      width: 72px;
+      height: 72px;
+      border-radius: 22px;
+      background: #fff;
+      position: relative;
+      box-shadow: inset 0 0 0 2px rgba(0,0,0,0.04);
+    }
+    .scribble::before, .scribble::after {
+      content: "";
+      position: absolute;
+      border: 3px solid var(--ink);
+      border-color: var(--ink) transparent transparent var(--ink);
+      border-radius: 50%;
+      transform: rotate(-15deg);
+    }
+    .scribble::before { width: 38px; height: 26px; left: 15px; top: 20px; }
+    .scribble::after { width: 24px; height: 18px; left: 31px; top: 34px; border-color: transparent var(--clay) var(--clay) transparent; }
+
+    .quick-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin: 12px 0 16px;
+    }
+    .quick-card {
+      min-height: 112px;
+      border-radius: 26px;
+      padding: 15px;
+      background: #fff;
+      border: 1px solid var(--line);
+      box-shadow: 0 12px 30px rgba(40, 28, 10, 0.07);
+    }
+    .quick-card .icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 14px;
+      display: grid;
+      place-items: center;
+      margin-bottom: 12px;
+      font-weight: 500;
+    }
+    .quick-card p { margin-bottom: 0; font-size: 12px; font-weight: 500; }
+    .mint .icon { background: var(--sage-soft); color: #526641; }
+    .clay .icon { background: var(--clay-soft); color: #a8583d; }
+    .sky .icon { background: var(--sky-soft); color: #386982; }
+    .butter .icon { background: var(--butter-soft); color: #7d6208; }
+
+    .entries {
+      border-radius: 28px;
+      background: #fff;
+      border: 1px solid var(--line);
+      padding: 14px;
+    }
+    .section-title { margin-bottom: 8px; }
+    .section-title span { font-size: 12px; font-weight: 500; }
+    .entry-row { padding: 11px 0; border-top: 1px solid var(--line); }
+    .entry-row:first-of-type { border-top: 0; }
+    .entry-row p { margin: 3px 0 0; font-size: 12px; }
+    .chip { font-size: 11px; font-weight: 500; padding: 7px 9px; border-radius: 999px; background: var(--butter-soft); }
+
+    .nav {
+      position: absolute;
+      left: 18px;
+      right: 18px;
+      bottom: 18px;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      padding: 9px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      box-shadow: 0 14px 36px rgba(0,0,0,0.1);
+    }
+    .nav span {
+      display: grid;
+      place-items: center;
+      gap: 4px;
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 500;
+      padding: 8px 3px;
+      border-radius: 18px;
+    }
+    .nav .selected { background: var(--ink); color: white; }
+
+    .form-card {
+      background: #fff;
+      border-radius: 30px;
+      padding: 18px;
+      border: 1px solid var(--line);
+      margin-bottom: 14px;
+    }
+    .progress { height: 9px; background: #f0eadf; border-radius: 999px; overflow: hidden; margin: 14px 0 20px; }
+    .progress span { display: block; height: 100%; width: 42%; background: var(--ink); border-radius: inherit; }
+    .field {
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 14px;
+      margin-top: 10px;
+      background: #fffdf8;
+    }
+    .field label { display: block; font-size: 12px; font-weight: 500; margin-bottom: 6px; }
+    .field div { color: var(--muted); font-weight: 500; }
+    .primary-btn {
+      width: 100%;
+      border: 0;
+      background: var(--ink);
+      color: white;
+      padding: 15px;
+      border-radius: 20px;
+      font-weight: 500;
+      margin-top: 8px;
+      font-size: 15px;
+    }
+
+    .board-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      margin-top: 26px;
+    }
+    .board-card { padding: 24px; }
+    .swatches { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 14px; }
+    .swatch { height: 72px; border-radius: 20px; border: 1px solid rgba(0,0,0,0.06); padding: 8px; display: flex; align-items: flex-end; font-size: 11px; font-weight: 500; }
+    .rules { display: grid; gap: 10px; }
+    .rule { background: #fffaf0; border: 1px solid var(--line); padding: 12px; border-radius: 18px; color: var(--muted); font-weight: 500; }
+    .rule strong { color: var(--ink); }
+
+    @media (max-width: 980px) {
+      .hero, .board-grid { grid-template-columns: 1fr; }
+      .intro-card { text-align: center; }
+    }
+    @media (max-width: 760px) {
+      .page { width: min(100% - 16px, 430px); padding-top: 12px; }
+      .intro-card, .board-grid { display: none; }
+      .hero { display: block; }
+      .phone-row { grid-template-columns: 1fr; }
+      .phone-row .phone:nth-child(2) { display: none; }
+      .phone { min-height: 705px; border-width: 7px; border-radius: 34px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="hero">
+      <div class="intro-card">
+        <p class="eyebrow">Crystal Bio design direction</p>
+        <h1>Soft field-work app, not a report screen.</h1>
+        <p>This is a visual UI/UX board, not technical documentation. Use this to judge the feel before I rebuild the app screens.</p>
+        <div class="decision-list">
+          <div class="decision"><span>✓</span><span>Warm, calm, planner-like mobile app</span></div>
+          <div class="decision"><span>✓</span><span>Compact agent home with 4 clear actions</span></div>
+          <div class="decision"><span>✓</span><span>Short words, big tap areas, no PDF feeling</span></div>
+        </div>
+      </div>
+
+      <div class="phone-row">
+        <article class="phone">
+          <div class="statusbar"><span>9:41</span><span>●●●</span></div>
+          <header class="topbar">
+            <div><p class="muted">Good morning</p><h2>Rahul</h2></div>
+            <div class="avatar">R</div>
+          </header>
+
+          <section class="today-card">
+            <div>
+              <p class="muted">Today</p>
+              <strong>Ready for field work</strong>
+              <p>Check in first. Add visits as the day moves.</p>
+            </div>
+            <div class="scribble"></div>
+          </section>
+
+          <div class="section-title"><h3>Quick actions</h3><span>4 tasks</span></div>
+          <section class="quick-grid">
+            <div class="quick-card mint"><div class="icon">⌖</div><h3>Check in</h3><p>Start day</p></div>
+            <div class="quick-card clay"><div class="icon">＋</div><h3>Sales</h3><p>New visit</p></div>
+            <div class="quick-card sky"><div class="icon">☑</div><h3>Service</h3><p>Report</p></div>
+            <div class="quick-card butter"><div class="icon">○</div><h3>Attendance</h3><p>Logs & leave</p></div>
+          </section>
+
+          <section class="entries">
+            <div class="section-title"><h3>My entries</h3><span>View all</span></div>
+            <div class="entry-row"><div><strong>Apollo Pharmacy</strong><p>Sales • Follow-up tomorrow</p></div><span class="chip">Draft</span></div>
+            <div class="entry-row"><div><strong>City Lab</strong><p>Service • Sent today</p></div><span class="chip">Sent</span></div>
+          </section>
+
+          <nav class="nav"><span class="selected">⌂<small>Home</small></span><span>☷<small>Visits</small></span><span>○<small>Attendance</small></span><span>↗<small>Reports</small></span></nav>
+        </article>
+
+        <article class="phone">
+          <div class="statusbar"><span>9:41</span><span>●●●</span></div>
+          <header class="topbar">
+            <div><p class="muted">Sales visit</p><h2>Visit update</h2></div>
+            <div class="avatar">×</div>
+          </header>
+          <section class="form-card">
+            <p class="muted">Progress</p>
+            <div class="progress"><span></span></div>
+            <h2>Who did you meet?</h2>
+            <p>One simple question group per screen. No long form dump.</p>
+            <div class="field"><label>Customer / Clinic name</label><div>Tap to enter name</div></div>
+            <div class="field"><label>Person met</label><div>Doctor, owner, technician...</div></div>
+            <div class="field"><label>Visit outcome</label><div>Select one option</div></div>
+          </section>
+          <button class="primary-btn">Save visit update</button>
+          <nav class="nav"><span>⌂<small>Home</small></span><span class="selected">☷<small>Visits</small></span><span>○<small>Attendance</small></span><span>↗<small>Reports</small></span></nav>
+        </article>
+      </div>
+    </section>
+
+    <section class="board-grid">
+      <div class="board-card">
+        <p class="eyebrow">Palette</p>
+        <h2>Warm, soft, restrained</h2>
+        <p>Not loud. Not dull green. Mostly cream/white/ink with small soft accents.</p>
+        <div class="swatches">
+          <div class="swatch" style="background:var(--ink); color:white">Ink</div>
+          <div class="swatch" style="background:var(--butter)">Butter</div>
+          <div class="swatch" style="background:var(--sage-soft)">Sage</div>
+          <div class="swatch" style="background:var(--clay-soft)">Peach</div>
+          <div class="swatch" style="background:var(--sky-soft)">Sky</div>
+          <div class="swatch" style="background:var(--cream)">Cream</div>
+          <div class="swatch" style="background:var(--card)">White</div>
+          <div class="swatch" style="background:var(--line)">Line</div>
+        </div>
+      </div>
+      <div class="board-card">
+        <p class="eyebrow">UX rules</p>
+        <h2>For non-tech agents</h2>
+        <div class="rules">
+          <div class="rule"><strong>Home:</strong> 4 main actions visible quickly.</div>
+          <div class="rule"><strong>Forms:</strong> step-by-step, not one long page.</div>
+          <div class="rule"><strong>Words:</strong> Check in, Sales, Service, Attendance.</div>
+          <div class="rule"><strong>Admin:</strong> later. First approve the agent feel.</div>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
