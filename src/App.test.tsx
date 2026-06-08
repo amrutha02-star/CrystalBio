@@ -119,6 +119,25 @@ describe('Crystal Bio agent view shell', () => {
     expect(screen.getByText('Sales visit')).toBeInTheDocument();
   });
 
+  it('shows a guided end-to-end demo flow and jumps to admin reports', async () => {
+    render(<App />);
+
+    await screen.findByText('Rahul Sales');
+
+    expect(screen.getByText('End-to-end demo flow')).toBeInTheDocument();
+    expect(screen.getByText('Agent login')).toBeInTheDocument();
+    expect(screen.getAllByText('Attendance').length).toBeGreaterThan(0);
+    expect(screen.getByText('Visit update')).toBeInTheDocument();
+    expect(screen.getByText('Leave request')).toBeInTheDocument();
+    expect(screen.getByText('Admin reports')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /preview admin report flow/i }));
+
+    expect(screen.getByRole('heading', { name: 'Admin reports' })).toBeInTheDocument();
+    expect(screen.getByText('Person-wise report preview')).toBeInTheDocument();
+    expect(screen.getByText('Login → attendance → visit → leave → reports')).toBeInTheDocument();
+  });
+
   it('shows feedback for second-level preview buttons instead of doing nothing', async () => {
     render(<App />);
 
