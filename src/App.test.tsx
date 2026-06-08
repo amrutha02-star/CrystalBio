@@ -178,4 +178,25 @@ describe('Crystal Bio agent view shell', () => {
     expect(screen.getByText('pending')).toBeInTheDocument();
     expect(screen.getByText('Note: Family appointment')).toBeInTheDocument();
   }, 10000);
+
+  it('opens the admin overview route with team attendance and leave sections', async () => {
+    window.history.pushState({}, '', '/?screen=admin');
+    render(<App />);
+
+    expect(screen.getByText('Admin overview screen')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Admin overview' })).toBeInTheDocument();
+    expect(screen.getByText('3 agents active')).toBeInTheDocument();
+    expect(screen.getByText('Needs admin attention')).toBeInTheDocument();
+    expect(screen.getByText('Agent activity')).toBeInTheDocument();
+    expect(screen.getAllByText('Meera Service').length).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: /generate today’s admin report/i })).toBeInTheDocument();
+  });
+
+  it('shows feedback when admin generates today report', async () => {
+    window.history.pushState({}, '', '/?screen=admin');
+    render(<App />);
+
+    fireEvent.click(await screen.findByRole('button', { name: /generate today’s admin report/i }));
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Daily admin report ready'));
+  });
 });

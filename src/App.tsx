@@ -1,9 +1,9 @@
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
-import { BarChart3, CalendarCheck, CheckCircle2, ChevronLeft, ClipboardList, Clock3, FileText, Home, MapPin, Plus, Search, UserRound, X } from 'lucide-react';
+import { BarChart3, CalendarCheck, CheckCircle2, ChevronLeft, ClipboardList, Clock3, FileText, Home, MapPin, Plus, Search, UserRound, UsersRound, X } from 'lucide-react';
 import { sampleEntries } from './appData';
 import { crystalBioFrontendApi, type FrontendAttendance, type FrontendLeaveRequest, type FrontendSalesSaveResult, type FrontendSalesNextAction, type FrontendServiceSaveResult, type FrontendServiceNextAction, type FrontendServiceType, type FrontendSession } from './crystalBioFrontendApi';
 
-type AppScreen = 'home' | 'visits' | 'sales' | 'service' | 'attendance' | 'leave' | 'reports';
+type AppScreen = 'home' | 'visits' | 'sales' | 'service' | 'attendance' | 'leave' | 'reports' | 'admin';
 type ReportPeriod = 'today' | 'week' | 'month';
 type ToastNotice = { title: string; message: string; tone?: 'success' | 'info' | 'warning' | 'error' };
 
@@ -25,7 +25,7 @@ const sampleAttendanceLogs = [
   { date: 'Yesterday', status: 'Checked out', detail: '9:18 AM to 6:04 PM' },
 ];
 
-const screenOptions: AppScreen[] = ['home', 'visits', 'sales', 'service', 'attendance', 'leave', 'reports'];
+const screenOptions: AppScreen[] = ['home', 'visits', 'sales', 'service', 'attendance', 'leave', 'reports', 'admin'];
 
 const agentIdForScreen = (nextScreen: AppScreen) => (nextScreen === 'service' ? 'agent_3' : 'agent_2');
 
@@ -999,6 +999,61 @@ function App() {
     );
   };
 
+  const renderAdmin = () => (
+    <ScreenPanel title="Admin overview" subtitle="Simple owner view for attendance, leave, and field work across agents.">
+      <section className="admin-hero-card">
+        <div>
+          <p>Today’s field status</p>
+          <strong>3 agents active</strong>
+          <span>1 service visit • 2 sales visits • 1 leave request pending</span>
+        </div>
+        <span className="admin-hero-icon"><UsersRound size={22} /></span>
+      </section>
+
+      <div className="admin-filter-row" aria-label="Admin report filters">
+        <button type="button" className="admin-filter-active">Today</button>
+        <button type="button">Week</button>
+        <button type="button">Month</button>
+      </div>
+
+      <div className="admin-metric-grid">
+        <div className="metric-card admin-metric-card"><strong>5</strong><span>Total visits</span><small>Today</small></div>
+        <div className="metric-card admin-metric-card"><strong>3</strong><span>Checked in</span><small>Agents active</small></div>
+        <div className="metric-card admin-metric-card"><strong>1</strong><span>Leave</span><small>Pending approval</small></div>
+        <div className="metric-card admin-metric-card"><strong>4</strong><span>Follow-ups</span><small>Need action</small></div>
+      </div>
+
+      <section className="admin-action-card">
+        <label>Needs admin attention</label>
+        <div className="admin-alert-row">
+          <span className="chip chip-warning">Leave</span>
+          <div><strong>Meera Service</strong><p>Leave request waiting for approve / reject.</p></div>
+        </div>
+        <div className="admin-alert-row">
+          <span className="chip chip-info">Follow-up</span>
+          <div><strong>Apollo Diagnostics</strong><p>Quote follow-up due tomorrow.</p></div>
+        </div>
+      </section>
+
+      <div className="section-label">Agent activity</div>
+      <div className="admin-agent-row">
+        <div className="admin-agent-main"><strong>Rahul Sales</strong><p>Checked in • 2 sales visits • 1 follow-up</p></div>
+        <span className="chip chip-soft">View</span>
+      </div>
+      <div className="admin-agent-row">
+        <div className="admin-agent-main"><strong>Meera Service</strong><p>Checked in • 1 service visit • parts required</p></div>
+        <span className="chip chip-info">View</span>
+      </div>
+      <div className="admin-agent-row">
+        <div className="admin-agent-main"><strong>Anil Field</strong><p>Not checked in yet • no update today</p></div>
+        <span className="chip chip-warning">Missing</span>
+      </div>
+
+      <button type="button" className="primary-action" onClick={() => setScreenNotice({ title: 'Daily admin report ready', message: 'Download/export will connect after backend reports are finalized.', tone: 'success' })}>Generate today’s admin report</button>
+      <p className="panel-note">Admin preview uses fixed demo data. Backend will connect live attendance, leave approvals, visit details, and exports.</p>
+    </ScreenPanel>
+  );
+
   const renderScreen = () => {
     if (screen === 'visits') return renderVisits();
     if (screen === 'sales') return renderSales();
@@ -1006,6 +1061,7 @@ function App() {
     if (screen === 'attendance') return renderAttendance();
     if (screen === 'leave') return renderLeave();
     if (screen === 'reports') return renderReports();
+    if (screen === 'admin') return renderAdmin();
     return renderHome();
   };
 
@@ -1019,8 +1075,8 @@ function App() {
     <main className="app-shell agent-only-shell">
       <section className="preview-note">
         <p className="eyebrow">{isBackendConfigured ? 'Backend connected' : 'Demo preview'}</p>
-        <h1>Agent home screen</h1>
-        <p>{isBackendConfigured ? 'Home logs in the agent and sends attendance to the Crystal Bio backend API.' : 'GitHub Pages preview uses fixed demo data. Buttons open the next app screens; only hosted-backend sections will save real records.'}</p>
+        <h1>{screen === 'admin' ? 'Admin overview screen' : 'Agent home screen'}</h1>
+        <p>{screen === 'admin' ? 'Owner/admin preview uses fixed demo data to review team attendance, leave, and field reports.' : isBackendConfigured ? 'Home logs in the agent and sends attendance to the Crystal Bio backend API.' : 'GitHub Pages preview uses fixed demo data. Buttons open the next app screens; only hosted-backend sections will save real records.'}</p>
       </section>
 
       <section className="agent-preview-wrap">
@@ -1030,10 +1086,10 @@ function App() {
           <header className="phone-header">
             <div>
               {screen !== 'home' && <button type="button" className="back-button" onClick={() => goToScreen('home')}><ChevronLeft size={17} /> Home</button>}
-              <p className="muted">Good morning</p>
-              <h2>{session?.agentName ?? '{Agent Name}'}</h2>
+              <p className="muted">{screen === 'admin' ? 'Owner access' : 'Good morning'}</p>
+              <h2>{screen === 'admin' ? 'Admin' : session?.agentName ?? '{Agent Name}'}</h2>
             </div>
-            <div className="avatar"><UserRound size={21} /></div>
+            <div className="avatar">{screen === 'admin' ? <UsersRound size={21} /> : <UserRound size={21} />}</div>
           </header>
 
           {renderScreen()}
@@ -1047,8 +1103,24 @@ function App() {
             </div>
           )}
 
-          <nav className="bottom-nav" aria-label="Agent navigation">
-            {navItems.map((item) => {
+          <nav className="bottom-nav" aria-label={screen === 'admin' ? 'Admin navigation' : 'Agent navigation'}>
+            {screen === 'admin' ? (
+              [
+                { label: 'Today', icon: Home },
+                { label: 'Agents', icon: UsersRound },
+                { label: 'Leave', icon: CalendarCheck },
+                { label: 'Reports', icon: FileText },
+              ].map((item, index) => {
+                const Icon = item.icon;
+                const selected = index === 0;
+                return (
+                  <button key={item.label} type="button" className={selected ? 'nav-item nav-item-selected' : 'nav-item'} aria-label={selected ? `${item.label} selected` : item.label}>
+                    <Icon size={17} />
+                    {item.label}
+                  </button>
+                );
+              })
+            ) : navItems.map((item) => {
               const Icon = item.icon;
               const selected = item.screen === screen || (screen === 'sales' && item.screen === 'visits') || (screen === 'service' && item.screen === 'visits') || (screen === 'leave' && item.screen === 'attendance');
               return (
