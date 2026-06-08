@@ -293,4 +293,123 @@ describe('CrystalBio frontend API client', () => {
       nextAction: 'no_follow_up',
     })).rejects.toThrow(/Location permission|Allow location permission/);
   });
+
+  it('creates service record and visit through configured backend with session authorization', async () => {
+    const fetcher = vi.fn(async (url: RequestInfo | URL) => {
+      if (String(url).endsWith('/auth/login')) {
+        return new Response(JSON.stringify({
+          session: { token: 'token-1', agentId: 'agent_3', agentName: 'Meera Service', role: 'service' },
+        }), { status: 200, headers: { 'content-type': 'application/json' } });
+      }
+      if (String(url).endsWith('/service-records')) {
+        return new Response(JSON.stringify({
+          serviceRecord: { id: 'service_1', ownerAgentId: 'agent_3', customerName: 'Metro Lab', equipmentName: 'Centrifuge', serialNumber: 'CB-01', status: 'open' },
+        }), { status: 201, headers: { 'content-type': 'application/json' } });
+      }
+      return new Response(JSON.stringify({
+        visit: {
+          id: 'service_visit_1',
+          serviceRecordId: 'service_1',
+          agentId: 'agent_3',
+          agentName: 'Meera Service',
+          visitNumber: 1,
+          visitDate: '2026-06-08',
+          visitTime: '14:20',
+          gps: { latitude: 12.9716, longitude: 77.5946 },
+          serviceType: 'breakdown',
+          workDone: 'Diagnosed issue',
+          supportRequired: true,
+          nextAction: 'parts_required',
+          nextVisitDate: '2026-06-09',
+          officeNotes: 'Share parts availability with office.',
+        },
+      }), { status: 201, headers: { 'content-type': 'application/json' } });
+    }) as unknown as typeof fetch;
+    const api = createCrystalBioFrontendApi({
+      baseUrl: 'http://127.0.0.1:8787',
+      fetcher,
+      now: () => new Date('2026-06-08T14:20:00.000Z'),
+      gpsProvider: async () => ({ latitude: 12.9716, longitude: 77.5946 }),
+    });
+
+    const session = await api.login('agent_3');
+    const saved = await api.submitServiceVisit(session, {
+      customerName: 'Metro Lab',
+      phone: '9876543210',
+      equipmentName: 'Centrifuge',
+      serialNumber: 'CB-01',
+      serviceType: 'breakdown',
+      workDone: 'Diagnosed issue',
+      supportRequired: true,
+      nextAction: 'parts_required',
+      nextVisitDate: '2026-06-09',
+      officeNotes: 'Share parts availability with office.',
+    });
+
+    expect(saved.visit.agentName).toBe('Meera Service');
+    expect(saved.visit.visitNumber).toBe(1);
+    expect(fetcher).toHaveBeenCalledWith(
+      'http://127.0.0.1:8787/service-records',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({ authorization: 'Bearer token-1' }),
+        body: JSON.stringify({
+          customerName: 'Metro Lab',
+          phone: '9876543210',
+          equipmentName: 'Centrifuge',
+          serialNumber: 'CB-01',
+        }),
+      }),
+    );
+    expect(fetcher).toHaveBeenCalledWith(
+      'http://127.0.0.1:8787/service-records/service_1/visits',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({ authorization: 'Bearer token-1' }),
+        body: JSON.stringify({
+          visitDate: '2026-06-08',
+          visitTime: '14:20',
+          gps: { latitude: 12.9716, longitude: 77.5946 },
+          serviceType: 'breakdown',
+          workDone: 'Diagnosed issue',
+          supportRequired: true,
+          nextAction: 'parts_required',
+          nextVisitDate: '2026-06-09',
+          photos: [],
+          officeNotes: 'Share parts availability with office.',
+        }),
+      }),
+    );
+  });
+
+  it('creates a stable demo service visit when no backend URL is configured', async () => {
+    const api = createCrystalBioFrontendApi({
+      now: () => new Date('2026-06-08T14:20:00.000Z'),
+      gpsProvider: async () => ({ latitude: 12.9716, longitude: 77.5946 }),
+    });
+
+    const session = await api.login('agent_3');
+    const saved = await api.submitServiceVisit(session, {
+      customerName: 'Metro Lab',
+      equipmentName: 'Centrifuge',
+      serialNumber: 'CB-01',
+      serviceType: 'breakdown',
+      workDone: 'Diagnosed issue',
+      supportRequired: true,
+      nextAction: 'parts_required',
+      nextVisitDate: '2026-06-09',
+    });
+
+    expect(saved.serviceRecord.customerName).toBe('Metro Lab');
+    expect(saved.visit).toMatchObject({
+      id: 'demo-service-visit-1780928400000',
+      agentName: 'Meera Service',
+      visitNumber: 1,
+      visitDate: '2026-06-08',
+      visitTime: '14:20',
+      serviceType: 'breakdown',
+      workDone: 'Diagnosed issue',
+      nextAction: 'parts_required',
+    });
+  });
 });

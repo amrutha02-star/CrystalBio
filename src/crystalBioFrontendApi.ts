@@ -42,6 +42,8 @@ export type FrontendLeaveRequestInput = {
 };
 
 export type FrontendSalesNextAction = 'follow_up_needed' | 'no_follow_up' | 'closed';
+export type FrontendServiceType = 'installation' | 'preventive_maintenance' | 'breakdown' | 'repair' | 'calibration' | 'demo' | 'training' | 'other';
+export type FrontendServiceNextAction = 'parts_required' | 'next_visit_needed' | 'no_follow_up' | 'closed';
 
 export type FrontendSalesVisitInput = {
   accountName: string;
@@ -78,6 +80,49 @@ export type FrontendSalesSaveResult = {
     status: 'open' | 'closed';
   };
   visit: FrontendSalesVisit;
+};
+
+export type FrontendServiceVisitInput = {
+  customerName: string;
+  phone?: string;
+  equipmentName?: string;
+  serialNumber?: string;
+  serviceType: FrontendServiceType;
+  workDone: string;
+  supportRequired: boolean;
+  nextAction: FrontendServiceNextAction;
+  nextVisitDate?: string;
+  officeNotes?: string;
+};
+
+export type FrontendServiceVisit = {
+  id: string;
+  serviceRecordId: string;
+  agentId: string;
+  agentName: string;
+  visitNumber: number;
+  visitDate: string;
+  visitTime: string;
+  gps: FrontendGps;
+  serviceType: FrontendServiceType;
+  workDone: string;
+  supportRequired: boolean;
+  nextAction: FrontendServiceNextAction;
+  nextVisitDate?: string;
+  officeNotes?: string;
+};
+
+export type FrontendServiceSaveResult = {
+  serviceRecord: {
+    id: string;
+    ownerAgentId: string;
+    customerName: string;
+    phone?: string;
+    equipmentName?: string;
+    serialNumber?: string;
+    status: 'open' | 'pending_parts' | 'closed';
+  };
+  visit: FrontendServiceVisit;
 };
 
 type BackendAttendance = Omit<FrontendAttendance, 'checkInTime' | 'checkOutTime'> & {
@@ -154,7 +199,9 @@ export function createCrystalBioFrontendApi(options: ApiClientOptions = {}) {
 
     async login(agentId = 'agent_2'): Promise<FrontendSession> {
       if (!baseUrl) {
-        return { token: 'demo-token', agentId, agentName: 'Rahul Sales', role: 'sales' };
+        return agentId === 'agent_3'
+          ? { token: 'demo-token-service', agentId, agentName: 'Meera Service', role: 'service' }
+          : { token: 'demo-token', agentId, agentName: 'Rahul Sales', role: 'sales' };
       }
       const result = await post<{ session: FrontendSession }>('/auth/login', { agentId });
       return result.session;
@@ -283,6 +330,70 @@ export function createCrystalBioFrontendApi(options: ApiClientOptions = {}) {
         session.token,
       );
       return { opportunity: opportunityResult.opportunity, visit: visitResult.visit };
+    },
+
+    async submitServiceVisit(session: FrontendSession, input: FrontendServiceVisitInput): Promise<FrontendServiceSaveResult> {
+      const gps = await gpsProvider();
+      const visitTimestamp = now();
+      const visitDate = visitTimestamp.toISOString().slice(0, 10);
+      const visitTime = visitTimestamp.toTimeString().slice(0, 5);
+      if (!baseUrl) {
+        return {
+          serviceRecord: {
+            id: `demo-service-${visitTimestamp.getTime()}`,
+            ownerAgentId: session.agentId,
+            customerName: input.customerName,
+            ...(input.phone ? { phone: input.phone } : {}),
+            ...(input.equipmentName ? { equipmentName: input.equipmentName } : {}),
+            ...(input.serialNumber ? { serialNumber: input.serialNumber } : {}),
+            status: input.nextAction === 'closed' ? 'closed' : input.nextAction === 'parts_required' ? 'pending_parts' : 'open',
+          },
+          visit: {
+            id: `demo-service-visit-${visitTimestamp.getTime()}`,
+            serviceRecordId: `demo-service-${visitTimestamp.getTime()}`,
+            agentId: session.agentId,
+            agentName: session.agentName,
+            visitNumber: 1,
+            visitDate,
+            visitTime,
+            gps,
+            serviceType: input.serviceType,
+            workDone: input.workDone,
+            supportRequired: input.supportRequired,
+            nextAction: input.nextAction,
+            ...(input.nextVisitDate ? { nextVisitDate: input.nextVisitDate } : {}),
+            ...(input.officeNotes ? { officeNotes: input.officeNotes } : {}),
+          },
+        };
+      }
+
+      const recordResult = await post<{ serviceRecord: FrontendServiceSaveResult['serviceRecord'] }>(
+        '/service-records',
+        {
+          customerName: input.customerName,
+          ...(input.phone ? { phone: input.phone } : {}),
+          ...(input.equipmentName ? { equipmentName: input.equipmentName } : {}),
+          ...(input.serialNumber ? { serialNumber: input.serialNumber } : {}),
+        },
+        session.token,
+      );
+      const visitResult = await post<{ visit: FrontendServiceVisit }>(
+        `/service-records/${recordResult.serviceRecord.id}/visits`,
+        {
+          visitDate,
+          visitTime,
+          gps,
+          serviceType: input.serviceType,
+          workDone: input.workDone,
+          supportRequired: input.supportRequired,
+          nextAction: input.nextAction,
+          ...(input.nextVisitDate ? { nextVisitDate: input.nextVisitDate } : {}),
+          photos: [],
+          ...(input.officeNotes ? { officeNotes: input.officeNotes } : {}),
+        },
+        session.token,
+      );
+      return { serviceRecord: recordResult.serviceRecord, visit: visitResult.visit };
     },
 
     isDemoCheckedIn() {

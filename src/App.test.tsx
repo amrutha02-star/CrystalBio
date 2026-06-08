@@ -117,8 +117,11 @@ describe('Crystal Bio agent view shell', () => {
 
     fireEvent.click(screen.getByLabelText('Home'));
     fireEvent.click(screen.getByRole('button', { name: /service report/i }));
+    await waitFor(() => expect(screen.getByText('Meera Service')).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: /save service update/i }));
-    expect(screen.getByRole('status')).toHaveTextContent('Service save is designed here');
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Demo service visit saved'));
+    expect(screen.getByText(/Metro Lab • Visit 1 • parts required/i)).toBeInTheDocument();
+    expect(screen.getByText('Work: Diagnosed issue and checked machine performance.')).toBeInTheDocument();
 
     fireEvent.click(screen.getByLabelText('Attendance'));
     fireEvent.click(screen.getByRole('button', { name: /send leave request/i }));
