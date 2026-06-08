@@ -440,7 +440,7 @@ function App() {
   );
 
   const renderVisits = () => (
-    <ScreenPanel notice={screenNotice} title="Visits" subtitle="Search previous entries or start a new field update.">
+    <ScreenPanel title="Visits" subtitle="Search previous entries or start a new field update.">
       <div className="search-card"><Search size={17} /><span>Search customer, phone, equipment, serial number</span></div>
       <div className="split-actions">
         <button type="button" className="primary-action" onClick={() => goToScreen('sales', { newSalesVisit: true })}>New sales visit update</button>
@@ -459,7 +459,7 @@ function App() {
   );
 
   const renderSales = () => (
-    <ScreenPanel notice={screenNotice} title="Sales visit" subtitle="Save quickly first. Add remaining details later when free.">
+    <ScreenPanel title="Sales visit" subtitle="Save quickly first. Add remaining details later when free.">
       <div className="form-card highlighted-card">
         <label>Progressive sales form</label>
         <span>Step 1: {salesSaveResult ? 'Saved' : 'Pending'} • Step 2: {salesStep2Saved ? 'Saved' : 'Pending'} • Step 3: {salesStep3Saved ? 'Saved' : 'Pending'}</span>
@@ -590,7 +590,7 @@ function App() {
   );
 
   const renderService = () => (
-    <ScreenPanel notice={screenNotice} title="Service visit" subtitle="Save today’s equipment service update with GPS.">
+    <ScreenPanel title="Service visit" subtitle="Save today’s equipment service update with GPS.">
       <div className="form-card highlighted-card">
         <label>Current visit location</label>
         <p>{isBackendConfigured ? 'Location permission is requested when this update is saved.' : 'Demo preview uses fixed sample GPS. Connected backend mode requests location permission when saving.'}</p>
@@ -666,7 +666,7 @@ function App() {
   );
 
   const renderAttendance = () => (
-    <ScreenPanel notice={screenNotice} title="Attendance" subtitle="Check-in, check-out, leave request, and status history.">
+    <ScreenPanel title="Attendance" subtitle="Check-in, check-out, leave request, and status history.">
       <button type="button" className="primary-action" disabled={!session || isAttendanceBusy} onClick={handleAttendanceAction}>{isAttendanceBusy ? 'Saving…' : attendanceAction}</button>
       <button type="button" className="secondary-action" onClick={() => goToScreen('leave')}>Send leave request</button>
       {sampleAttendanceLogs.map((log) => (
@@ -679,7 +679,7 @@ function App() {
   );
 
   const renderLeave = () => (
-    <ScreenPanel notice={screenNotice} title="Leave request" subtitle="Simple request for admin approval.">
+    <ScreenPanel title="Leave request" subtitle="Simple request for admin approval.">
       <label className="field-card">
         <span>From date</span>
         <input aria-label="Leave from date" type="date" value={leaveFromDate} onChange={(event) => setLeaveFromDate(event.target.value)} />
@@ -714,7 +714,7 @@ function App() {
   );
 
   const renderReports = () => (
-    <ScreenPanel notice={screenNotice} title="My reports" subtitle="Agent can see own daily/weekly/monthly summaries. Admin sees everyone separately.">
+    <ScreenPanel title="My reports" subtitle="Agent can see own daily/weekly/monthly summaries. Admin sees everyone separately.">
       <div className="report-grid">
         <div className="metric-card"><strong>2</strong><span>Visits this week</span></div>
         <div className="metric-card"><strong>1</strong><span>Follow-up due</span></div>
@@ -757,6 +757,8 @@ function App() {
 
           {renderScreen()}
 
+          {screenNotice && <div className="save-toast" role="status">{screenNotice}</div>}
+
           <nav className="bottom-nav" aria-label="Agent navigation">
             {navItems.map((item) => {
               const Icon = item.icon;
@@ -781,14 +783,13 @@ function App() {
   );
 }
 
-function ScreenPanel({ title, subtitle, notice, children }: { title: string; subtitle: string; notice: string | null; children: ReactNode }) {
+function ScreenPanel({ title, subtitle, children }: { title: string; subtitle: string; children: ReactNode }) {
   return (
     <section className="panel screen-panel">
       <div className="screen-heading">
         <h3>{title}</h3>
         <p>{subtitle}</p>
       </div>
-      {notice && <div className="screen-notice" role="status">{notice}</div>}
       {children}
     </section>
   );
