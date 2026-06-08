@@ -108,4 +108,71 @@ describe('CrystalBio frontend API client', () => {
 
     await expect(api.login('bad-agent')).rejects.toThrow('GPS location is required');
   });
+
+  it('submits leave requests to the configured backend with session authorization', async () => {
+    const fetcher = vi.fn(async (url: RequestInfo | URL) => {
+      if (String(url).endsWith('/auth/login')) {
+        return new Response(JSON.stringify({
+          session: { token: 'token-1', agentId: 'agent_2', agentName: 'Rahul Sales', role: 'sales' },
+        }), { status: 200, headers: { 'content-type': 'application/json' } });
+      }
+      return new Response(JSON.stringify({
+        leaveRequest: {
+          id: 'leave_1',
+          agentId: 'agent_2',
+          agentName: 'Rahul Sales',
+          fromDate: '2026-06-10',
+          toDate: '2026-06-11',
+          reason: 'Personal work',
+          note: 'Family appointment',
+          status: 'pending',
+        },
+      }), { status: 201, headers: { 'content-type': 'application/json' } });
+    }) as unknown as typeof fetch;
+    const api = createCrystalBioFrontendApi({ baseUrl: 'http://127.0.0.1:8787', fetcher });
+
+    const session = await api.login('agent_2');
+    const leaveRequest = await api.submitLeaveRequest(session, {
+      fromDate: '2026-06-10',
+      toDate: '2026-06-11',
+      reason: 'Personal work',
+      note: 'Family appointment',
+    });
+
+    expect(leaveRequest.status).toBe('pending');
+    expect(leaveRequest.note).toBe('Family appointment');
+    expect(fetcher).toHaveBeenCalledWith(
+      'http://127.0.0.1:8787/leave-requests',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({ authorization: 'Bearer token-1' }),
+        body: JSON.stringify({
+          fromDate: '2026-06-10',
+          toDate: '2026-06-11',
+          reason: 'Personal work',
+          note: 'Family appointment',
+        }),
+      }),
+    );
+  });
+
+  it('creates a stable demo leave request when no backend URL is configured', async () => {
+    const api = createCrystalBioFrontendApi({ now: () => new Date('2026-06-08T09:00:00.000Z') });
+
+    const session = await api.login();
+    const leaveRequest = await api.submitLeaveRequest(session, {
+      fromDate: '2026-06-12',
+      toDate: '2026-06-12',
+      reason: 'Sick leave',
+    });
+
+    expect(leaveRequest).toMatchObject({
+      id: 'demo-leave-1780909200000',
+      agentName: 'Rahul Sales',
+      fromDate: '2026-06-12',
+      toDate: '2026-06-12',
+      reason: 'Sick leave',
+      status: 'pending',
+    });
+  });
 });

@@ -122,7 +122,13 @@ describe('Crystal Bio agent view shell', () => {
 
     fireEvent.click(screen.getByLabelText('Attendance'));
     fireEvent.click(screen.getByRole('button', { name: /send leave request/i }));
+    fireEvent.change(screen.getByLabelText('Leave from date'), { target: { value: '2026-06-12' } });
+    fireEvent.change(screen.getByLabelText('Leave to date'), { target: { value: '2026-06-13' } });
+    fireEvent.change(screen.getByLabelText('Leave reason'), { target: { value: 'Personal work' } });
+    fireEvent.change(screen.getByLabelText('Leave note'), { target: { value: 'Family appointment' } });
     fireEvent.click(screen.getByRole('button', { name: /submit leave request/i }));
-    expect(screen.getByRole('status')).toHaveTextContent('Demo preview does not change approval status automatically');
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Demo leave request saved'));
+    expect(screen.getByText(/2026-06-12 to 2026-06-13 • Personal work • pending/i)).toBeInTheDocument();
+    expect(screen.getByText('Note: Family appointment')).toBeInTheDocument();
   });
 });

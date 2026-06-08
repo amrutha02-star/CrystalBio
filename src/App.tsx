@@ -1,7 +1,7 @@
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { CalendarCheck, ChevronLeft, ClipboardList, FileText, Home, MapPin, Plus, Search, UserRound } from 'lucide-react';
 import { sampleEntries } from './appData';
-import { crystalBioFrontendApi, type FrontendAttendance, type FrontendSession } from './crystalBioFrontendApi';
+import { crystalBioFrontendApi, type FrontendAttendance, type FrontendLeaveRequest, type FrontendSession } from './crystalBioFrontendApi';
 
 type AppScreen = 'home' | 'visits' | 'sales' | 'service' | 'attendance' | 'leave' | 'reports';
 
@@ -30,6 +30,12 @@ function App() {
   const [isAttendanceBusy, setIsAttendanceBusy] = useState(false);
   const [statusMessage, setStatusMessage] = useState('Loading logged-in agent…');
   const [screenNotice, setScreenNotice] = useState<string | null>(null);
+  const [leaveFromDate, setLeaveFromDate] = useState('2026-06-12');
+  const [leaveToDate, setLeaveToDate] = useState('2026-06-12');
+  const [leaveReason, setLeaveReason] = useState('Sick leave');
+  const [leaveNote, setLeaveNote] = useState('');
+  const [leaveRequest, setLeaveRequest] = useState<FrontendLeaveRequest | null>(null);
+  const [isLeaveSubmitting, setIsLeaveSubmitting] = useState(false);
   const isBackendConfigured = crystalBioFrontendApi.isBackendConfigured();
 
   useEffect(() => {
@@ -92,6 +98,41 @@ function App() {
 
   const showPreviewNotice = (message: string) => {
     setScreenNotice(message);
+  };
+
+  const handleLeaveSubmit = async () => {
+    if (!session) {
+      setScreenNotice('Please wait for login before sending leave request.');
+      return;
+    }
+    if (!leaveFromDate || !leaveToDate || !leaveReason) {
+      setScreenNotice('Select leave dates and reason before submitting.');
+      return;
+    }
+    if (leaveFromDate > leaveToDate) {
+      setScreenNotice('From date cannot be after to date.');
+      return;
+    }
+    setIsLeaveSubmitting(true);
+    setScreenNotice(isBackendConfigured ? 'Sending leave request…' : 'Saving demo leave request…');
+    try {
+      const savedLeave = await crystalBioFrontendApi.submitLeaveRequest(session, {
+        fromDate: leaveFromDate,
+        toDate: leaveToDate,
+        reason: leaveReason,
+        ...(leaveNote.trim() ? { note: leaveNote.trim() } : {}),
+      });
+      setLeaveRequest(savedLeave);
+      setScreenNotice(
+        isBackendConfigured
+          ? 'Leave request sent to admin for approval.'
+          : 'Demo leave request saved. Approval status will not change until the backend is connected.',
+      );
+    } catch (error) {
+      setScreenNotice(error instanceof Error ? error.message : 'Leave request failed');
+    } finally {
+      setIsLeaveSubmitting(false);
+    }
   };
 
   const handleQuickAction = (action: (typeof actionMeta)[number]['onClick']) => {
@@ -212,9 +253,36 @@ function App() {
 
   const renderLeave = () => (
     <ScreenPanel notice={screenNotice} title="Leave request" subtitle="Simple request for admin approval.">
-      <div className="form-card"><label>Leave dates</label><span>Select start and end date</span></div>
-      <div className="form-card"><label>Reason</label><span>Sick leave, personal work, emergency, other</span></div>
-      <button type="button" className="primary-action" onClick={() => showPreviewNotice('Leave request submission is the next small backend connection. Demo preview does not change approval status automatically.')}>Submit leave request</button>
+      <label className="field-card">
+        <span>From date</span>
+        <input aria-label="Leave from date" type="date" value={leaveFromDate} onChange={(event) => setLeaveFromDate(event.target.value)} />
+      </label>
+      <label className="field-card">
+        <span>To date</span>
+        <input aria-label="Leave to date" type="date" value={leaveToDate} onChange={(event) => setLeaveToDate(event.target.value)} />
+      </label>
+      <label className="field-card">
+        <span>Reason</span>
+        <select aria-label="Leave reason" value={leaveReason} onChange={(event) => setLeaveReason(event.target.value)}>
+          <option>Sick leave</option>
+          <option>Personal work</option>
+          <option>Emergency</option>
+          <option>Family function</option>
+          <option>Other</option>
+        </select>
+      </label>
+      <label className="field-card">
+        <span>Optional note</span>
+        <textarea aria-label="Leave note" value={leaveNote} onChange={(event) => setLeaveNote(event.target.value)} placeholder="Add a short note for admin" rows={3} />
+      </label>
+      <button type="button" className="primary-action" disabled={isLeaveSubmitting || !session} onClick={handleLeaveSubmit}>{isLeaveSubmitting ? 'Submitting…' : 'Submit leave request'}</button>
+      {leaveRequest && (
+        <div className="form-card highlighted-card">
+          <label>Latest request</label>
+          <span>{leaveRequest.fromDate} to {leaveRequest.toDate} • {leaveRequest.reason} • {leaveRequest.status}</span>
+          {leaveRequest.note && <span>Note: {leaveRequest.note}</span>}
+        </div>
+      )}
     </ScreenPanel>
   );
 

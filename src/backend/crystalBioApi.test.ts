@@ -51,11 +51,12 @@ describe('CrystalBio API layer', () => {
       method: 'POST',
       path: '/leave-requests',
       headers: { authorization: `Bearer ${agentToken}` },
-      body: { fromDate: '2026-06-09', toDate: '2026-06-10', reason: 'Family function' },
+      body: { fromDate: '2026-06-09', toDate: '2026-06-10', reason: 'Family function', note: 'Out of station' },
     });
 
     expect(leave.status).toBe(201);
     expect(leave.body.leaveRequest.status).toBe('pending');
+    expect(leave.body.leaveRequest.note).toBe('Out of station');
 
     const reviewed = api.handle({
       method: 'PATCH',

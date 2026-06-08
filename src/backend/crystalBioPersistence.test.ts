@@ -27,6 +27,12 @@ describe('CrystalBio persistence layer', () => {
         nextAction: 'no_follow_up',
         photos: [],
       });
+      const leave = backend.submitLeaveRequest(agent.id, {
+        fromDate: '2026-06-08',
+        toDate: '2026-06-09',
+        reason: 'Personal work',
+        note: 'Family appointment',
+      });
 
       const store = new JsonFileCrystalBioStore(filePath);
       store.save(backend.exportState());
@@ -37,6 +43,7 @@ describe('CrystalBio persistence layer', () => {
       expect(report.totals.checkedInAgents).toBe(1);
       expect(report.totals.salesVisits).toBe(1);
       expect(report.agentSummaries.find((summary) => summary.agentName === 'Rahul')?.salesVisitCount).toBe(1);
+      expect(reloadedBackend.exportState().leaveRequests.find((request) => request.id === leave.id)?.note).toBe('Family appointment');
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

@@ -23,6 +23,24 @@ export type FrontendAttendance = {
   checkOutGps?: FrontendGps;
 };
 
+export type FrontendLeaveRequest = {
+  id: string;
+  agentId: string;
+  agentName: string;
+  fromDate: string;
+  toDate: string;
+  reason: string;
+  note?: string;
+  status: 'pending' | 'approved' | 'rejected';
+};
+
+export type FrontendLeaveRequestInput = {
+  fromDate: string;
+  toDate: string;
+  reason: string;
+  note?: string;
+};
+
 type BackendAttendance = Omit<FrontendAttendance, 'checkInTime' | 'checkOutTime'> & {
   checkInAt?: string;
   checkInTime?: string;
@@ -130,6 +148,27 @@ export function createCrystalBioFrontendApi(options: ApiClientOptions = {}) {
         session.token,
       );
       return normalizeAttendance(result.attendance);
+    },
+
+    async submitLeaveRequest(session: FrontendSession, input: FrontendLeaveRequestInput): Promise<FrontendLeaveRequest> {
+      if (!baseUrl) {
+        return {
+          id: `demo-leave-${now().getTime()}`,
+          agentId: session.agentId,
+          agentName: session.agentName,
+          fromDate: input.fromDate,
+          toDate: input.toDate,
+          reason: input.reason,
+          ...(input.note ? { note: input.note } : {}),
+          status: 'pending',
+        };
+      }
+      const result = await post<{ leaveRequest: FrontendLeaveRequest }>(
+        '/leave-requests',
+        input,
+        session.token,
+      );
+      return result.leaveRequest;
     },
 
     isDemoCheckedIn() {

@@ -135,6 +135,7 @@ export type LeaveRequest = {
   fromDate: string;
   toDate: string;
   reason: string;
+  note?: string;
   status: 'pending' | 'approved' | 'rejected';
   reviewedByAgentId?: string;
 };
@@ -297,7 +298,7 @@ export function createCrystalBioBackend(initialState?: CrystalBioBackendState) {
       return record;
     },
 
-    submitLeaveRequest(agentId: string, input: { fromDate: string; toDate: string; reason: string }): LeaveRequest {
+    submitLeaveRequest(agentId: string, input: { fromDate: string; toDate: string; reason: string; note?: string }): LeaveRequest {
       const agent = getAgent(agentId);
       requireText(input.fromDate, 'Leave from date is required');
       requireText(input.toDate, 'Leave to date is required');
@@ -310,6 +311,7 @@ export function createCrystalBioBackend(initialState?: CrystalBioBackendState) {
         fromDate: input.fromDate,
         toDate: input.toDate,
         reason: input.reason,
+        ...(input.note ? { note: input.note } : {}),
         status: 'pending',
       };
       leaveRequests.set(leave.id, leave);
