@@ -4,6 +4,7 @@ import { sampleEntries } from './appData';
 import { crystalBioFrontendApi, type FrontendAttendance, type FrontendLeaveRequest, type FrontendSalesSaveResult, type FrontendSalesNextAction, type FrontendServiceSaveResult, type FrontendServiceNextAction, type FrontendServiceType, type FrontendSession } from './crystalBioFrontendApi';
 
 type AppScreen = 'home' | 'visits' | 'sales' | 'service' | 'attendance' | 'leave' | 'reports';
+type ReportPeriod = 'today' | 'week' | 'month';
 type ToastNotice = { title: string; message: string; tone?: 'success' | 'info' | 'warning' | 'error' };
 
 const toneClass: Record<string, string> = {
@@ -41,6 +42,7 @@ function App() {
   const [isAttendanceBusy, setIsAttendanceBusy] = useState(false);
   const [statusMessage, setStatusMessage] = useState('Loading logged-in agent…');
   const [screenNotice, setScreenNotice] = useState<ToastNotice | string | null>(null);
+  const [reportPeriod, setReportPeriod] = useState<ReportPeriod>('week');
   const [leaveFromDate, setLeaveFromDate] = useState('2026-06-12');
   const [leaveToDate, setLeaveToDate] = useState('2026-06-12');
   const [leaveReason, setLeaveReason] = useState('Sick leave');
@@ -917,41 +919,64 @@ function App() {
   const renderReports = () => {
     const leaveStatus = leaveRequest?.status ?? 'No leave pending';
     const attendanceLabel = attendance?.status === 'checked_in' ? 'Checked in today' : attendance?.status === 'checked_out' ? 'Checked out today' : 'Not checked in';
-    const thisWeekVisits = 8;
-    const thisMonthVisits = 31;
-    const pendingFollowUps = 3;
+    const reportCopy: Record<ReportPeriod, { eyebrow: string; title: string; range: string; visits: string; sales: string; service: string; attendance: string; followUps: string; note: string }> = {
+      today: { eyebrow: 'Today', title: 'Today’s summary', range: '08 Jun', visits: '4', sales: '2', service: '2', attendance: attendanceLabel, followUps: '1', note: '2 sales • 2 service • 1 follow-up pending' },
+      week: { eyebrow: 'Current week', title: 'Weekly summary', range: '09 Jun – 15 Jun', visits: '8', sales: '5', service: '3', attendance: '5 / 6 days', followUps: '3', note: '5 sales • 3 service • 5/6 attendance' },
+      month: { eyebrow: 'Current month', title: 'Monthly summary', range: 'June 2026', visits: '31', sales: '18', service: '13', attendance: '21 / 24 days', followUps: '7', note: '18 sales • 13 service • 7 follow-ups pending' },
+    };
+    const activeReport = reportCopy[reportPeriod];
+    const periodOptions: Array<{ key: ReportPeriod; label: string }> = [
+      { key: 'today', label: 'Today' },
+      { key: 'week', label: 'Week' },
+      { key: 'month', label: 'Month' },
+    ];
+    const generateReport = (period: ReportPeriod) => {
+      setReportPeriod(period);
+      setScreenNotice({
+        title: `${reportCopy[period].title} ready`,
+        message: `${reportCopy[period].range} preview updated. Download/send will connect after backend reports are finalized.`,
+        tone: 'success',
+      });
+    };
 
     return (
       <ScreenPanel title="My reports" subtitle="Automatic summaries from attendance, sales visits, service visits, and leave.">
         <section className="report-hero-card">
           <div>
-            <p>Current week</p>
-            <strong>{session?.agentName ?? 'Agent'} summary</strong>
-            <span>{attendanceLabel} • 5 working days • {pendingFollowUps} follow-ups pending</span>
+            <p>{activeReport.eyebrow}</p>
+            <strong>{session?.agentName ?? 'Agent'} {activeReport.title.toLowerCase()}</strong>
+            <span>{activeReport.attendance} • {activeReport.visits} visits • {activeReport.followUps} follow-ups pending</span>
           </div>
-          <span className="report-hero-icon"><BarChart3 size={22} /></span>
+          <span className="report-hero-icon"><BarChart3 size={21} /></span>
         </section>
 
         <div className="report-period-switch" aria-label="Report period options">
-          <button type="button" className="report-period-active">Today</button>
-          <button type="button">Week</button>
-          <button type="button">Month</button>
+          {periodOptions.map((option) => (
+            <button
+              key={option.key}
+              type="button"
+              className={reportPeriod === option.key ? 'report-period-active' : ''}
+              onClick={() => setReportPeriod(option.key)}
+            >
+              {option.label}
+            </button>
+          ))}
         </div>
 
         <div className="report-metric-grid">
-          <div className="metric-card report-metric-card"><strong>4</strong><span>Visits today</span><small>2 sales • 2 service</small></div>
-          <div className="metric-card report-metric-card"><strong>{thisWeekVisits}</strong><span>This week</span><small>{pendingFollowUps} follow-ups due</small></div>
-          <div className="metric-card report-metric-card"><strong>{thisMonthVisits}</strong><span>This month</span><small>Auto counted</small></div>
+          <div className="metric-card report-metric-card"><strong>{activeReport.visits}</strong><span>Total visits</span><small>{activeReport.range}</small></div>
+          <div className="metric-card report-metric-card"><strong>{activeReport.sales}</strong><span>Sales</span><small>Saved entries</small></div>
+          <div className="metric-card report-metric-card"><strong>{activeReport.service}</strong><span>Service</span><small>Saved entries</small></div>
           <div className="metric-card report-metric-card"><strong>{leaveRequest ? '1' : '0'}</strong><span>Leave</span><small>{leaveStatus}</small></div>
         </div>
 
         <section className="form-card report-generate-card">
           <label>Generate my report</label>
-          <p>Agent taps once. The app prepares the report from saved visits, attendance, and leave.</p>
+          <p>Select the report period below. No report type is selected by default.</p>
           <div className="report-generate-actions">
-            <button type="button" onClick={() => setScreenNotice({ title: 'Daily report ready', message: 'Preview generated from today’s demo visits and attendance.', tone: 'success' })}>Daily</button>
-            <button type="button" onClick={() => setScreenNotice({ title: 'Weekly report ready', message: 'Weekly preview generated. Production app can download or send it.', tone: 'success' })}>Weekly</button>
-            <button type="button" onClick={() => setScreenNotice({ title: 'Monthly report ready', message: 'Monthly preview generated from saved field activity.', tone: 'success' })}>Monthly</button>
+            <button type="button" onClick={() => generateReport('today')}>Daily</button>
+            <button type="button" onClick={() => generateReport('week')}>Weekly</button>
+            <button type="button" onClick={() => generateReport('month')}>Monthly</button>
           </div>
         </section>
 
@@ -959,16 +984,11 @@ function App() {
           <div className="report-preview-heading">
             <div>
               <label>Report preview</label>
-              <strong>Weekly field report</strong>
-              <span>09 Jun – 15 Jun • 5 sales • 3 service • 5/6 attendance</span>
+              <strong>{activeReport.title}</strong>
+              <span>{activeReport.range} • {activeReport.note}</span>
             </div>
-            <span className="chip chip-soft">Draft</span>
+            <span className="chip chip-soft">Preview</span>
           </div>
-        </section>
-
-        <section className="form-card report-notes-card">
-          <label>Optional agent note</label>
-          <textarea aria-label="Optional report note" placeholder="Add one short note for office, if needed" rows={2} />
         </section>
 
         <div className="section-label">Recent report items</div>

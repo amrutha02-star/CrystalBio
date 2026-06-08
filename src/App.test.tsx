@@ -98,6 +98,15 @@ describe('Crystal Bio agent view shell', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /^reports$/i }));
     expect(screen.getByText('My reports')).toBeInTheDocument();
+    expect(screen.getByText('Weekly summary')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /^month$/i }));
+    expect(screen.getByText('Monthly summary')).toBeInTheDocument();
+    expect(screen.getAllByText(/June 2026/).length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole('button', { name: /^week$/i }));
+    expect(screen.getByText('Weekly summary')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /^monthly$/i }));
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Monthly summary ready'));
+    expect(screen.getByText('Monthly summary')).toBeInTheDocument();
     expect(screen.getByText('These preview numbers are fixed demo values. They will come from backend reports when reports are connected.')).toBeInTheDocument();
   });
 

@@ -516,15 +516,19 @@ p { color: var(--muted); line-height: 1.5; }
 .report-hero-card strong { margin-top: 4px; color: var(--ink); font-size: 18px; font-weight: 560; letter-spacing: -0.01em; }
 .report-hero-card span { margin-top: 5px; color: var(--muted); font-size: 12px; line-height: 1.35; }
 .report-hero-icon {
-  width: 42px;
-  height: 42px;
-  border-radius: 16px;
+  width: 40px;
+  height: 40px;
+  border-radius: 15px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  align-self: center;
+  justify-self: end;
   background: var(--sage-deep);
   color: #fffef8;
+  line-height: 0;
 }
+.report-hero-icon svg { display: block; }
 .report-period-switch {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -582,13 +586,14 @@ p { color: var(--muted); line-height: 1.5; }
 .report-generate-actions button {
   min-height: 40px;
   border-radius: 15px;
-  background: var(--sage-soft);
+  background: #fffef8;
+  border: 1px solid rgba(123, 139, 111, 0.24);
   color: var(--sage-deep);
   text-align: center;
   font-size: 12px;
   font-weight: 560;
+  box-shadow: 0 7px 14px rgba(47, 61, 40, 0.04);
 }
-.report-generate-actions button:first-child { background: var(--sage-deep); color: #fffef8; }
 .report-preview-card {
   border: 1px solid rgba(123, 139, 111, 0.24);
   border-radius: 22px;
@@ -604,6 +609,10 @@ p { color: var(--muted); line-height: 1.5; }
   align-items: flex-start;
   padding-bottom: 10px;
   border-bottom: 1px solid var(--line);
+}
+.compact-report-preview-card .report-preview-heading {
+  padding-bottom: 0;
+  border-bottom: 0;
 }
 .report-preview-heading strong,
 .report-preview-heading span { display: block; }
@@ -839,5 +848,17 @@ p { color: var(--muted); line-height: 1.5; }
     right: 18px;
     padding: 10px;
     z-index: 20;
+    isolation: isolate;
+  }
+  .bottom-nav::before {
+    content: '';
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 116px;
+    background: linear-gradient(180deg, rgba(243, 247, 239, 0) 0%, var(--canvas) 38%, var(--canvas) 100%);
+    z-index: -1;
+    pointer-events: none;
   }
 }
