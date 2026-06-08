@@ -159,14 +159,63 @@ p { color: #766f77; line-height: 1.58; }
 .action-cream .icon-pill { background: #fff2c2; color: #7d6208; }
 
 .panel { padding: 14px; margin-top: 14px; }
-.entry-row { padding: 11px 0; border-top: 1px solid #eee7da; }
+.entry-row { width: 100%; padding: 11px 0; border-top: 1px solid #eee7da; background: transparent; }
 .entry-row:first-of-type { border-top: 0; }
 .entry-row strong { color: #151217; font-weight: 500; }
 .entry-row p { color: #766f77; margin: 3px 0 0; font-size: 12px; }
+.entry-button { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.entry-button:focus-visible, .text-link:focus-visible, .nav-item:focus-visible, .back-button:focus-visible, .primary-action:focus-visible, .secondary-action:focus-visible { outline: 3px solid rgba(21, 18, 23, 0.24); outline-offset: 3px; }
 .chip { border-radius: 999px; padding: 7px 9px; font-size: 11px; font-weight: 500; white-space: nowrap; }
 .chip-soft { background: #f4f1eb; color: #655d65; }
 .chip-warning { background: #fff2c2; color: #7d6208; }
 .chip-info { background: #edf7fd; color: #386982; }
+.text-link { background: transparent; color: #151217; font-size: 12px; font-weight: 600; padding: 4px; border-radius: 10px; }
+.back-button { display: inline-flex; align-items: center; gap: 2px; margin: 0 0 6px -5px; padding: 4px 7px; border-radius: 12px; background: #f4f1eb; color: #655d65; font-size: 12px; font-weight: 600; }
+.screen-panel { min-height: 456px; max-height: 526px; overflow-y: auto; padding: 16px; }
+.screen-heading { margin-bottom: 12px; }
+.screen-heading h3 { font-size: 24px; margin-bottom: 5px; }
+.screen-heading p { margin-bottom: 0; font-size: 13px; line-height: 1.42; }
+.search-card, .form-card, .metric-card {
+  border: 1px solid #eee7da;
+  border-radius: 22px;
+  background: #fffdf8;
+  padding: 13px;
+  margin-bottom: 10px;
+}
+.search-card { display: flex; align-items: center; gap: 9px; color: #766f77; font-size: 12px; font-weight: 500; }
+.form-card label { display: block; color: #151217; font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+.form-card span, .form-card p { display: block; color: #766f77; font-size: 12px; line-height: 1.4; margin: 0; }
+.highlighted-card { background: #eef4e9; border-color: #dce8d3; }
+.screen-notice {
+  border-radius: 18px;
+  background: #fff2c2;
+  color: #5e4800;
+  padding: 11px 12px;
+  margin: 0 0 10px;
+  font-size: 12px;
+  line-height: 1.38;
+  font-weight: 500;
+}
+.primary-action, .secondary-action {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-height: 46px;
+  border-radius: 18px;
+  padding: 12px 14px;
+  margin: 8px 0;
+  font-weight: 600;
+  font-size: 13px;
+}
+.primary-action { background: #151217; color: #fff; }
+.secondary-action { background: #fff2c2; color: #5e4800; }
+.split-actions { display: grid; grid-template-columns: 1fr; gap: 6px; margin-bottom: 6px; }
+.report-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+.metric-card strong { display: block; font-size: 30px; font-weight: 600; letter-spacing: -0.03em; }
+.metric-card span, .panel-note { color: #766f77; font-size: 12px; line-height: 1.45; }
+.panel-note { margin: 10px 2px 0; }
 
 .bottom-nav {
   position: absolute;
@@ -192,6 +241,9 @@ p { color: #766f77; line-height: 1.58; }
   padding: 8px 3px;
   border-radius: 18px;
   color: #766f77;
+  background: transparent;
+  text-align: center;
+  justify-content: center;
 }
 .nav-item svg { stroke-width: 2.2; }
 .nav-item-selected { background: #151217; color: white; }
@@ -202,8 +254,11 @@ p { color: #766f77; line-height: 1.58; }
   .preview-note p:last-child { margin-left: auto; margin-right: auto; }
 }
 @media (max-width: 560px) {
-  .app-shell { padding: 14px 10px 28px; }
+  .app-shell { padding: 8px 8px 18px; }
   .preview-note { display: none; }
-  .phone-frame { border-width: 7px; border-radius: 34px; padding: 14px; padding-bottom: 98px; min-height: 705px; }
-  .compact-action { min-height: 108px; padding: 14px; }
+  .phone-frame { border-width: 7px; border-radius: 34px; padding: 13px; padding-bottom: 86px; min-height: 660px; }
+  .planner-hero-card { min-height: 120px; padding: 16px; margin-bottom: 13px; }
+  .compact-action { min-height: 102px; padding: 13px; }
+  .panel { margin-top: 12px; }
+  .bottom-nav { bottom: 13px; left: 13px; right: 13px; }
 }

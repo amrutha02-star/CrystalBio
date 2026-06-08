@@ -60,4 +60,69 @@ describe('Crystal Bio agent view shell', () => {
     expect(screen.queryByText('Owner app mode')).not.toBeInTheDocument();
     expect(screen.queryByText('Internal monitoring')).not.toBeInTheDocument();
   });
+
+  it('opens every visible home quick action instead of leaving dead buttons', async () => {
+    render(<App />);
+
+    await screen.findByText('Rahul Sales');
+
+    fireEvent.click(screen.getByRole('button', { name: /sales new visit/i }));
+    expect(screen.getByText('Sales visit')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /save visit update/i })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText('Home'));
+    fireEvent.click(screen.getByRole('button', { name: /service report/i }));
+    expect(screen.getByText('Service visit')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /save service update/i })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText('Home'));
+    fireEvent.click(screen.getByRole('button', { name: /^attendance logs & leave$/i }));
+    expect(screen.getByRole('heading', { name: 'Attendance' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /send leave request/i })).toBeInTheDocument();
+  });
+
+  it('opens bottom navigation screens and keeps demo report numbers clearly fixed', async () => {
+    render(<App />);
+
+    await screen.findByText('Rahul Sales');
+
+    fireEvent.click(screen.getByRole('button', { name: /^visits$/i }));
+    expect(screen.getByRole('heading', { name: 'Visits' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /new sales visit update/i })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /^reports$/i }));
+    expect(screen.getByText('My reports')).toBeInTheDocument();
+    expect(screen.getByText('These preview numbers are fixed demo values. They will come from backend reports when reports are connected.')).toBeInTheDocument();
+  });
+
+  it('opens recent visit rows instead of showing non-clickable dashboard details', async () => {
+    render(<App />);
+
+    await screen.findByText('Rahul Sales');
+
+    fireEvent.click(screen.getByRole('button', { name: /apollo diagnostics/i }));
+    expect(screen.getByText('Sales visit')).toBeInTheDocument();
+  });
+
+  it('shows feedback for second-level preview buttons instead of doing nothing', async () => {
+    render(<App />);
+
+    await screen.findByText('Rahul Sales');
+
+    fireEvent.click(screen.getByRole('button', { name: /sales new visit/i }));
+    fireEvent.click(screen.getByRole('button', { name: /capture gps/i }));
+    expect(screen.getByRole('status')).toHaveTextContent('GPS capture is designed here');
+    fireEvent.click(screen.getByRole('button', { name: /save visit update/i }));
+    expect(screen.getByRole('status')).toHaveTextContent('Sales save is the next backend connection step');
+
+    fireEvent.click(screen.getByLabelText('Home'));
+    fireEvent.click(screen.getByRole('button', { name: /service report/i }));
+    fireEvent.click(screen.getByRole('button', { name: /save service update/i }));
+    expect(screen.getByRole('status')).toHaveTextContent('Service save is designed here');
+
+    fireEvent.click(screen.getByLabelText('Attendance'));
+    fireEvent.click(screen.getByRole('button', { name: /send leave request/i }));
+    fireEvent.click(screen.getByRole('button', { name: /submit leave request/i }));
+    expect(screen.getByRole('status')).toHaveTextContent('Demo preview does not change approval status automatically');
+  });
 });
