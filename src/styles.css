@@ -365,6 +365,52 @@ p { color: var(--muted); line-height: 1.5; }
 .tracking-card label { color: var(--muted); font-size: 10.5px; font-weight: 560; text-transform: uppercase; letter-spacing: 0.02em; }
 .tracking-card strong { margin-top: 4px; color: var(--ink); font-size: 17px; font-weight: 580; }
 .tracking-card span { margin-top: 3px; color: var(--muted); font-size: 11px; line-height: 1.3; }
+.work-type-card {
+  border: 1px solid rgba(123, 139, 111, 0.22);
+  border-radius: 20px;
+  background: #fffef8;
+  padding: 12px;
+  margin-bottom: 10px;
+}
+.work-type-card label,
+.work-type-card p,
+.work-type-card span { display: block; }
+.work-type-card label {
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 560;
+}
+.work-type-card p {
+  margin: 3px 0 10px;
+  color: var(--muted);
+  font-size: 11.5px;
+}
+.work-type-card span {
+  margin-top: 9px;
+  color: var(--muted);
+  font-size: 11.5px;
+  line-height: 1.35;
+}
+.work-type-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.work-type-badge {
+  border: 1px solid rgba(123, 139, 111, 0.28);
+  border-radius: 999px;
+  background: #fbfcf5;
+  color: var(--sage-deep);
+  padding: 8px 10px;
+  font-size: 11.5px;
+  font-weight: 520;
+}
+.work-type-selected {
+  background: var(--sage-deep);
+  border-color: var(--sage-deep);
+  color: #fffef8;
+  box-shadow: 0 8px 16px rgba(64, 91, 71, 0.16);
+}
 .attendance-status-card {
   display: grid;
   grid-template-columns: auto 1fr;

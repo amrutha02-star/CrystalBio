@@ -48,6 +48,7 @@ function App() {
   const [leaveRequest, setLeaveRequest] = useState<FrontendLeaveRequest | null>(null);
   const [isLeaveSubmitting, setIsLeaveSubmitting] = useState(false);
   const [visitSearch, setVisitSearch] = useState('');
+  const [workTypes, setWorkTypes] = useState<string[]>(['Sales visit']);
   const [salesAccountName, setSalesAccountName] = useState('Apollo Diagnostics');
   const [salesContactPerson, setSalesContactPerson] = useState('Lab manager');
   const [salesDesignation, setSalesDesignation] = useState('Lab manager');
@@ -147,6 +148,10 @@ function App() {
     ],
     [attendanceAction, attendanceHint],
   );
+
+  const toggleWorkType = (type: string) => {
+    setWorkTypes((current) => current.includes(type) ? current.filter((item) => item !== type) : [...current, type]);
+  };
 
   const handleAttendanceAction = async () => {
     if (!session) return;
@@ -816,11 +821,20 @@ function App() {
             <span>{todayDetail}</span>
           </div>
         </div>
-        <div className="tracking-grid">
-          <div className="tracking-card"><label>This week</label><strong>5 days</strong><span>Present / field work</span></div>
-          <div className="tracking-card"><label>This month</label><strong>18 days</strong><span>Attendance saved</span></div>
-          <div className="tracking-card"><label>Leave</label><strong>{leaveRequest ? '1 pending' : '0 pending'}</strong><span>{leaveRequest ? `${leaveRequest.fromDate} to ${leaveRequest.toDate}` : 'No active request'}</span></div>
-          <div className="tracking-card"><label>Late / missed</label><strong>0</strong><span>No exception today</span></div>
+        <div className="work-type-card">
+          <label>Today’s work type</label>
+          <p>Select one or more before check-in.</p>
+          <div className="work-type-badges">
+            {['Sales visit', 'Service visit', 'In office'].map((type) => {
+              const selected = workTypes.includes(type);
+              return (
+                <button key={type} type="button" className={selected ? 'work-type-badge work-type-selected' : 'work-type-badge'} onClick={() => toggleWorkType(type)}>
+                  {type}
+                </button>
+              );
+            })}
+          </div>
+          <span>{workTypes.length ? `Marked as: ${workTypes.join(' + ')}` : 'Choose field work, office work, or both.'}</span>
         </div>
         <div className="form-card highlighted-card">
           <label>GPS capture</label>

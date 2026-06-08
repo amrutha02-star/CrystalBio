@@ -155,7 +155,7 @@ export const buildPhases: BuildPhase[] = [
 export const sampleEntries = [
   { customer: 'Apollo Diagnostics', type: 'Sales', status: 'Quote pending', next: 'Tomorrow', tone: 'warning' },
   { customer: 'City Lab Services', type: 'Service', status: 'Follow-up required', next: '12 Jun', tone: 'info' },
-  { customer: 'Crystal Bio HQ', type: 'Leave', status: 'Pending approval', next: 'Admin review', tone: 'soft' },
+  { customer: 'Metro Hospital Lab', type: 'Sales', status: 'Follow-up due', next: 'Friday', tone: 'soft' },
 ];
 
 export const adminMetrics = [
