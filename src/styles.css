@@ -187,7 +187,7 @@ p { color: var(--muted); line-height: 1.5; }
 .chip-info { background: #eef3e9; color: #4f6d58; }
 .text-link { background: transparent; color: var(--ink); font-size: 12px; font-weight: 600; padding: 4px; border-radius: 10px; }
 .back-button { display: inline-flex; align-items: center; gap: 2px; margin: 0 0 6px -5px; padding: 4px 7px; border-radius: 12px; background: var(--sage-soft); color: var(--sage-deep); font-size: 12px; font-weight: 600; }
-.screen-panel { min-height: 456px; max-height: 526px; overflow-y: auto; padding: 15px 15px 26px; scroll-padding-bottom: 96px; }
+.screen-panel { min-height: 456px; max-height: none; overflow: visible; padding: 15px 15px 26px; scroll-padding-bottom: 96px; }
 .screen-heading { margin-bottom: 12px; }
 .screen-heading h3 { font-size: 22px; margin-bottom: 5px; font-weight: 500; letter-spacing: -0.01em; }
 .screen-heading p { margin-bottom: 0; font-size: 12.5px; line-height: 1.4; }
