@@ -3,7 +3,7 @@ import { BarChart3, CalendarCheck, CheckCircle2, ChevronLeft, ClipboardList, Clo
 import { sampleEntries } from './appData';
 import { crystalBioFrontendApi, type FrontendAttendance, type FrontendLeaveRequest, type FrontendSalesSaveResult, type FrontendSalesNextAction, type FrontendServiceSaveResult, type FrontendServiceNextAction, type FrontendServiceType, type FrontendSession } from './crystalBioFrontendApi';
 
-type AppScreen = 'home' | 'visits' | 'sales' | 'service' | 'attendance' | 'leave' | 'reports' | 'admin';
+type AppScreen = 'home' | 'visits' | 'sales' | 'service' | 'checkin' | 'attendance' | 'leave' | 'reports' | 'admin';
 type ReportPeriod = 'today' | 'week' | 'month';
 type AdminAgentFilter = 'all' | 'sales' | 'service';
 type AdminTab = 'overview' | 'agents' | 'approvals' | 'adminReports';
@@ -28,7 +28,7 @@ const sampleAttendanceLogs = [
   { date: 'Yesterday', status: 'Checked out', detail: '9:18 AM to 6:04 PM' },
 ];
 
-const screenOptions: AppScreen[] = ['home', 'visits', 'sales', 'service', 'attendance', 'leave', 'reports', 'admin'];
+const screenOptions: AppScreen[] = ['home', 'visits', 'sales', 'service', 'checkin', 'attendance', 'leave', 'reports', 'admin'];
 
 const agentIdForScreen = (nextScreen: AppScreen) => (nextScreen === 'service' ? 'agent_3' : 'agent_2');
 
@@ -70,6 +70,7 @@ function App() {
   const [isLeaveSubmitting, setIsLeaveSubmitting] = useState(false);
   const [visitSearch, setVisitSearch] = useState('');
   const [workTypes, setWorkTypes] = useState<string[]>(['Sales visit']);
+  const [checkInNote, setCheckInNote] = useState('');
   const [salesAccountName, setSalesAccountName] = useState('Apollo Diagnostics');
   const [salesContactPerson, setSalesContactPerson] = useState('Lab manager');
   const [salesDesignation, setSalesDesignation] = useState('Lab manager');
@@ -190,6 +191,35 @@ function App() {
       );
     } catch (error) {
       setStatusMessage(error instanceof Error ? error.message : 'Attendance action failed');
+    } finally {
+      setIsAttendanceBusy(false);
+    }
+  };
+
+  const handleCheckInSubmit = async () => {
+    if (!session) return;
+    if (!workTypes.length) {
+      setScreenNotice({ title: 'Choose work type', message: 'Select Sales visit, Service visit, or In office before check-in.', tone: 'warning' });
+      return;
+    }
+    setIsAttendanceBusy(true);
+    setScreenNotice(isBackendConfigured ? 'Capturing check-in location…' : 'Saving demo check-in with sample GPS…');
+    setStatusMessage('Capturing check-in location…');
+    try {
+      const nextAttendance = await crystalBioFrontendApi.checkIn(session);
+      setAttendance(nextAttendance);
+      setStatusMessage(`Checked in. ${workTypes.join(' + ')} saved with GPS.`);
+      setScreenNotice({
+        title: 'Checked in',
+        message: checkInNote.trim()
+          ? `${workTypes.join(' + ')} saved with GPS. Opening note added.`
+          : `${workTypes.join(' + ')} saved with GPS.`,
+        tone: 'success',
+      });
+      setScreen('home');
+    } catch (error) {
+      setScreenNotice(error instanceof Error ? error.message : 'Check-in failed');
+      setStatusMessage(error instanceof Error ? error.message : 'Check-in failed');
     } finally {
       setIsAttendanceBusy(false);
     }
@@ -540,7 +570,11 @@ function App() {
 
   const handleQuickAction = (action: (typeof actionMeta)[number]['onClick']) => {
     if (action === 'attendance-action') {
-      void handleAttendanceAction();
+      if (isCheckedIn) {
+        void handleAttendanceAction();
+      } else {
+        goToScreen('checkin');
+      }
       return;
     }
     goToScreen(action, action === 'sales' ? { newSalesVisit: true } : action === 'service' ? { newServiceVisit: true } : undefined);
@@ -833,6 +867,40 @@ function App() {
     );
   };
 
+  const renderCheckIn = () => (
+    <ScreenPanel title="Check in" subtitle="Choose today’s work plan before starting field work.">
+      <div className="attendance-status-card">
+        <div className="attendance-status-icon"><MapPin size={20} /></div>
+        <div>
+          <label>Current location</label>
+          <strong>{isBackendConfigured ? 'Phone GPS will be captured' : 'Demo GPS preview'}</strong>
+          <span>{isBackendConfigured ? 'The app asks for location when the agent taps Check in now.' : 'Static preview uses sample GPS. Real app will save phone location.'}</span>
+        </div>
+      </div>
+      <div className="work-type-card">
+        <label>Today’s work plan</label>
+        <p>Select one or more before check-in.</p>
+        <div className="work-type-badges">
+          {['Sales visit', 'Service visit', 'In office'].map((type) => {
+            const selected = workTypes.includes(type);
+            return (
+              <button key={type} type="button" className={selected ? 'work-type-badge work-type-selected' : 'work-type-badge'} onClick={() => toggleWorkType(type)}>
+                {selected ? '✓ ' : ''}{type}
+              </button>
+            );
+          })}
+        </div>
+        <span>{workTypes.length ? `Selected: ${workTypes.join(' + ')}` : 'Work type is mandatory before check-in.'}</span>
+      </div>
+      <label className="field-card">
+        <span>Opening note</span>
+        <textarea aria-label="Check-in opening note" value={checkInNote} onChange={(event) => setCheckInNote(event.target.value)} placeholder="Optional: route plan, first client, or office note" rows={3} />
+      </label>
+      <button type="button" className="primary-action" disabled={!session || isAttendanceBusy || !workTypes.length} onClick={handleCheckInSubmit}>{isAttendanceBusy ? 'Saving…' : 'Check in now'}</button>
+      <button type="button" className="secondary-action" onClick={() => goToScreen('attendance')}>View attendance</button>
+    </ScreenPanel>
+  );
+
   const renderAttendance = () => {
     const todayStatus = attendance?.status === 'checked_in' ? 'Checked in' : attendance?.status === 'checked_out' ? 'Checked out' : 'Not checked in yet';
     const todayDetail = attendance?.status === 'checked_in'
@@ -880,8 +948,7 @@ function App() {
           <strong>{leaveRequest ? leaveRequest.status : 'No active request'}</strong>
           <span>{leaveRequest ? `${leaveRequest.fromDate} to ${leaveRequest.toDate} • ${leaveRequest.reason}` : 'Approved or rejected leave requests will show here for the agent.'}</span>
         </div>
-        <button type="button" className="primary-action attendance-main-action" disabled={!session || isAttendanceBusy} onClick={handleAttendanceAction}>{isAttendanceBusy ? 'Saving…' : attendanceAction}</button>
-        <button type="button" className="secondary-action" onClick={() => goToScreen('leave')}>Request leave</button>
+        <button type="button" className="primary-action attendance-main-action" disabled={!session || isAttendanceBusy} onClick={() => isCheckedIn ? void handleAttendanceAction() : goToScreen('checkin')}>{isAttendanceBusy ? 'Saving…' : attendanceAction}</button>
         <div className="section-label">Recent attendance</div>
         {attendanceLogs.map((log) => (
           <div className="entry-row" key={log.date}>
@@ -889,6 +956,7 @@ function App() {
             <span className="chip chip-soft">{log.status}</span>
           </div>
         ))}
+        <button type="button" className="secondary-action" onClick={() => goToScreen('leave')}>Request leave</button>
       </ScreenPanel>
     );
   };
@@ -1204,6 +1272,7 @@ function App() {
     if (screen === 'visits') return renderVisits();
     if (screen === 'sales') return renderSales();
     if (screen === 'service') return renderService();
+    if (screen === 'checkin') return renderCheckIn();
     if (screen === 'attendance') return renderAttendance();
     if (screen === 'leave') return renderLeave();
     if (screen === 'reports') return renderReports();
@@ -1268,7 +1337,7 @@ function App() {
               })
             ) : navItems.map((item) => {
               const Icon = item.icon;
-              const selected = item.screen === screen || (screen === 'sales' && item.screen === 'visits') || (screen === 'service' && item.screen === 'visits') || (screen === 'leave' && item.screen === 'attendance');
+              const selected = item.screen === screen || (screen === 'sales' && item.screen === 'visits') || (screen === 'service' && item.screen === 'visits') || ((screen === 'leave' || screen === 'checkin') && item.screen === 'attendance');
               return (
                 <button
                   key={item.label}

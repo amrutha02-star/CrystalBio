@@ -23,7 +23,11 @@ describe('Crystal Bio agent view shell', () => {
     const checkIn = await screen.findByRole('button', { name: /check in/i });
     fireEvent.click(checkIn);
 
-    await waitFor(() => expect(screen.getByText('Checked in. GPS saved for today.')).toBeInTheDocument());
+    expect(screen.getByRole('heading', { name: 'Check in' })).toBeInTheDocument();
+    expect(screen.getByText('Today’s work plan')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /check in now/i }));
+
+    await waitFor(() => expect(screen.getByText('Checked in. Sales visit saved with GPS.')).toBeInTheDocument());
     expect(screen.getByText('Checked in for field work')).toBeInTheDocument();
     fireEvent.click(screen.getByLabelText('Attendance'));
     expect(screen.getByText('Started today • Sales visit')).toBeInTheDocument();
@@ -35,7 +39,8 @@ describe('Crystal Bio agent view shell', () => {
     render(<App />);
 
     fireEvent.click(await screen.findByRole('button', { name: /check in/i }));
-    await waitFor(() => expect(screen.getByText('Checked in. GPS saved for today.')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /check in now/i }));
+    await waitFor(() => expect(screen.getByText('Checked in. Sales visit saved with GPS.')).toBeInTheDocument());
 
     fireEvent.click(screen.getByRole('button', { name: /check out/i }));
 

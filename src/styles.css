@@ -319,7 +319,12 @@ p { color: var(--muted); line-height: 1.5; }
   font-size: 13px;
 }
 .primary-action { background: var(--sage-deep); color: #fffef8; }
-.secondary-action { background: var(--sage-soft); color: var(--sage-deep); }
+.secondary-action {
+  background: #fffef8;
+  color: var(--sage-deep);
+  border: 1.5px solid rgba(95, 124, 78, 0.48);
+  box-shadow: 0 8px 18px rgba(47, 61, 40, 0.07);
+}
 .step-save-action {
   background: #fffef8;
   color: var(--sage-deep);
