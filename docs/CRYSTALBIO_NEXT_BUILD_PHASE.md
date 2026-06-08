@@ -112,13 +112,15 @@ Required safeguards:
 
 ## Immediate next actions
 
-1. Receive the client form.
-2. Convert every form field into app-friendly sales/service sections.
-3. Mark each field as required, optional, admin-only, or auto-filled.
-4. Confirm the mobile screen flow after field mapping.
-5. Finalize backend data tables/API around that mapping.
-6. Test with sample data for 12–13 users and about 20 reports/day.
-7. Prepare client-facing demo with agent view and admin view.
+The client forms have already been shared and the frontend form screens have already been created. The next work is not to ask for forms again; it is to harden the existing product flow.
+
+1. Re-test every already-created sales, service, attendance, leave, and admin screen as a complete mobile journey.
+2. Confirm every button is connected to either demo-state behavior or the backend API path, with no dead buttons.
+3. Verify sales/service Step 1, Step 2, and Step 3 saves patch the same customer/opportunity/service record instead of creating confusing duplicate work.
+4. Verify admin can see daily, weekly, and monthly report views for each person.
+5. Stress-test with realistic sample data for 12–13 users and about 20 reports/day.
+6. Fix any UI friction before client demo: unclear buttons, cramped cards, missing active states, or confusing disabled states.
+7. Prepare the next client-facing demo with agent view and admin view.
 
 ---
 

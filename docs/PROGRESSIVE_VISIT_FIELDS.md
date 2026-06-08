@@ -62,7 +62,7 @@ Fields:
 - Equipment name/model
 - Requirement details
 
-Current implementation status: partially implemented. Contact person, phone, and requirement exist; remaining fields need to be added.
+Current implementation status: implemented in the frontend progressive screen and covered by frontend/backend patch tests. Continue QA for mobile usability and backend persistence.
 
 ### Step 3 — Quote, commercial, proof, and office details
 
@@ -86,11 +86,11 @@ Fields:
   - Visiting card photo
 - Notes for office team
 
-Current implementation status: not yet implemented except next action/follow-up. Must be added as Step 3.
+Current implementation status: implemented in the frontend progressive screen and covered by frontend/backend patch tests. Continue QA for photo/proof usability and admin visibility.
 
 ## Service visit steps
 
-The exact service form should be audited field-by-field once the uploaded/shared sheet is available in the repo/session. Until then, use this structure and reconcile against the client sheet.
+The client service form has already been shared and translated into the prototype direction. Continue treating this as the approved progressive service model, then validate the created screens/backend paths against the implemented form fields during QA.
 
 ### Step 1 — Quick service visit update
 
@@ -130,7 +130,7 @@ Fields to reconcile with client sheet:
 - Detailed issue description
 - Warranty/AMC status, if present in client sheet
 
-Current implementation status: partially implemented. Customer name, phone, equipment, serial number, and service type exist; remaining fields need sheet reconciliation.
+Current implementation status: implemented in the frontend progressive screen and covered by frontend/backend patch tests. Continue QA for mobile usability and backend persistence.
 
 ### Step 3 — Parts, proof, status, and office details
 
@@ -151,7 +151,7 @@ Fields to reconcile with client sheet:
   - Installation/site photo
 - Final remarks
 
-Current implementation status: partially implemented. Support required, next action, next visit date, and office notes exist; photos/parts/status fields still pending.
+Current implementation status: implemented in the frontend progressive screen and covered by frontend/backend patch tests. Continue QA for photo/proof usability and admin visibility.
 
 ## Admin/reporting implications
 
