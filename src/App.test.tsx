@@ -110,10 +110,10 @@ describe('Crystal Bio agent view shell', () => {
     await screen.findByText('Rahul Sales');
 
     fireEvent.click(screen.getByRole('button', { name: /sales new visit/i }));
-    fireEvent.click(screen.getByRole('button', { name: /capture gps/i }));
-    expect(screen.getByRole('status')).toHaveTextContent('GPS capture is designed here');
     fireEvent.click(screen.getByRole('button', { name: /save visit update/i }));
-    expect(screen.getByRole('status')).toHaveTextContent('Sales save is the next backend connection step');
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Demo sales visit saved'));
+    expect(screen.getByText(/Apollo Diagnostics • Visit 1 • follow up needed/i)).toBeInTheDocument();
+    expect(screen.getByText('Note: Requirement confirmed. Quote to be shared.')).toBeInTheDocument();
 
     fireEvent.click(screen.getByLabelText('Home'));
     fireEvent.click(screen.getByRole('button', { name: /service report/i }));

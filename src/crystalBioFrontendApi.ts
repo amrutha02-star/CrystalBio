@@ -41,6 +41,45 @@ export type FrontendLeaveRequestInput = {
   note?: string;
 };
 
+export type FrontendSalesNextAction = 'follow_up_needed' | 'no_follow_up' | 'closed';
+
+export type FrontendSalesVisitInput = {
+  accountName: string;
+  contactPerson?: string;
+  phone?: string;
+  requirement?: string;
+  note: string;
+  nextAction: FrontendSalesNextAction;
+  followUpDate?: string;
+};
+
+export type FrontendSalesVisit = {
+  id: string;
+  opportunityId: string;
+  agentId: string;
+  agentName: string;
+  visitNumber: number;
+  visitDate: string;
+  visitTime: string;
+  gps: FrontendGps;
+  note: string;
+  nextAction: FrontendSalesNextAction;
+  followUpDate?: string;
+};
+
+export type FrontendSalesSaveResult = {
+  opportunity: {
+    id: string;
+    ownerAgentId: string;
+    accountName: string;
+    contactPerson?: string;
+    phone?: string;
+    requirement?: string;
+    status: 'open' | 'closed';
+  };
+  visit: FrontendSalesVisit;
+};
+
 type BackendAttendance = Omit<FrontendAttendance, 'checkInTime' | 'checkOutTime'> & {
   checkInAt?: string;
   checkInTime?: string;
@@ -56,6 +95,23 @@ type ApiClientOptions = {
 };
 
 const demoGps: FrontendGps = { latitude: 12.9716, longitude: 77.5946, accuracyMeters: 18 };
+
+const browserGpsProvider = async (): Promise<FrontendGps> => {
+  if (typeof navigator === 'undefined' || !navigator.geolocation) {
+    throw new Error('Location permission is required before saving field updates.');
+  }
+  return new Promise((resolve, reject) => {
+    navigator.geolocation.getCurrentPosition(
+      (position) => resolve({
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+        accuracyMeters: position.coords.accuracy,
+      }),
+      () => reject(new Error('Allow location permission to save this field update.')),
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 },
+    );
+  });
+};
 
 const trimSlash = (value: string) => value.replace(/\/$/, '');
 
@@ -75,7 +131,7 @@ export function createCrystalBioFrontendApi(options: ApiClientOptions = {}) {
   const baseUrl = options.baseUrl ? trimSlash(options.baseUrl) : undefined;
   const fetcher = options.fetcher ?? fetch;
   const now = options.now ?? (() => new Date());
-  const gpsProvider = options.gpsProvider ?? (async () => demoGps);
+  const gpsProvider = options.gpsProvider ?? (baseUrl ? browserGpsProvider : async () => demoGps);
   let demoCheckedIn = false;
 
   const post = async <T>(path: string, body: unknown, token?: string) => {
@@ -169,6 +225,64 @@ export function createCrystalBioFrontendApi(options: ApiClientOptions = {}) {
         session.token,
       );
       return result.leaveRequest;
+    },
+
+    async submitSalesVisit(session: FrontendSession, input: FrontendSalesVisitInput): Promise<FrontendSalesSaveResult> {
+      const gps = await gpsProvider();
+      const visitTimestamp = now();
+      const visitDate = visitTimestamp.toISOString().slice(0, 10);
+      const visitTime = visitTimestamp.toTimeString().slice(0, 5);
+      if (!baseUrl) {
+        return {
+          opportunity: {
+            id: `demo-sales-${visitTimestamp.getTime()}`,
+            ownerAgentId: session.agentId,
+            accountName: input.accountName,
+            ...(input.contactPerson ? { contactPerson: input.contactPerson } : {}),
+            ...(input.phone ? { phone: input.phone } : {}),
+            ...(input.requirement ? { requirement: input.requirement } : {}),
+            status: input.nextAction === 'closed' ? 'closed' : 'open',
+          },
+          visit: {
+            id: `demo-sales-visit-${visitTimestamp.getTime()}`,
+            opportunityId: `demo-sales-${visitTimestamp.getTime()}`,
+            agentId: session.agentId,
+            agentName: session.agentName,
+            visitNumber: 1,
+            visitDate,
+            visitTime,
+            gps,
+            note: input.note,
+            nextAction: input.nextAction,
+            ...(input.followUpDate ? { followUpDate: input.followUpDate } : {}),
+          },
+        };
+      }
+
+      const opportunityResult = await post<{ opportunity: FrontendSalesSaveResult['opportunity'] }>(
+        '/sales-opportunities',
+        {
+          accountName: input.accountName,
+          ...(input.contactPerson ? { contactPerson: input.contactPerson } : {}),
+          ...(input.phone ? { phone: input.phone } : {}),
+          ...(input.requirement ? { requirement: input.requirement } : {}),
+        },
+        session.token,
+      );
+      const visitResult = await post<{ visit: FrontendSalesVisit }>(
+        `/sales-opportunities/${opportunityResult.opportunity.id}/visits`,
+        {
+          visitDate,
+          visitTime,
+          gps,
+          note: input.note,
+          nextAction: input.nextAction,
+          ...(input.followUpDate ? { followUpDate: input.followUpDate } : {}),
+          photos: [],
+        },
+        session.token,
+      );
+      return { opportunity: opportunityResult.opportunity, visit: visitResult.visit };
     },
 
     isDemoCheckedIn() {

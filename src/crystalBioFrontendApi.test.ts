@@ -175,4 +175,122 @@ describe('CrystalBio frontend API client', () => {
       status: 'pending',
     });
   });
+
+  it('creates sales opportunity and visit through configured backend with session authorization', async () => {
+    const fetcher = vi.fn(async (url: RequestInfo | URL) => {
+      if (String(url).endsWith('/auth/login')) {
+        return new Response(JSON.stringify({
+          session: { token: 'token-1', agentId: 'agent_2', agentName: 'Rahul Sales', role: 'sales' },
+        }), { status: 200, headers: { 'content-type': 'application/json' } });
+      }
+      if (String(url).endsWith('/sales-opportunities')) {
+        return new Response(JSON.stringify({
+          opportunity: { id: 'sales_1', ownerAgentId: 'agent_2', accountName: 'Apollo Diagnostics', status: 'open' },
+        }), { status: 201, headers: { 'content-type': 'application/json' } });
+      }
+      return new Response(JSON.stringify({
+        visit: {
+          id: 'sales_visit_1',
+          opportunityId: 'sales_1',
+          agentId: 'agent_2',
+          agentName: 'Rahul Sales',
+          visitNumber: 1,
+          visitDate: '2026-06-08',
+          visitTime: '11:18',
+          gps: { latitude: 12.9716, longitude: 77.5946 },
+          note: 'Requirement confirmed',
+          nextAction: 'follow_up_needed',
+          followUpDate: '2026-06-10',
+        },
+      }), { status: 201, headers: { 'content-type': 'application/json' } });
+    }) as unknown as typeof fetch;
+    const api = createCrystalBioFrontendApi({
+      baseUrl: 'http://127.0.0.1:8787',
+      fetcher,
+      now: () => new Date('2026-06-08T11:18:00.000Z'),
+      gpsProvider: async () => ({ latitude: 12.9716, longitude: 77.5946 }),
+    });
+
+    const session = await api.login('agent_2');
+    const saved = await api.submitSalesVisit(session, {
+      accountName: 'Apollo Diagnostics',
+      contactPerson: 'Lab manager',
+      phone: '9876543210',
+      requirement: 'Biochemistry analyzer requirement',
+      note: 'Requirement confirmed',
+      nextAction: 'follow_up_needed',
+      followUpDate: '2026-06-10',
+    });
+
+    expect(saved.visit.agentName).toBe('Rahul Sales');
+    expect(saved.visit.visitNumber).toBe(1);
+    expect(fetcher).toHaveBeenCalledWith(
+      'http://127.0.0.1:8787/sales-opportunities',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({ authorization: 'Bearer token-1' }),
+        body: JSON.stringify({
+          accountName: 'Apollo Diagnostics',
+          contactPerson: 'Lab manager',
+          phone: '9876543210',
+          requirement: 'Biochemistry analyzer requirement',
+        }),
+      }),
+    );
+    expect(fetcher).toHaveBeenCalledWith(
+      'http://127.0.0.1:8787/sales-opportunities/sales_1/visits',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({ authorization: 'Bearer token-1' }),
+        body: JSON.stringify({
+          visitDate: '2026-06-08',
+          visitTime: '11:18',
+          gps: { latitude: 12.9716, longitude: 77.5946 },
+          note: 'Requirement confirmed',
+          nextAction: 'follow_up_needed',
+          followUpDate: '2026-06-10',
+          photos: [],
+        }),
+      }),
+    );
+  });
+
+  it('creates a stable demo sales visit when no backend URL is configured', async () => {
+    const api = createCrystalBioFrontendApi({
+      now: () => new Date('2026-06-08T11:18:00.000Z'),
+      gpsProvider: async () => ({ latitude: 12.9716, longitude: 77.5946 }),
+    });
+
+    const session = await api.login();
+    const saved = await api.submitSalesVisit(session, {
+      accountName: 'Apollo Diagnostics',
+      note: 'Requirement confirmed',
+      nextAction: 'no_follow_up',
+    });
+
+    expect(saved.opportunity.accountName).toBe('Apollo Diagnostics');
+    expect(saved.visit).toMatchObject({
+      id: 'demo-sales-visit-1780917480000',
+      agentName: 'Rahul Sales',
+      visitNumber: 1,
+      visitDate: '2026-06-08',
+      visitTime: '11:18',
+      note: 'Requirement confirmed',
+      nextAction: 'no_follow_up',
+    });
+  });
+
+  it('requires real browser location in configured backend mode when no GPS provider is injected', async () => {
+    const fetcher = vi.fn(async () => new Response(JSON.stringify({
+      session: { token: 'token-1', agentId: 'agent_2', agentName: 'Rahul Sales', role: 'sales' },
+    }), { status: 200, headers: { 'content-type': 'application/json' } })) as unknown as typeof fetch;
+    const api = createCrystalBioFrontendApi({ baseUrl: 'http://127.0.0.1:8787', fetcher });
+
+    const session = await api.login('agent_2');
+    await expect(api.submitSalesVisit(session, {
+      accountName: 'Apollo Diagnostics',
+      note: 'Requirement confirmed',
+      nextAction: 'no_follow_up',
+    })).rejects.toThrow(/Location permission|Allow location permission/);
+  });
 });
