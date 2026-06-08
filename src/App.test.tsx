@@ -202,7 +202,12 @@ describe('Crystal Bio agent view shell', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Approvals' }));
     expect(screen.getByRole('heading', { name: 'Approvals' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Meera Service Leave request/i }));
-    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Leave request opened'));
+    expect(screen.getByText('Back to approvals')).toBeInTheDocument();
+    expect(screen.getByText('12 Jun to 13 Jun • Sick leave')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Approve' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Reject' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Approve' }));
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Approved in demo'));
   });
 
   it('shows feedback when admin generates today report', async () => {

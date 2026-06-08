@@ -7,6 +7,7 @@ type AppScreen = 'home' | 'visits' | 'sales' | 'service' | 'attendance' | 'leave
 type ReportPeriod = 'today' | 'week' | 'month';
 type AdminAgentFilter = 'all' | 'sales' | 'service';
 type AdminTab = 'overview' | 'agents' | 'approvals' | 'adminReports';
+type AdminApprovalId = 'meera-leave' | 'apollo-followup';
 type ToastNotice = { title: string; message: string; tone?: 'success' | 'info' | 'warning' | 'error' };
 
 const toneClass: Record<string, string> = {
@@ -37,6 +38,18 @@ const getInitialScreen = (): AppScreen => {
   return requestedScreen && screenOptions.includes(requestedScreen) ? requestedScreen : 'home';
 };
 
+const getInitialAdminTab = (): AdminTab => {
+  if (typeof window === 'undefined') return 'overview';
+  const requestedTab = new URLSearchParams(window.location.search).get('adminTab') as AdminTab | null;
+  return requestedTab && ['overview', 'agents', 'approvals', 'adminReports'].includes(requestedTab) ? requestedTab : 'overview';
+};
+
+const getInitialAdminApproval = (): AdminApprovalId | null => {
+  if (typeof window === 'undefined') return null;
+  const requestedApproval = new URLSearchParams(window.location.search).get('approval') as AdminApprovalId | null;
+  return requestedApproval && ['meera-leave', 'apollo-followup'].includes(requestedApproval) ? requestedApproval : null;
+};
+
 function App() {
   const [screen, setScreen] = useState<AppScreen>(getInitialScreen);
   const [session, setSession] = useState<FrontendSession | null>(null);
@@ -47,7 +60,8 @@ function App() {
   const [reportPeriod, setReportPeriod] = useState<ReportPeriod>('week');
   const [adminPeriod, setAdminPeriod] = useState<ReportPeriod>('today');
   const [adminAgentFilter, setAdminAgentFilter] = useState<AdminAgentFilter>('all');
-  const [adminTab, setAdminTab] = useState<AdminTab>('overview');
+  const [adminTab, setAdminTab] = useState<AdminTab>(getInitialAdminTab);
+  const [selectedAdminApproval, setSelectedAdminApproval] = useState<AdminApprovalId | null>(getInitialAdminApproval);
   const [leaveFromDate, setLeaveFromDate] = useState('2026-06-12');
   const [leaveToDate, setLeaveToDate] = useState('2026-06-12');
   const [leaveReason, setLeaveReason] = useState('Sick leave');
@@ -259,6 +273,7 @@ function App() {
 
   const openAdminTab = (nextTab: AdminTab) => {
     setAdminTab(nextTab);
+    if (nextTab !== 'approvals') setSelectedAdminApproval(null);
     setScreenNotice({
       title: nextTab === 'overview' ? 'Overview opened' : nextTab === 'agents' ? 'Agents opened' : nextTab === 'approvals' ? 'Approvals opened' : 'Admin reports opened',
       message: nextTab === 'agents' ? 'Use Sales / Service filters to narrow the agent list.' : nextTab === 'approvals' ? 'Pending leave and follow-up items are shown first.' : 'Preview section updated.',
@@ -1024,6 +1039,34 @@ function App() {
       { name: 'Meera Service', role: 'service' as const, detail: 'Checked in • 1 service visit • parts required', status: 'View', chip: 'chip chip-info' },
       { name: 'Anil Sales', role: 'sales' as const, detail: 'Not checked in yet • no update today', status: 'Missing', chip: 'chip chip-warning' },
     ];
+    const adminApprovals: Record<AdminApprovalId, { label: string; chipClass: string; agent: string; title: string; summary: string; detail: string; meta: string; actionNote: string }> = {
+      'meera-leave': {
+        label: 'Leave',
+        chipClass: 'chip chip-warning',
+        agent: 'Meera Service',
+        title: 'Leave request',
+        summary: '12 Jun to 13 Jun • Sick leave',
+        detail: 'Meera has requested leave for two days. Admin can approve or reject from this detail view.',
+        meta: 'Service agent • Submitted today',
+        actionNote: 'Approval status will show in Meera’s Leave and Reports pages.',
+      },
+      'apollo-followup': {
+        label: 'Follow-up',
+        chipClass: 'chip chip-info',
+        agent: 'Rahul Sales',
+        title: 'Apollo Diagnostics',
+        summary: 'Quote follow-up due tomorrow',
+        detail: 'Sales follow-up needs admin attention because the quote is pending and next action is due.',
+        meta: 'Sales agent • Apollo Diagnostics',
+        actionNote: 'Admin can assign a next action or mark this follow-up reviewed.',
+      },
+    };
+    const openApproval = (approvalId: AdminApprovalId) => {
+      setSelectedAdminApproval(approvalId);
+      setAdminTab('approvals');
+      setScreenNotice(null);
+    };
+    const activeApproval = selectedAdminApproval ? adminApprovals[selectedAdminApproval] : null;
     const visibleAgents = adminAgents.filter((agent) => adminAgentFilter === 'all' || agent.role === adminAgentFilter);
     const period = adminPeriodData[adminPeriod];
     const changePeriod = (nextPeriod: ReportPeriod) => {
@@ -1066,17 +1109,40 @@ function App() {
         )}
 
         {showApprovals && (
-          <section className="admin-action-card">
-            <label>Needs admin attention</label>
-            <button type="button" className="admin-alert-row admin-click-row" onClick={() => setScreenNotice({ title: 'Leave request opened', message: 'Meera Service request is ready for approve / reject in the admin approval view.', tone: 'info' })}>
-              <span className="chip chip-warning">Leave</span>
-              <div><strong>Meera Service</strong><p>Leave request waiting for approve / reject.</p></div>
-            </button>
-            <button type="button" className="admin-alert-row admin-click-row" onClick={() => setScreenNotice({ title: 'Follow-up opened', message: 'Apollo Diagnostics quote follow-up details are ready for admin review.', tone: 'info' })}>
-              <span className="chip chip-info">Follow-up</span>
-              <div><strong>Apollo Diagnostics</strong><p>Quote follow-up due tomorrow.</p></div>
-            </button>
-          </section>
+          activeApproval ? (
+            <section className="admin-approval-detail-card">
+              <button type="button" className="admin-detail-back" onClick={() => setSelectedAdminApproval(null)}>
+                <ChevronLeft size={16} /> Back to approvals
+              </button>
+              <span className={activeApproval.chipClass}>{activeApproval.label}</span>
+              <div className="admin-approval-detail-heading">
+                <h4>{activeApproval.title}</h4>
+                <strong>{activeApproval.agent}</strong>
+                <p>{activeApproval.summary}</p>
+              </div>
+              <div className="admin-approval-detail-body">
+                <span>{activeApproval.meta}</span>
+                <p>{activeApproval.detail}</p>
+                <small>{activeApproval.actionNote}</small>
+              </div>
+              <div className="admin-approval-actions">
+                <button type="button" className="secondary-action" onClick={() => setScreenNotice({ title: 'Rejected in demo', message: `${activeApproval.title} would be rejected after backend approval workflow is connected.`, tone: 'warning' })}>Reject</button>
+                <button type="button" className="primary-action" onClick={() => setScreenNotice({ title: 'Approved in demo', message: `${activeApproval.title} would be approved and reflected in the agent app.`, tone: 'success' })}>Approve</button>
+              </div>
+            </section>
+          ) : (
+            <section className="admin-action-card admin-approval-list-card">
+              <label>Needs admin attention</label>
+              <button type="button" className="admin-alert-row admin-click-row" onClick={() => openApproval('meera-leave')}>
+                <span className="chip chip-warning">Leave</span>
+                <div><strong>Meera Service</strong><p>Leave request waiting for approve / reject.</p></div>
+              </button>
+              <button type="button" className="admin-alert-row admin-click-row" onClick={() => openApproval('apollo-followup')}>
+                <span className="chip chip-info">Follow-up</span>
+                <div><strong>Apollo Diagnostics</strong><p>Quote follow-up due tomorrow.</p></div>
+              </button>
+            </section>
+          )
         )}
 
         {showAgents && (
