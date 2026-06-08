@@ -811,6 +811,12 @@ function App() {
       : attendance?.status === 'checked_out'
         ? 'Start and end locations saved for today.'
         : 'Tap Check in before the first field visit.';
+    const todayLog = attendance?.status === 'checked_in'
+      ? { date: 'Today', status: 'Checked in', detail: `Started today • ${workTypes.join(' + ') || 'Work type not selected'}` }
+      : attendance?.status === 'checked_out'
+        ? { date: 'Today', status: 'Checked out', detail: `Completed today • ${workTypes.join(' + ') || 'Work type not selected'}` }
+        : { date: 'Today', status: 'Ready to check in', detail: `Not started yet • ${workTypes.join(' + ') || 'Choose work type'}` };
+    const attendanceLogs = [todayLog, ...sampleAttendanceLogs.filter((log) => log.date !== 'Today')];
     return (
       <ScreenPanel title="Attendance" subtitle="Track today, weekly attendance, and leave status in one place.">
         <div className="attendance-status-card">
@@ -848,7 +854,7 @@ function App() {
         <button type="button" className="primary-action attendance-main-action" disabled={!session || isAttendanceBusy} onClick={handleAttendanceAction}>{isAttendanceBusy ? 'Saving…' : attendanceAction}</button>
         <button type="button" className="secondary-action" onClick={() => goToScreen('leave')}>Request leave</button>
         <div className="section-label">Recent attendance</div>
-        {sampleAttendanceLogs.map((log) => (
+        {attendanceLogs.map((log) => (
           <div className="entry-row" key={log.date}>
             <div><strong>{log.date}</strong><p>{log.detail}</p></div>
             <span className="chip chip-soft">{log.status}</span>

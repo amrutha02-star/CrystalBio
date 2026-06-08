@@ -25,6 +25,9 @@ describe('Crystal Bio agent view shell', () => {
 
     await waitFor(() => expect(screen.getByText('Checked in. GPS saved for today.')).toBeInTheDocument());
     expect(screen.getByText('Checked in for field work')).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText('Attendance'));
+    expect(screen.getByText('Started today • Sales visit')).toBeInTheDocument();
+    expect(screen.getAllByText('Checked in').length).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: /check out/i })).toBeInTheDocument();
   });
 
@@ -38,6 +41,9 @@ describe('Crystal Bio agent view shell', () => {
 
     await waitFor(() => expect(screen.getByText('Checked out. End location saved.')).toBeInTheDocument());
     expect(screen.getByText('Ready for field work')).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText('Attendance'));
+    expect(screen.getByText('Completed today • Sales visit')).toBeInTheDocument();
+    expect(screen.getAllByText('Checked out').length).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: /check in/i })).toBeInTheDocument();
   });
 
