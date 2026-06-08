@@ -290,6 +290,64 @@ p { color: var(--muted); line-height: 1.5; }
 .photo-button { min-height: 44px; margin: 0; padding: 10px 12px; border-radius: 15px; }
 .split-actions { display: grid; grid-template-columns: 1fr; gap: 6px; margin-bottom: 6px; }
 .report-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+.attendance-status-card {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+  align-items: center;
+  border-radius: 24px;
+  padding: 14px;
+  margin-bottom: 12px;
+  background: linear-gradient(135deg, #f0f7e9 0%, #fffef7 100%);
+  border: 1px solid rgba(123, 139, 111, 0.26);
+  box-shadow: 0 16px 30px rgba(55, 65, 46, 0.07);
+}
+.attendance-status-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 16px;
+  background: var(--sage-deep);
+  color: #fffef8;
+}
+.attendance-status-card label,
+.leave-summary-card label,
+.leave-confirm-card label,
+.section-label {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.attendance-status-card strong,
+.leave-confirm-card strong {
+  display: block;
+  color: var(--ink);
+  font-size: 17px;
+  line-height: 1.2;
+  font-weight: 650;
+}
+.attendance-status-card span,
+.leave-summary-card span,
+.leave-confirm-card span,
+.leave-summary-card p {
+  display: block;
+  margin: 3px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+.attendance-main-action { min-height: 52px; font-size: 14px; }
+.section-label { margin: 14px 0 8px; }
+.leave-confirm-card {
+  background: #fffef8;
+  border: 1px solid rgba(36, 133, 86, 0.26);
+}
 .metric-card strong { display: block; font-size: 30px; font-weight: 600; letter-spacing: -0.03em; }
 .metric-card span, .panel-note { color: var(--muted); font-size: 12px; line-height: 1.45; }
 .panel-note { margin: 10px 2px 0; }

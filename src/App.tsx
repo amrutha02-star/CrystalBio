@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
-import { CalendarCheck, CheckCircle2, ChevronLeft, ClipboardList, FileText, Home, MapPin, Plus, Search, UserRound } from 'lucide-react';
+import { CalendarCheck, CheckCircle2, ChevronLeft, ClipboardList, Clock3, FileText, Home, MapPin, Plus, Search, UserRound } from 'lucide-react';
 import { sampleEntries } from './appData';
 import { crystalBioFrontendApi, type FrontendAttendance, type FrontendLeaveRequest, type FrontendSalesSaveResult, type FrontendSalesNextAction, type FrontendServiceSaveResult, type FrontendServiceNextAction, type FrontendServiceType, type FrontendSession } from './crystalBioFrontendApi';
 
@@ -770,21 +770,47 @@ function App() {
     );
   };
 
-  const renderAttendance = () => (
-    <ScreenPanel title="Attendance" subtitle="Check-in, check-out, leave request, and status history.">
-      <button type="button" className="primary-action" disabled={!session || isAttendanceBusy} onClick={handleAttendanceAction}>{isAttendanceBusy ? 'Saving…' : attendanceAction}</button>
-      <button type="button" className="secondary-action" onClick={() => goToScreen('leave')}>Send leave request</button>
-      {sampleAttendanceLogs.map((log) => (
-        <div className="entry-row" key={log.date}>
-          <div><strong>{log.date}</strong><p>{log.detail}</p></div>
-          <span className="chip chip-soft">{log.status}</span>
+  const renderAttendance = () => {
+    const todayStatus = attendance?.status === 'checked_in' ? 'Checked in' : attendance?.status === 'checked_out' ? 'Checked out' : 'Not checked in yet';
+    const todayDetail = attendance?.status === 'checked_in'
+      ? 'Start location saved. Check out after field work.'
+      : attendance?.status === 'checked_out'
+        ? 'Start and end locations saved for today.'
+        : 'Tap Check in before the first field visit.';
+    return (
+      <ScreenPanel title="Attendance" subtitle="One tap to start or end the field day.">
+        <div className="attendance-status-card">
+          <div className="attendance-status-icon"><Clock3 size={20} /></div>
+          <div>
+            <label>Today’s status</label>
+            <strong>{todayStatus}</strong>
+            <span>{todayDetail}</span>
+          </div>
         </div>
-      ))}
-    </ScreenPanel>
-  );
+        <div className="form-card highlighted-card">
+          <label>GPS capture</label>
+          <p>{isBackendConfigured ? 'The app saves the phone location during check-in and check-out.' : 'Demo preview uses sample GPS. Real app will save phone location during check-in and check-out.'}</p>
+        </div>
+        <button type="button" className="primary-action attendance-main-action" disabled={!session || isAttendanceBusy} onClick={handleAttendanceAction}>{isAttendanceBusy ? 'Saving…' : attendanceAction}</button>
+        <button type="button" className="secondary-action" onClick={() => goToScreen('leave')}>Request leave</button>
+        <div className="section-label">Recent attendance</div>
+        {sampleAttendanceLogs.map((log) => (
+          <div className="entry-row" key={log.date}>
+            <div><strong>{log.date}</strong><p>{log.detail}</p></div>
+            <span className="chip chip-soft">{log.status}</span>
+          </div>
+        ))}
+      </ScreenPanel>
+    );
+  };
 
   const renderLeave = () => (
-    <ScreenPanel title="Leave request" subtitle="Simple request for admin approval.">
+    <ScreenPanel title="Leave request" subtitle="Send a simple request for admin approval.">
+      <div className="form-card highlighted-card leave-summary-card">
+        <label>Request summary</label>
+        <span>{leaveFromDate || 'From date'} to {leaveToDate || 'To date'}</span>
+        <p>{leaveReason}{leaveNote ? ` • ${leaveNote}` : ''}</p>
+      </div>
       <label className="field-card">
         <span>From date</span>
         <input aria-label="Leave from date" type="date" value={leaveFromDate} onChange={(event) => setLeaveFromDate(event.target.value)} />
@@ -804,14 +830,15 @@ function App() {
         </select>
       </label>
       <label className="field-card">
-        <span>Optional note</span>
-        <textarea aria-label="Leave note" value={leaveNote} onChange={(event) => setLeaveNote(event.target.value)} placeholder="Add a short note for admin" rows={3} />
+        <span>Note for admin</span>
+        <textarea aria-label="Leave note" value={leaveNote} onChange={(event) => setLeaveNote(event.target.value)} placeholder="Optional short note" rows={3} />
       </label>
       <button type="button" className="primary-action" disabled={isLeaveSubmitting || !session} onClick={handleLeaveSubmit}>{isLeaveSubmitting ? 'Submitting…' : 'Submit leave request'}</button>
       {leaveRequest && (
-        <div className="form-card highlighted-card">
+        <div className="form-card leave-confirm-card">
           <label>Latest request</label>
-          <span>{leaveRequest.fromDate} to {leaveRequest.toDate} • {leaveRequest.reason} • {leaveRequest.status}</span>
+          <strong>{leaveRequest.status}</strong>
+          <span>{leaveRequest.fromDate} to {leaveRequest.toDate} • {leaveRequest.reason}</span>
           {leaveRequest.note && <span>Note: {leaveRequest.note}</span>}
         </div>
       )}

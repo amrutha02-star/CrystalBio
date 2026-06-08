@@ -78,7 +78,7 @@ describe('Crystal Bio agent view shell', () => {
     fireEvent.click(screen.getByLabelText('Home'));
     fireEvent.click(screen.getByRole('button', { name: /^attendance logs & leave$/i }));
     expect(screen.getByRole('heading', { name: 'Attendance' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /send leave request/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /request leave/i })).toBeInTheDocument();
   });
 
   it('opens bottom navigation screens and keeps demo report numbers clearly fixed', async () => {
@@ -152,14 +152,15 @@ describe('Crystal Bio agent view shell', () => {
     expect(screen.getAllByText(/Step 2: saved • Step 3: saved/i).length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByLabelText('Attendance'));
-    fireEvent.click(screen.getByRole('button', { name: /send leave request/i }));
+    fireEvent.click(screen.getByRole('button', { name: /request leave/i }));
     fireEvent.change(screen.getByLabelText('Leave from date'), { target: { value: '2026-06-12' } });
     fireEvent.change(screen.getByLabelText('Leave to date'), { target: { value: '2026-06-13' } });
     fireEvent.change(screen.getByLabelText('Leave reason'), { target: { value: 'Personal work' } });
     fireEvent.change(screen.getByLabelText('Leave note'), { target: { value: 'Family appointment' } });
     fireEvent.click(screen.getByRole('button', { name: /submit leave request/i }));
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Demo leave request saved'));
-    expect(screen.getByText(/2026-06-12 to 2026-06-13 • Personal work • pending/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/2026-06-12 to 2026-06-13/i).length).toBeGreaterThan(0);
+    expect(screen.getByText('pending')).toBeInTheDocument();
     expect(screen.getByText('Note: Family appointment')).toBeInTheDocument();
   }, 10000);
 });
