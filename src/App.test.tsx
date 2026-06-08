@@ -1,9 +1,24 @@
 import '@testing-library/jest-dom/vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import App from './App';
 
 describe('Crystal Bio agent view shell', () => {
+  beforeEach(() => {
+    window.history.pushState({}, '', '/?screen=home');
+  });
+
+  it('shows a simple role-based login with active Agent and Admin access', async () => {
+    window.history.pushState({}, '', '/?screen=login');
+    render(<App />);
+
+    expect(screen.getByText('Login screen')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /agent login/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /admin access/i })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /agent login/i }));
+    expect(await screen.findByText('Quick actions')).toBeInTheDocument();
+  });
+
   it('renders the connected agent home with compact quick actions', async () => {
     render(<App />);
 

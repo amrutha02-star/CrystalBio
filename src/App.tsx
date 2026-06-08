@@ -3,7 +3,7 @@ import { BarChart3, CalendarCheck, CheckCircle2, ChevronLeft, ClipboardList, Clo
 import { sampleEntries } from './appData';
 import { crystalBioFrontendApi, type FrontendAttendance, type FrontendLeaveRequest, type FrontendSalesSaveResult, type FrontendSalesNextAction, type FrontendServiceSaveResult, type FrontendServiceNextAction, type FrontendServiceType, type FrontendSession } from './crystalBioFrontendApi';
 
-type AppScreen = 'home' | 'visits' | 'sales' | 'service' | 'checkin' | 'attendance' | 'leave' | 'reports' | 'admin';
+type AppScreen = 'login' | 'home' | 'visits' | 'sales' | 'service' | 'checkin' | 'attendance' | 'leave' | 'reports' | 'admin';
 type ReportPeriod = 'today' | 'week' | 'month';
 type AdminAgentFilter = 'all' | 'sales' | 'service';
 type AdminTab = 'overview' | 'agents' | 'approvals' | 'adminReports';
@@ -28,14 +28,14 @@ const sampleAttendanceLogs = [
   { date: 'Yesterday', status: 'Checked out', detail: '9:18 AM to 6:04 PM' },
 ];
 
-const screenOptions: AppScreen[] = ['home', 'visits', 'sales', 'service', 'checkin', 'attendance', 'leave', 'reports', 'admin'];
+const screenOptions: AppScreen[] = ['login', 'home', 'visits', 'sales', 'service', 'checkin', 'attendance', 'leave', 'reports', 'admin'];
 
 const agentIdForScreen = (nextScreen: AppScreen) => (nextScreen === 'service' ? 'agent_3' : 'agent_2');
 
 const getInitialScreen = (): AppScreen => {
-  if (typeof window === 'undefined') return 'home';
+  if (typeof window === 'undefined') return 'login';
   const requestedScreen = new URLSearchParams(window.location.search).get('screen') as AppScreen | null;
-  return requestedScreen && screenOptions.includes(requestedScreen) ? requestedScreen : 'home';
+  return requestedScreen && screenOptions.includes(requestedScreen) ? requestedScreen : 'login';
 };
 
 const getInitialAdminTab = (): AdminTab => {
@@ -579,6 +579,27 @@ function App() {
     }
     goToScreen(action, action === 'sales' ? { newSalesVisit: true } : action === 'service' ? { newServiceVisit: true } : undefined);
   };
+
+  const renderLogin = () => (
+    <ScreenPanel title="Login" subtitle="Choose the right access before starting work.">
+      <section className="login-hero-card">
+        <p>CrystalBio field app</p>
+        <strong>Simple access for field agents and admins</strong>
+        <span>Agents see daily work actions. Admins see team reports and approvals.</span>
+      </section>
+      <div className="login-action-stack">
+        <button type="button" className="login-access-card" onClick={() => goToScreen('home')}>
+          <span className="visit-action-icon"><UserRound size={19} /></span>
+          <div><strong>Agent login</strong><small>Check in, visits, leave, and my reports</small></div>
+        </button>
+        <button type="button" className="login-access-card admin-login-card" onClick={() => goToScreen('admin')}>
+          <span className="visit-action-icon service-icon"><UsersRound size={19} /></span>
+          <div><strong>Admin access</strong><small>Everyone’s reports, leave approvals, and team status</small></div>
+        </button>
+      </div>
+      <p className="panel-note">Preview uses demo login. Real app will connect mobile number/password or company login.</p>
+    </ScreenPanel>
+  );
 
   const renderHome = () => (
     <>
@@ -1269,6 +1290,7 @@ function App() {
   };
 
   const renderScreen = () => {
+    if (screen === 'login') return renderLogin();
     if (screen === 'visits') return renderVisits();
     if (screen === 'sales') return renderSales();
     if (screen === 'service') return renderService();
@@ -1290,8 +1312,8 @@ function App() {
     <main className="app-shell agent-only-shell">
       <section className="preview-note">
         <p className="eyebrow">{isBackendConfigured ? 'Backend connected' : 'Demo preview'}</p>
-        <h1>{screen === 'admin' ? (adminTab === 'adminReports' ? 'Admin reports screen' : adminTab === 'approvals' ? 'Admin approvals screen' : adminTab === 'agents' ? 'Admin agents screen' : 'Admin overview screen') : 'Agent home screen'}</h1>
-        <p>{screen === 'admin' ? 'Owner/admin preview uses fixed demo data to review team attendance, leave, and field reports.' : isBackendConfigured ? 'Home logs in the agent and sends attendance to the Crystal Bio backend API.' : 'GitHub Pages preview uses fixed demo data. Buttons open the next app screens; only hosted-backend sections will save real records.'}</p>
+        <h1>{screen === 'login' ? 'Login screen' : screen === 'admin' ? (adminTab === 'adminReports' ? 'Admin reports screen' : adminTab === 'approvals' ? 'Admin approvals screen' : adminTab === 'agents' ? 'Admin agents screen' : 'Admin overview screen') : 'Agent home screen'}</h1>
+        <p>{screen === 'login' ? 'Clean role-based entry for field agents and admin users.' : screen === 'admin' ? 'Owner/admin preview uses fixed demo data to review team attendance, leave, and field reports.' : isBackendConfigured ? 'Home logs in the agent and sends attendance to the Crystal Bio backend API.' : 'GitHub Pages preview uses fixed demo data. Buttons open the next app screens; only hosted-backend sections will save real records.'}</p>
       </section>
 
       <section className="agent-preview-wrap">
@@ -1300,9 +1322,9 @@ function App() {
 
           <header className="phone-header">
             <div>
-              {screen !== 'home' && <button type="button" className="back-button" onClick={() => goToScreen('home')}><ChevronLeft size={17} /> Home</button>}
-              <p className="muted">{screen === 'admin' ? 'Owner access' : 'Good morning'}</p>
-              <h2>{screen === 'admin' ? 'Admin' : session?.agentName ?? '{Agent Name}'}</h2>
+              {screen !== 'home' && screen !== 'login' && <button type="button" className="back-button" onClick={() => goToScreen('home')}><ChevronLeft size={17} /> Home</button>}
+              <p className="muted">{screen === 'login' ? 'Welcome' : screen === 'admin' ? 'Owner access' : 'Good morning'}</p>
+              <h2>{screen === 'login' ? 'CrystalBio' : screen === 'admin' ? 'Admin' : session?.agentName ?? '{Agent Name}'}</h2>
             </div>
             <div className="avatar">{screen === 'admin' ? <UsersRound size={21} /> : <UserRound size={21} />}</div>
           </header>
@@ -1318,7 +1340,7 @@ function App() {
             </div>
           )}
 
-          <nav className="bottom-nav" aria-label={screen === 'admin' ? 'Admin navigation' : 'Agent navigation'}>
+          {screen !== 'login' && <nav className="bottom-nav" aria-label={screen === 'admin' ? 'Admin navigation' : 'Agent navigation'}>
             {screen === 'admin' ? (
               [
                 { label: 'Overview', tab: 'overview' as AdminTab, icon: Home },
@@ -1351,7 +1373,7 @@ function App() {
                 </button>
               );
             })}
-          </nav>
+          </nav>}
         </div>
       </section>
     </main>

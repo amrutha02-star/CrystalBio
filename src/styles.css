@@ -233,6 +233,38 @@ p { color: var(--muted); line-height: 1.5; }
   color: var(--sage-deep);
 }
 .visit-action-icon.service-icon { background: #eef3e9; color: #4f6d58; }
+.login-hero-card {
+  border-radius: 24px;
+  padding: 16px;
+  margin-bottom: 12px;
+  background: linear-gradient(135deg, #eef4e8 0%, #fffef8 100%);
+  border: 1px solid rgba(123, 139, 111, 0.22);
+}
+.login-hero-card p,
+.login-hero-card strong,
+.login-hero-card span { display: block; }
+.login-hero-card p { margin: 0 0 6px; color: var(--sage-deep); font-size: 11.5px; font-weight: 560; text-transform: uppercase; letter-spacing: 0.035em; }
+.login-hero-card strong { color: var(--ink); font-size: 18px; line-height: 1.2; font-weight: 550; letter-spacing: -0.01em; }
+.login-hero-card span { margin-top: 7px; color: var(--muted); font-size: 12.5px; line-height: 1.42; }
+.login-action-stack { display: grid; gap: 10px; }
+.login-access-card {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  border-radius: 21px;
+  padding: 14px;
+  background: #fffef8;
+  border: 1.5px solid rgba(95, 124, 78, 0.34);
+  box-shadow: 0 10px 22px rgba(47, 61, 40, 0.06);
+}
+.login-access-card strong,
+.login-access-card small { display: block; }
+.login-access-card strong { color: var(--ink); font-size: 14.5px; font-weight: 560; }
+.login-access-card small { margin-top: 3px; color: var(--muted); font-size: 11.8px; line-height: 1.35; }
+.login-access-card:focus-visible { outline: 3px solid rgba(21, 18, 23, 0.24); outline-offset: 3px; }
+.admin-login-card { background: #f8fbf4; }
 .empty-state { padding: 18px 6px; color: var(--muted); font-size: 12.5px; text-align: center; }
 .form-card label, .field-card span { display: block; color: var(--ink); font-size: 12.5px; font-weight: 550; margin-bottom: 4px; }
 .form-card span, .form-card p { display: block; color: var(--muted); font-size: 12px; line-height: 1.4; margin: 0; }
