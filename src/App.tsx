@@ -47,6 +47,7 @@ function App() {
   const [leaveNote, setLeaveNote] = useState('');
   const [leaveRequest, setLeaveRequest] = useState<FrontendLeaveRequest | null>(null);
   const [isLeaveSubmitting, setIsLeaveSubmitting] = useState(false);
+  const [visitSearch, setVisitSearch] = useState('');
   const [salesAccountName, setSalesAccountName] = useState('Apollo Diagnostics');
   const [salesContactPerson, setSalesContactPerson] = useState('Lab manager');
   const [salesDesignation, setSalesDesignation] = useState('Lab manager');
@@ -142,7 +143,7 @@ function App() {
       { label: attendanceAction, hint: attendanceHint, className: 'action-mint', icon: MapPin, onClick: 'attendance-action' as const },
       { label: 'Sales', hint: 'New visit', className: 'action-peach', icon: Plus, onClick: 'sales' as const },
       { label: 'Service', hint: 'Report', className: 'action-sky', icon: ClipboardList, onClick: 'service' as const },
-      { label: 'Attendance', hint: 'Logs & leave', className: 'action-cream', icon: CalendarCheck, onClick: 'attendance' as const },
+      { label: 'Attendance', hint: 'Logs & leave', className: 'action-attendance', icon: CalendarCheck, onClick: 'attendance' as const },
     ],
     [attendanceAction, attendanceHint],
   );
@@ -566,24 +567,49 @@ function App() {
     </>
   );
 
-  const renderVisits = () => (
-    <ScreenPanel title="Visits" subtitle="Search previous entries or start a new field update.">
-      <div className="search-card"><Search size={17} /><span>Search customer, phone, equipment, serial number</span></div>
-      <div className="split-actions">
-        <button type="button" className="primary-action" onClick={() => goToScreen('sales', { newSalesVisit: true })}>New sales visit update</button>
-        <button type="button" className="secondary-action" onClick={() => goToScreen('service', { newServiceVisit: true })}>New service visit update</button>
-      </div>
-      {sampleEntries.map((entry) => (
-        <button className="entry-row entry-button" key={entry.customer} type="button" onClick={() => goToScreen(entry.type === 'Sales' ? 'sales' : 'service')}>
-          <div>
-            <strong>{entry.customer}</strong>
-            <p>{entry.type} • Next: {entry.next}</p>
-          </div>
-          <span className={toneClass[entry.tone]}>{entry.status}</span>
-        </button>
-      ))}
-    </ScreenPanel>
-  );
+  const renderVisits = () => {
+    const query = visitSearch.trim().toLowerCase();
+    const filteredEntries = sampleEntries.filter((entry) => {
+      const haystack = `${entry.customer} ${entry.type} ${entry.next} ${entry.status}`.toLowerCase();
+      return !query || haystack.includes(query);
+    });
+    return (
+      <ScreenPanel title="Visits" subtitle="Search previous entries or start a new field update.">
+        <label className="search-card visit-search-card">
+          <Search size={17} />
+          <input
+            aria-label="Search visits"
+            value={visitSearch}
+            onChange={(event) => setVisitSearch(event.target.value)}
+            placeholder="Search customer, phone, equipment, serial number"
+          />
+        </label>
+        <div className="visit-action-grid">
+          <button type="button" className="visit-action-card" aria-label="New sales visit update" onClick={() => goToScreen('sales', { newSalesVisit: true })}>
+            <span className="visit-action-icon"><Plus size={19} /></span>
+            <strong>Sales</strong>
+            <small>New visit update</small>
+          </button>
+          <button type="button" className="visit-action-card" aria-label="New service visit update" onClick={() => goToScreen('service', { newServiceVisit: true })}>
+            <span className="visit-action-icon service-icon"><ClipboardList size={18} /></span>
+            <strong>Service</strong>
+            <small>New service update</small>
+          </button>
+        </div>
+        {filteredEntries.length ? filteredEntries.map((entry) => (
+          <button className="entry-row entry-button" key={entry.customer} type="button" onClick={() => goToScreen(entry.type === 'Sales' ? 'sales' : 'service')}>
+            <div>
+              <strong>{entry.customer}</strong>
+              <p>{entry.type} • Next: {entry.next}</p>
+            </div>
+            <span className={toneClass[entry.tone]}>{entry.status}</span>
+          </button>
+        )) : (
+          <div className="empty-state">No matching visits found.</div>
+        )}
+      </ScreenPanel>
+    );
+  };
 
   const renderSales = () => (
     <ScreenPanel title="Sales visit" subtitle="Save quickly first. Add remaining details later when free.">
@@ -675,7 +701,7 @@ function App() {
           <span>Equipment name / model</span>
           <input aria-label="Sales equipment model" value={salesEquipmentModel} onChange={(event) => setSalesEquipmentModel(event.target.value)} placeholder="Optional" />
         </label>
-        <button type="button" className="secondary-action" disabled={salesAnySubmitting || !salesSaveResult} onClick={handleSalesStep2Submit}>{isSalesStep2Submitting ? 'Saving…' : 'Save Step 2'}</button>
+        <button type="button" aria-label="Save Step 2" className={salesSaveResult ? 'secondary-action step-save-action' : 'secondary-action step-save-action locked-step-action'} disabled={salesAnySubmitting || !salesSaveResult} onClick={handleSalesStep2Submit}>{isSalesStep2Submitting ? 'Saving…' : salesSaveResult ? 'Save Step 2' : 'Complete Step 1 first'}</button>
       </section>
 
       <section className="step-card">
@@ -703,7 +729,7 @@ function App() {
           </div>
           <textarea aria-label="Sales photo note" value={salesPhotoNote} onChange={(event) => setSalesPhotoNote(event.target.value)} placeholder="Optional note, e.g. visiting card photo added" rows={2} />
         </div>
-        <button type="button" className="secondary-action" disabled={salesAnySubmitting || !salesSaveResult} onClick={handleSalesStep3Submit}>{isSalesStep3Submitting ? 'Saving…' : 'Save Step 3'}</button>
+        <button type="button" aria-label="Save Step 3" className={salesSaveResult ? 'secondary-action step-save-action' : 'secondary-action step-save-action locked-step-action'} disabled={salesAnySubmitting || !salesSaveResult} onClick={handleSalesStep3Submit}>{isSalesStep3Submitting ? 'Saving…' : salesSaveResult ? 'Save Step 3' : 'Complete Step 1 first'}</button>
       </section>
 
       {salesSaveResult && (
@@ -752,7 +778,7 @@ function App() {
           <label className="field-card"><span>Issue category</span><input aria-label="Service issue category" value={serviceIssueCategory} onChange={(event) => setServiceIssueCategory(event.target.value)} placeholder="Optional" /></label>
           <label className="field-card"><span>Detailed issue</span><textarea aria-label="Service issue description" value={serviceIssueDescription} onChange={(event) => setServiceIssueDescription(event.target.value)} placeholder="Optional detailed issue" rows={2} /></label>
           <label className="field-card"><span>Warranty / AMC</span><input aria-label="Service warranty AMC" value={serviceWarrantyAmc} onChange={(event) => setServiceWarrantyAmc(event.target.value)} placeholder="Optional" /></label>
-          <button type="button" className="secondary-action" disabled={serviceAnySubmitting || !serviceSaveResult} onClick={handleServiceStep2Submit}>{isServiceStep2Submitting ? 'Saving…' : 'Save Step 2'}</button>
+          <button type="button" aria-label="Save Step 2" className={serviceSaveResult ? 'secondary-action step-save-action' : 'secondary-action step-save-action locked-step-action'} disabled={serviceAnySubmitting || !serviceSaveResult} onClick={handleServiceStep2Submit}>{isServiceStep2Submitting ? 'Saving…' : serviceSaveResult ? 'Save Step 2' : 'Complete Step 1 first'}</button>
         </section>
 
         <section className="step-card">
@@ -765,7 +791,7 @@ function App() {
           <div className="field-card photo-action-card"><div><span>Service photos</span><small>Optional now. Use for machine, issue, part, or completed-work proof.</small></div><div className="photo-actions"><button type="button" className="secondary-action photo-button" onClick={() => setScreenNotice('Camera upload will be connected in the production app.')}>Camera</button><button type="button" className="secondary-action photo-button" onClick={() => setScreenNotice('File upload will be connected in the production app.')}>Upload</button></div><input aria-label="Service photo note" value={servicePhotoNote} onChange={(event) => setServicePhotoNote(event.target.value)} placeholder="Optional photo note" /></div>
           <label className="field-card"><span>Final remarks</span><textarea aria-label="Service final remarks" value={serviceFinalRemarks} onChange={(event) => setServiceFinalRemarks(event.target.value)} placeholder="Optional customer confirmation / remarks" rows={2} /></label>
           <label className="field-card"><span>Notes for office</span><textarea aria-label="Service office notes" value={serviceOfficeNotes} onChange={(event) => setServiceOfficeNotes(event.target.value)} placeholder="Optional office notes" rows={2} /></label>
-          <button type="button" className="secondary-action" disabled={serviceAnySubmitting || !serviceSaveResult} onClick={handleServiceStep3Submit}>{isServiceStep3Submitting ? 'Saving…' : 'Save Step 3'}</button>
+          <button type="button" aria-label="Save Step 3" className={serviceSaveResult ? 'secondary-action step-save-action' : 'secondary-action step-save-action locked-step-action'} disabled={serviceAnySubmitting || !serviceSaveResult} onClick={handleServiceStep3Submit}>{isServiceStep3Submitting ? 'Saving…' : serviceSaveResult ? 'Save Step 3' : 'Complete Step 1 first'}</button>
         </section>
 
         {serviceSaveResult && <div className="form-card highlighted-card"><label>Latest saved service visit</label><span>{serviceSaveResult.serviceRecord.customerName} • Visit {serviceSaveResult.visit.visitNumber} • {serviceSaveResult.visit.nextAction.split('_').join(' ')}</span><span>Step 2: {serviceStep2Saved ? 'saved' : 'pending'} • Step 3: {serviceStep3Saved ? 'saved' : 'pending'}</span></div>}
@@ -781,7 +807,7 @@ function App() {
         ? 'Start and end locations saved for today.'
         : 'Tap Check in before the first field visit.';
     return (
-      <ScreenPanel title="Attendance" subtitle="One tap to start or end the field day.">
+      <ScreenPanel title="Attendance" subtitle="Track today, weekly attendance, and leave status in one place.">
         <div className="attendance-status-card">
           <div className="attendance-status-icon"><Clock3 size={20} /></div>
           <div>
@@ -789,6 +815,12 @@ function App() {
             <strong>{todayStatus}</strong>
             <span>{todayDetail}</span>
           </div>
+        </div>
+        <div className="tracking-grid">
+          <div className="tracking-card"><label>This week</label><strong>5 days</strong><span>Present / field work</span></div>
+          <div className="tracking-card"><label>This month</label><strong>18 days</strong><span>Attendance saved</span></div>
+          <div className="tracking-card"><label>Leave</label><strong>{leaveRequest ? '1 pending' : '0 pending'}</strong><span>{leaveRequest ? `${leaveRequest.fromDate} to ${leaveRequest.toDate}` : 'No active request'}</span></div>
+          <div className="tracking-card"><label>Late / missed</label><strong>0</strong><span>No exception today</span></div>
         </div>
         <div className="form-card highlighted-card">
           <label>GPS capture</label>
@@ -850,6 +882,15 @@ function App() {
           {leaveRequest.note && <span>Note: {leaveRequest.note}</span>}
         </div>
       )}
+      <div className="section-label">Leave history</div>
+      <div className="entry-row">
+        <div><strong>{leaveRequest ? `${leaveRequest.fromDate} to ${leaveRequest.toDate}` : 'No leave request yet'}</strong><p>{leaveRequest ? leaveRequest.reason : 'Submitted requests and approval status will appear here.'}</p></div>
+        <span className="chip chip-soft">{leaveRequest ? 'in review' : 'clear'}</span>
+      </div>
+      <div className="entry-row">
+        <div><strong>Approved leave will show here</strong><p>When admin approves or rejects, the status changes for the agent.</p></div>
+        <span className="chip chip-info">status</span>
+      </div>
     </ScreenPanel>
   );
 
