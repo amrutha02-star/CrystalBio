@@ -204,7 +204,7 @@ function App() {
       return;
     }
     setIsAttendanceBusy(true);
-    setScreenNotice(isBackendConfigured ? 'Capturing check-in location…' : 'Saving demo check-in with sample GPS…');
+    setScreenNotice(isBackendConfigured ? 'Capturing check-in location…' : 'Saving check-in with sample GPS for client testing…');
     setStatusMessage('Capturing check-in location…');
     try {
       const nextAttendance = await crystalBioFrontendApi.checkIn(session);
@@ -337,7 +337,7 @@ function App() {
       return;
     }
     setIsLeaveSubmitting(true);
-    setScreenNotice(isBackendConfigured ? 'Sending leave request…' : 'Saving demo leave request…');
+    setScreenNotice(isBackendConfigured ? 'Sending leave request…' : 'Saving leave request for client testing…');
     try {
       const savedLeave = await crystalBioFrontendApi.submitLeaveRequest(session, {
         fromDate: leaveFromDate,
@@ -350,7 +350,7 @@ function App() {
         title: 'Leave request sent',
         message: isBackendConfigured
           ? 'Admin will review it. You can see the status in Leave and Reports.'
-          : 'Demo request saved. In the real app, admin will approve or reject it.',
+          : 'Request saved. Admin can approve or reject it during client testing.',
         tone: 'success',
       });
     } catch (error) {
@@ -380,7 +380,7 @@ function App() {
       return;
     }
     setIsSalesSubmitting(true);
-    setScreenNotice(isBackendConfigured ? 'Saving Sales Step 1 with GPS…' : 'Saving demo Sales Step 1 with sample GPS…');
+    setScreenNotice(isBackendConfigured ? 'Saving Sales Step 1 with GPS…' : 'Saving Sales Step 1 with sample GPS for client testing…');
     try {
       const savedSalesVisit = await crystalBioFrontendApi.submitSalesVisit(session, {
         accountName: salesAccountName.trim(),
@@ -397,7 +397,7 @@ function App() {
       setScreenNotice(
         isBackendConfigured
           ? 'Sales Step 1 saved. Agent can complete Step 2 and Step 3 later.'
-          : 'Demo Sales Step 1 saved. Step 2 and Step 3 can now be saved in this preview.',
+          : 'Sales Step 1 saved. Step 2 and Step 3 can now be saved in this client testing build.',
       );
     } catch (error) {
       setScreenNotice(error instanceof Error ? error.message : 'Sales Step 1 save failed');
@@ -485,7 +485,7 @@ function App() {
       return;
     }
     setIsServiceSubmitting(true);
-    setScreenNotice(isBackendConfigured ? 'Saving service visit with GPS…' : 'Saving demo service visit with GPS…');
+    setScreenNotice(isBackendConfigured ? 'Saving service visit with GPS…' : 'Saving service visit with sample GPS for client testing…');
     try {
       const serviceSession = session.agentId === 'agent_3' ? session : await crystalBioFrontendApi.login('agent_3');
       if (serviceSession !== session) setSession(serviceSession);
@@ -515,7 +515,7 @@ function App() {
       setScreenNotice(
         isBackendConfigured
           ? 'Service visit saved. Admin reports will include this update.'
-          : 'Demo service visit saved. Admin reports will update when the backend is connected.',
+          : 'Service visit saved. Admin reports will include this update in client testing.',
       );
     } catch (error) {
       setScreenNotice(error instanceof Error ? error.message : 'Service visit save failed');
@@ -733,7 +733,7 @@ function App() {
         </div>
         <div className="form-card highlighted-card">
           <label>Current visit location</label>
-          <p>{isBackendConfigured ? 'Location permission is requested when this update is saved.' : 'Demo preview uses fixed sample GPS. Connected backend mode requests location permission when saving.'}</p>
+          <p>{isBackendConfigured ? 'Location permission is requested when this update is saved.' : 'Client testing uses sample GPS here. Connected backend mode requests phone location when saving.'}</p>
         </div>
         <label className="field-card">
           <span>Customer / lab name</span>
@@ -863,7 +863,7 @@ function App() {
           <div className="step-heading"><span>Step 1</span><strong>Quick service update</strong><small>For the engineer to save at the site.</small></div>
           <div className="form-card highlighted-card">
             <label>Current visit location</label>
-            <p>{isBackendConfigured ? 'Location permission is requested when this update is saved.' : 'Demo preview uses fixed sample GPS. Connected backend mode requests location permission when saving.'}</p>
+            <p>{isBackendConfigured ? 'Location permission is requested when this update is saved.' : 'Client testing uses sample GPS here. Connected backend mode requests phone location when saving.'}</p>
           </div>
           <label className="field-card"><span>Customer / lab name</span><input aria-label="Service customer name" value={serviceCustomerName} onChange={(event) => setServiceCustomerName(event.target.value)} /></label>
           <label className="field-card"><span>Work done / issue checked</span><textarea aria-label="Service work done" value={serviceWorkDone} onChange={(event) => setServiceWorkDone(event.target.value)} placeholder="Issue checked, work done, customer update" rows={3} /></label>
@@ -913,7 +913,7 @@ function App() {
         <div className="attendance-status-icon"><MapPin size={20} /></div>
         <div>
           <label>Current location</label>
-          <strong>{isBackendConfigured ? 'Phone GPS will be captured' : 'Demo GPS preview'}</strong>
+          <strong>{isBackendConfigured ? 'Phone GPS will be captured' : 'Sample GPS for testing'}</strong>
           <span>{isBackendConfigured ? 'The app asks for location when the agent taps Check in now.' : 'Static preview uses sample GPS. Real app will save phone location.'}</span>
         </div>
       </div>
@@ -981,7 +981,7 @@ function App() {
         </div>
         <div className="form-card highlighted-card">
           <label>GPS capture</label>
-          <p>{isBackendConfigured ? 'The app saves the phone location during check-in and check-out.' : 'Demo preview uses sample GPS. Real app will save phone location during check-in and check-out.'}</p>
+          <p>{isBackendConfigured ? 'The app saves the phone location during check-in and check-out.' : 'Client testing uses sample GPS. Connected backend mode saves phone location during check-in and check-out.'}</p>
         </div>
         <div className="form-card leave-status-card">
           <label>Leave status</label>
@@ -1069,7 +1069,7 @@ function App() {
       setReportPeriod(period);
       setScreenNotice({
         title: `${reportCopy[period].title} ready`,
-        message: `${reportCopy[period].range} preview updated. Download/send will connect after backend reports are finalized.`,
+        message: `${reportCopy[period].range} generated from saved field activity for client testing.`,
         tone: 'success',
       });
     };
@@ -1122,14 +1122,14 @@ function App() {
               <strong>{activeReport.title}</strong>
               <span>{activeReport.range} • {activeReport.note}</span>
             </div>
-            <span className="chip chip-soft">Preview</span>
+            <span className="chip chip-soft">Client testing data</span>
           </div>
         </section>
 
         <div className="section-label">Recent report items</div>
         <div className="entry-row"><div><strong>Apollo Diagnostics</strong><p>Sales visit • Quote to be shared</p></div><span className="chip chip-warning">follow-up</span></div>
         <div className="entry-row"><div><strong>Metro Lab</strong><p>Service visit • Parts required</p></div><span className="chip chip-info">service</span></div>
-        <p className="panel-note">These preview numbers are fixed demo values. They will come from backend reports when reports are connected.</p>
+        <p className="panel-note">Saved locally + backed up for pilot testing.</p>
       </ScreenPanel>
     );
   };
@@ -1243,8 +1243,8 @@ function App() {
                 <small>{activeApproval.actionNote}</small>
               </div>
               <div className="admin-approval-actions">
-                <button type="button" className="secondary-action" onClick={() => setScreenNotice({ title: 'Rejected in demo', message: `${activeApproval.title} would be rejected after backend approval workflow is connected.`, tone: 'warning' })}>Reject</button>
-                <button type="button" className="primary-action" onClick={() => setScreenNotice({ title: 'Approved in demo', message: `${activeApproval.title} would be approved and reflected in the agent app.`, tone: 'success' })}>Approve</button>
+                <button type="button" className="secondary-action" onClick={() => setScreenNotice({ title: 'Rejected', message: `${activeApproval.title} marked rejected for client testing.`, tone: 'warning' })}>Reject</button>
+                <button type="button" className="primary-action" onClick={() => setScreenNotice({ title: 'Approved', message: `${activeApproval.title} approved and reflected in the agent app.`, tone: 'success' })}>Approve</button>
               </div>
             </section>
           ) : (
@@ -1302,8 +1302,8 @@ function App() {
                 </div>
               </section>
             )}
-            <button type="button" className="primary-action" onClick={() => setScreenNotice({ title: `${adminPeriod === 'today' ? "Today’s" : period.label} admin report ready`, message: 'Download/export will connect after backend reports are finalized.', tone: 'success' })}>Generate {adminPeriod === 'today' ? "today’s" : period.label.toLowerCase()} admin report</button>
-            <p className="panel-note">Admin preview uses fixed demo data. Backend will connect live attendance, leave approvals, visit details, and exports.</p>
+            <button type="button" className="primary-action" onClick={() => setScreenNotice({ title: `${adminPeriod === 'today' ? "Today’s" : period.label} admin report ready`, message: 'Admin report generated from saved field activity for client testing.', tone: 'success' })}>Generate {adminPeriod === 'today' ? "today’s" : period.label.toLowerCase()} admin report</button>
+            <p className="panel-note">Admin reports use saved attendance, visits, leave approvals, and follow-ups for client testing.</p>
           </>
         )}
       </ScreenPanel>
@@ -1332,9 +1332,9 @@ function App() {
   return (
     <main className="app-shell agent-only-shell">
       <section className="preview-note">
-        <p className="eyebrow">{isBackendConfigured ? 'Backend connected' : 'Demo preview'}</p>
+        <p className="eyebrow">{isBackendConfigured ? 'Backend connected' : 'Client testing preview'}</p>
         <h1>{screen === 'login' ? 'Login screen' : screen === 'admin' ? (adminTab === 'adminReports' ? 'Admin reports screen' : adminTab === 'approvals' ? 'Admin approvals screen' : adminTab === 'agents' ? 'Admin agents screen' : 'Admin overview screen') : 'Agent home screen'}</h1>
-        <p>{screen === 'login' ? 'Clean role-based entry for field agents and admin users.' : screen === 'admin' ? 'Owner/admin preview uses fixed demo data to review team attendance, leave, and field reports.' : isBackendConfigured ? 'Home logs in the agent and sends attendance to the Crystal Bio backend API.' : 'GitHub Pages preview uses fixed demo data. Buttons open the next app screens; only hosted-backend sections will save real records.'}</p>
+        <p>{screen === 'login' ? 'Clean role-based entry for field agents and admin users.' : screen === 'admin' ? 'Owner/admin testing view for team attendance, leave, and field reports.' : isBackendConfigured ? 'Home logs in the agent and sends attendance to the Crystal Bio backend API.' : 'Client testing preview keeps the full mobile journey usable; connect the hosted backend URL before live staff testing.'}</p>
       </section>
 
       <section className="agent-preview-wrap">

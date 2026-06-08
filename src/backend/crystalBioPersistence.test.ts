@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -60,6 +60,32 @@ describe('CrystalBio persistence layer', () => {
 
       expect(state.agents).toEqual([]);
       expect(JSON.parse(readFileSync(filePath, 'utf8')).agents).toEqual([]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('keeps a valid backup and recovers the previous good state if the main JSON file is damaged', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'crystalbio-'));
+    const filePath = join(dir, 'db.json');
+
+    try {
+      const store = new JsonFileCrystalBioStore(filePath);
+      const firstBackend = createCrystalBioBackend();
+      firstBackend.createAgent({ name: 'Admin User', role: 'admin' });
+      store.save(firstBackend.exportState());
+
+      const secondBackend = createCrystalBioBackend(store.load());
+      secondBackend.createAgent({ name: 'Rahul Sales', role: 'sales' });
+      store.save(secondBackend.exportState());
+
+      expect(JSON.parse(readFileSync(`${filePath}.bak`, 'utf8')).agents.map((agent: { name: string }) => agent.name)).toEqual(['Admin User']);
+
+      writeFileSync(filePath, '{ damaged json');
+
+      const recoveredState = store.load();
+      expect(recoveredState.agents.map((agent) => agent.name)).toEqual(['Admin User']);
+      expect(readFileSync(`${filePath}.corrupt`, 'utf8')).toBe('{ damaged json');
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

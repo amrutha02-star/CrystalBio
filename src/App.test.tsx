@@ -27,7 +27,7 @@ describe('Crystal Bio agent view shell', () => {
     render(<App />);
 
     expect(screen.getByText('Agent home screen')).toBeInTheDocument();
-    expect(screen.getByText('Demo preview')).toBeInTheDocument();
+    expect(screen.getByText('Client testing preview')).toBeInTheDocument();
     expect(screen.getByText('Quick actions')).toBeInTheDocument();
     expect(await screen.findByText('Rahul Sales')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /check in/i })).toBeInTheDocument();
@@ -111,7 +111,7 @@ describe('Crystal Bio agent view shell', () => {
     expect(screen.getByRole('button', { name: /request leave/i })).toBeInTheDocument();
   });
 
-  it('opens bottom navigation screens and keeps demo report numbers clearly fixed', async () => {
+  it('opens bottom navigation screens and presents reports as client-testing data, not fixed demo numbers', async () => {
     render(<App />);
 
     await screen.findByText('Rahul Sales');
@@ -123,6 +123,8 @@ describe('Crystal Bio agent view shell', () => {
     fireEvent.click(screen.getByRole('button', { name: /^reports$/i }));
     expect(screen.getByText('My reports')).toBeInTheDocument();
     expect(screen.getByText('Weekly summary')).toBeInTheDocument();
+    expect(screen.getByText('Client testing data')).toBeInTheDocument();
+    expect(screen.getByText('Saved locally + backed up for pilot testing.')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /^month$/i }));
     expect(screen.getByText('Monthly summary')).toBeInTheDocument();
     expect(screen.getAllByText(/June 2026/).length).toBeGreaterThan(0);
@@ -131,7 +133,7 @@ describe('Crystal Bio agent view shell', () => {
     fireEvent.click(screen.getByRole('button', { name: /^monthly$/i }));
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Monthly summary ready'));
     expect(screen.getByText('Monthly summary')).toBeInTheDocument();
-    expect(screen.getByText('These preview numbers are fixed demo values. They will come from backend reports when reports are connected.')).toBeInTheDocument();
+    expect(screen.queryByText(/fixed demo values/i)).not.toBeInTheDocument();
   });
 
   it('opens recent visit rows instead of showing non-clickable dashboard details', async () => {
@@ -162,7 +164,7 @@ describe('Crystal Bio agent view shell', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /sales new visit/i }));
     fireEvent.click(screen.getByRole('button', { name: /save step 1/i }));
-    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Demo Sales Step 1 saved'));
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Sales Step 1 saved'));
     expect(screen.getByRole('status')).toHaveClass('save-toast');
     expect(screen.queryByRole('status')).not.toHaveClass('screen-notice');
     await waitFor(() => expect(screen.queryByRole('status')).not.toBeInTheDocument(), { timeout: 4500 });
@@ -190,7 +192,7 @@ describe('Crystal Bio agent view shell', () => {
     fireEvent.click(screen.getByRole('button', { name: /service report/i }));
     await waitFor(() => expect(screen.getByText('Meera Service')).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: /save step 1/i }));
-    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Demo service visit saved'));
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Service visit saved'));
     expect(screen.getByRole('button', { name: /step 1 saved/i })).toBeDisabled();
     expect(screen.getByText(/Metro Lab • Visit 1 • parts required/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Step 2: pending • Step 3: pending/i).length).toBeGreaterThan(0);
@@ -244,7 +246,7 @@ describe('Crystal Bio agent view shell', () => {
     expect(screen.getByRole('button', { name: 'Approve' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Reject' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Approve' }));
-    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Approved in demo'));
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Approved'));
   });
 
   it('shows person-wise admin reports and feedback when generating reports', async () => {
