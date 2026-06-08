@@ -77,17 +77,35 @@ function App() {
   const [isSalesStep2Submitting, setIsSalesStep2Submitting] = useState(false);
   const [isSalesStep3Submitting, setIsSalesStep3Submitting] = useState(false);
   const [serviceCustomerName, setServiceCustomerName] = useState('Metro Lab');
+  const [serviceContactPerson, setServiceContactPerson] = useState('Lab supervisor');
   const [servicePhone, setServicePhone] = useState('');
+  const [serviceEmail, setServiceEmail] = useState('');
+  const [serviceDepartmentAddress, setServiceDepartmentAddress] = useState('');
   const [serviceEquipmentName, setServiceEquipmentName] = useState('Centrifuge');
+  const [serviceBrandName, setServiceBrandName] = useState('');
+  const [serviceModelName, setServiceModelName] = useState('');
   const [serviceSerialNumber, setServiceSerialNumber] = useState('CB-01');
+  const [serviceIssueCategory, setServiceIssueCategory] = useState('Machine noise');
+  const [serviceIssueDescription, setServiceIssueDescription] = useState('');
+  const [serviceWarrantyAmc, setServiceWarrantyAmc] = useState('');
   const [serviceType, setServiceType] = useState<FrontendServiceType>('breakdown');
   const [serviceWorkDone, setServiceWorkDone] = useState('Diagnosed issue and checked machine performance.');
   const [serviceSupportRequired, setServiceSupportRequired] = useState(true);
   const [serviceNextAction, setServiceNextAction] = useState<FrontendServiceNextAction>('parts_required');
   const [serviceNextVisitDate, setServiceNextVisitDate] = useState('2026-06-09');
+  const [servicePartsRequired, setServicePartsRequired] = useState('Bearing kit');
+  const [servicePartsUsed, setServicePartsUsed] = useState('');
+  const [serviceMachineStatus, setServiceMachineStatus] = useState('Working with observation');
+  const [serviceSupportRequiredNote, setServiceSupportRequiredNote] = useState('');
+  const [serviceFinalRemarks, setServiceFinalRemarks] = useState('');
+  const [servicePhotoNote, setServicePhotoNote] = useState('');
   const [serviceOfficeNotes, setServiceOfficeNotes] = useState('Share parts availability with office.');
+  const [serviceStep2Saved, setServiceStep2Saved] = useState(false);
+  const [serviceStep3Saved, setServiceStep3Saved] = useState(false);
   const [serviceSaveResult, setServiceSaveResult] = useState<FrontendServiceSaveResult | null>(null);
   const [isServiceSubmitting, setIsServiceSubmitting] = useState(false);
+  const [isServiceStep2Submitting, setIsServiceStep2Submitting] = useState(false);
+  const [isServiceStep3Submitting, setIsServiceStep3Submitting] = useState(false);
   const isBackendConfigured = crystalBioFrontendApi.isBackendConfigured();
 
   useEffect(() => {
@@ -179,9 +197,40 @@ function App() {
     setSalesSaveResult(null);
   };
 
-  const goToScreen = (nextScreen: AppScreen, options?: { newSalesVisit?: boolean }) => {
+  const resetServiceFormForNewVisit = () => {
+    setServiceCustomerName('Metro Lab');
+    setServiceContactPerson('Lab supervisor');
+    setServicePhone('');
+    setServiceEmail('');
+    setServiceDepartmentAddress('');
+    setServiceEquipmentName('Centrifuge');
+    setServiceBrandName('');
+    setServiceModelName('');
+    setServiceSerialNumber('CB-01');
+    setServiceIssueCategory('Machine noise');
+    setServiceIssueDescription('');
+    setServiceWarrantyAmc('');
+    setServiceType('breakdown');
+    setServiceWorkDone('Diagnosed issue and checked machine performance.');
+    setServiceSupportRequired(true);
+    setServiceNextAction('parts_required');
+    setServiceNextVisitDate('2026-06-09');
+    setServicePartsRequired('Bearing kit');
+    setServicePartsUsed('');
+    setServiceMachineStatus('Working with observation');
+    setServiceSupportRequiredNote('');
+    setServiceFinalRemarks('');
+    setServicePhotoNote('');
+    setServiceOfficeNotes('Share parts availability with office.');
+    setServiceStep2Saved(false);
+    setServiceStep3Saved(false);
+    setServiceSaveResult(null);
+  };
+
+  const goToScreen = (nextScreen: AppScreen, options?: { newSalesVisit?: boolean; newServiceVisit?: boolean }) => {
     setScreenNotice(null);
     if (options?.newSalesVisit) resetSalesFormForNewVisit();
+    if (options?.newServiceVisit) resetServiceFormForNewVisit();
     if (nextScreen === 'sales' || nextScreen === 'service') {
       setStatusMessage('Loading logged-in agent…');
       crystalBioFrontendApi.login(agentIdForScreen(nextScreen)).then((nextSession) => {
@@ -361,8 +410,16 @@ function App() {
       const savedServiceVisit = await crystalBioFrontendApi.submitServiceVisit(serviceSession, {
         customerName: serviceCustomerName.trim(),
         ...(servicePhone.trim() ? { phone: servicePhone.trim() } : {}),
+        ...(serviceContactPerson.trim() ? { contactPerson: serviceContactPerson.trim() } : {}),
+        ...(serviceEmail.trim() ? { email: serviceEmail.trim() } : {}),
+        ...(serviceDepartmentAddress.trim() ? { departmentAddress: serviceDepartmentAddress.trim() } : {}),
         ...(serviceEquipmentName.trim() ? { equipmentName: serviceEquipmentName.trim() } : {}),
+        ...(serviceBrandName.trim() ? { brandName: serviceBrandName.trim() } : {}),
+        ...(serviceModelName.trim() ? { modelName: serviceModelName.trim() } : {}),
         ...(serviceSerialNumber.trim() ? { serialNumber: serviceSerialNumber.trim() } : {}),
+        ...(serviceIssueCategory.trim() ? { issueCategory: serviceIssueCategory.trim() } : {}),
+        ...(serviceIssueDescription.trim() ? { issueDescription: serviceIssueDescription.trim() } : {}),
+        ...(serviceWarrantyAmc.trim() ? { warrantyAmc: serviceWarrantyAmc.trim() } : {}),
         serviceType,
         workDone: serviceWorkDone.trim(),
         supportRequired: serviceSupportRequired,
@@ -371,6 +428,8 @@ function App() {
         ...(serviceOfficeNotes.trim() ? { officeNotes: serviceOfficeNotes.trim() } : {}),
       });
       setServiceSaveResult(savedServiceVisit);
+      setServiceStep2Saved(false);
+      setServiceStep3Saved(false);
       setScreenNotice(
         isBackendConfigured
           ? 'Service visit saved. Admin reports will include this update.'
@@ -383,12 +442,71 @@ function App() {
     }
   };
 
+  const handleServiceStep2Submit = async () => {
+    if (!session || !serviceSaveResult) {
+      setScreenNotice('Save Service Step 1 first, then complete Step 2.');
+      return;
+    }
+    setIsServiceStep2Submitting(true);
+    setScreenNotice('Saving Service Step 2 equipment and issue details…');
+    try {
+      const serviceRecord = await crystalBioFrontendApi.submitServiceStep2(session, serviceSaveResult.serviceRecord.id, {
+        customerName: serviceCustomerName.trim(),
+        ...(serviceContactPerson.trim() ? { contactPerson: serviceContactPerson.trim() } : {}),
+        ...(servicePhone.trim() ? { phone: servicePhone.trim() } : {}),
+        ...(serviceEmail.trim() ? { email: serviceEmail.trim() } : {}),
+        ...(serviceDepartmentAddress.trim() ? { departmentAddress: serviceDepartmentAddress.trim() } : {}),
+        ...(serviceEquipmentName.trim() ? { equipmentName: serviceEquipmentName.trim() } : {}),
+        ...(serviceBrandName.trim() ? { brandName: serviceBrandName.trim() } : {}),
+        ...(serviceModelName.trim() ? { modelName: serviceModelName.trim() } : {}),
+        ...(serviceSerialNumber.trim() ? { serialNumber: serviceSerialNumber.trim() } : {}),
+        ...(serviceIssueCategory.trim() ? { issueCategory: serviceIssueCategory.trim() } : {}),
+        ...(serviceIssueDescription.trim() ? { issueDescription: serviceIssueDescription.trim() } : {}),
+        ...(serviceWarrantyAmc.trim() ? { warrantyAmc: serviceWarrantyAmc.trim() } : {}),
+      });
+      setServiceSaveResult({ ...serviceSaveResult, serviceRecord: { ...serviceSaveResult.serviceRecord, ...serviceRecord } });
+      setServiceStep2Saved(true);
+      setScreenNotice('Service Step 2 saved. Equipment and issue details are updated.');
+    } catch (error) {
+      setScreenNotice(error instanceof Error ? error.message : 'Service Step 2 save failed');
+    } finally {
+      setIsServiceStep2Submitting(false);
+    }
+  };
+
+  const handleServiceStep3Submit = async () => {
+    if (!session || !serviceSaveResult) {
+      setScreenNotice('Save Service Step 1 first, then complete Step 3.');
+      return;
+    }
+    setIsServiceStep3Submitting(true);
+    setScreenNotice('Saving Service Step 3 parts, photos, and office details…');
+    try {
+      const serviceRecord = await crystalBioFrontendApi.submitServiceStep3(session, serviceSaveResult.serviceRecord.id, {
+        ...(servicePartsRequired.trim() ? { partsRequired: servicePartsRequired.trim() } : {}),
+        ...(servicePartsUsed.trim() ? { partsUsed: servicePartsUsed.trim() } : {}),
+        ...(serviceMachineStatus.trim() ? { machineStatus: serviceMachineStatus.trim() } : {}),
+        ...(serviceSupportRequiredNote.trim() ? { supportRequiredNote: serviceSupportRequiredNote.trim() } : {}),
+        ...(serviceFinalRemarks.trim() ? { finalRemarks: serviceFinalRemarks.trim() } : {}),
+        ...(servicePhotoNote.trim() ? { photoNote: servicePhotoNote.trim() } : {}),
+        ...(serviceOfficeNotes.trim() ? { officeNotes: serviceOfficeNotes.trim() } : {}),
+      });
+      setServiceSaveResult({ ...serviceSaveResult, serviceRecord: { ...serviceSaveResult.serviceRecord, ...serviceRecord } });
+      setServiceStep3Saved(true);
+      setScreenNotice('Service Step 3 saved. Admin can see parts/proof completion later.');
+    } catch (error) {
+      setScreenNotice(error instanceof Error ? error.message : 'Service Step 3 save failed');
+    } finally {
+      setIsServiceStep3Submitting(false);
+    }
+  };
+
   const handleQuickAction = (action: (typeof actionMeta)[number]['onClick']) => {
     if (action === 'attendance-action') {
       void handleAttendanceAction();
       return;
     }
-    goToScreen(action, action === 'sales' ? { newSalesVisit: true } : undefined);
+    goToScreen(action, action === 'sales' ? { newSalesVisit: true } : action === 'service' ? { newServiceVisit: true } : undefined);
   };
 
   const renderHome = () => (
@@ -450,7 +568,7 @@ function App() {
       <div className="search-card"><Search size={17} /><span>Search customer, phone, equipment, serial number</span></div>
       <div className="split-actions">
         <button type="button" className="primary-action" onClick={() => goToScreen('sales', { newSalesVisit: true })}>New sales visit update</button>
-        <button type="button" className="secondary-action" onClick={() => goToScreen('service')}>New service visit update</button>
+        <button type="button" className="secondary-action" onClick={() => goToScreen('service', { newServiceVisit: true })}>New service visit update</button>
       </div>
       {sampleEntries.map((entry) => (
         <button className="entry-row entry-button" key={entry.customer} type="button" onClick={() => goToScreen(entry.type === 'Sales' ? 'sales' : 'service')}>
@@ -595,81 +713,62 @@ function App() {
     </ScreenPanel>
   );
 
-  const renderService = () => (
-    <ScreenPanel title="Service visit" subtitle="Save today’s equipment service update with GPS.">
-      <div className="form-card highlighted-card">
-        <label>Current visit location</label>
-        <p>{isBackendConfigured ? 'Location permission is requested when this update is saved.' : 'Demo preview uses fixed sample GPS. Connected backend mode requests location permission when saving.'}</p>
-      </div>
-      <label className="field-card">
-        <span>Customer / lab name</span>
-        <input aria-label="Service customer name" value={serviceCustomerName} onChange={(event) => setServiceCustomerName(event.target.value)} />
-      </label>
-      <label className="field-card">
-        <span>Phone</span>
-        <input aria-label="Service phone" value={servicePhone} onChange={(event) => setServicePhone(event.target.value)} placeholder="Optional" inputMode="tel" />
-      </label>
-      <label className="field-card">
-        <span>Equipment</span>
-        <input aria-label="Service equipment" value={serviceEquipmentName} onChange={(event) => setServiceEquipmentName(event.target.value)} placeholder="Instrument name" />
-      </label>
-      <label className="field-card">
-        <span>Serial number</span>
-        <input aria-label="Service serial number" value={serviceSerialNumber} onChange={(event) => setServiceSerialNumber(event.target.value)} placeholder="Optional" />
-      </label>
-      <label className="field-card">
-        <span>Service type</span>
-        <select aria-label="Service type" value={serviceType} onChange={(event) => setServiceType(event.target.value as FrontendServiceType)}>
-          <option value="breakdown">Breakdown</option>
-          <option value="installation">Installation</option>
-          <option value="preventive_maintenance">Preventive maintenance</option>
-          <option value="repair">Repair</option>
-          <option value="calibration">Calibration</option>
-          <option value="demo">Demo</option>
-          <option value="training">Training</option>
-          <option value="other">Other</option>
-        </select>
-      </label>
-      <label className="field-card">
-        <span>Today’s work done</span>
-        <textarea aria-label="Service work done" value={serviceWorkDone} onChange={(event) => setServiceWorkDone(event.target.value)} placeholder="Issue checked, work done, customer update" rows={3} />
-      </label>
-      <label className="field-card support-card">
-        <span>Support required?</span>
-        <select aria-label="Service support required" value={serviceSupportRequired ? 'yes' : 'no'} onChange={(event) => setServiceSupportRequired(event.target.value === 'yes')}>
-          <option value="yes">Yes, office/parts support needed</option>
-          <option value="no">No support needed</option>
-        </select>
-      </label>
-      <label className="field-card">
-        <span>Next action</span>
-        <select aria-label="Service next action" value={serviceNextAction} onChange={(event) => setServiceNextAction(event.target.value as FrontendServiceNextAction)}>
-          <option value="parts_required">Parts required</option>
-          <option value="next_visit_needed">Next visit needed</option>
-          <option value="no_follow_up">No follow-up</option>
-          <option value="closed">Closed</option>
-        </select>
-      </label>
-      {(serviceNextAction === 'parts_required' || serviceNextAction === 'next_visit_needed') && (
-        <label className="field-card">
-          <span>Next visit date</span>
-          <input aria-label="Service next visit date" type="date" value={serviceNextVisitDate} onChange={(event) => setServiceNextVisitDate(event.target.value)} />
-        </label>
-      )}
-      <label className="field-card">
-        <span>Notes for office</span>
-        <textarea aria-label="Service office notes" value={serviceOfficeNotes} onChange={(event) => setServiceOfficeNotes(event.target.value)} placeholder="Optional office notes" rows={2} />
-      </label>
-      <button type="button" className="primary-action" disabled={isServiceSubmitting || !session} onClick={handleServiceSubmit}>{isServiceSubmitting ? 'Saving…' : 'Save service update'}</button>
-      {serviceSaveResult && (
+  const renderService = () => {
+    const serviceAnySubmitting = isServiceSubmitting || isServiceStep2Submitting || isServiceStep3Submitting;
+    return (
+      <ScreenPanel title="Service visit" subtitle="Save quickly first. Add equipment, parts, and proof later.">
         <div className="form-card highlighted-card">
-          <label>Latest saved service visit</label>
-          <span>{serviceSaveResult.serviceRecord.customerName} • Visit {serviceSaveResult.visit.visitNumber} • {serviceSaveResult.visit.nextAction.split('_').join(' ')}</span>
-          <span>Work: {serviceSaveResult.visit.workDone}</span>
+          <label>Progressive service form</label>
+          <span>Step 1: {serviceSaveResult ? 'Saved' : 'Pending'} • Step 2: {serviceStep2Saved ? 'Saved' : 'Pending'} • Step 3: {serviceStep3Saved ? 'Saved' : 'Pending'}</span>
         </div>
-      )}
-    </ScreenPanel>
-  );
+
+        <section className="step-card">
+          <div className="step-heading"><span>Step 1</span><strong>Quick service update</strong><small>For the engineer to save at the site.</small></div>
+          <div className="form-card highlighted-card">
+            <label>Current visit location</label>
+            <p>{isBackendConfigured ? 'Location permission is requested when this update is saved.' : 'Demo preview uses fixed sample GPS. Connected backend mode requests location permission when saving.'}</p>
+          </div>
+          <label className="field-card"><span>Customer / lab name</span><input aria-label="Service customer name" value={serviceCustomerName} onChange={(event) => setServiceCustomerName(event.target.value)} /></label>
+          <label className="field-card"><span>Work done / issue checked</span><textarea aria-label="Service work done" value={serviceWorkDone} onChange={(event) => setServiceWorkDone(event.target.value)} placeholder="Issue checked, work done, customer update" rows={3} /></label>
+          <label className="field-card"><span>Service type</span><select aria-label="Service type" value={serviceType} onChange={(event) => setServiceType(event.target.value as FrontendServiceType)}><option value="breakdown">Breakdown</option><option value="installation">Installation</option><option value="preventive_maintenance">Preventive maintenance</option><option value="repair">Repair</option><option value="calibration">Calibration</option><option value="demo">Demo</option><option value="training">Training</option><option value="other">Other</option></select></label>
+          <label className="field-card"><span>Next action</span><select aria-label="Service next action" value={serviceNextAction} onChange={(event) => setServiceNextAction(event.target.value as FrontendServiceNextAction)}><option value="parts_required">Parts required</option><option value="next_visit_needed">Next visit needed</option><option value="no_follow_up">No follow-up</option><option value="closed">Closed</option></select></label>
+          {(serviceNextAction === 'parts_required' || serviceNextAction === 'next_visit_needed') && <label className="field-card"><span>Next visit date</span><input aria-label="Service next visit date" type="date" value={serviceNextVisitDate} onChange={(event) => setServiceNextVisitDate(event.target.value)} /></label>}
+          <button type="button" className="primary-action" disabled={serviceAnySubmitting || !session || Boolean(serviceSaveResult)} onClick={handleServiceSubmit}>{isServiceSubmitting ? 'Saving…' : serviceSaveResult ? 'Step 1 saved' : 'Save Step 1'}</button>
+        </section>
+
+        <section className="step-card">
+          <div className="step-heading"><span>Step 2</span><strong>Customer, equipment, issue</strong><small>Can be completed after leaving the customer site.</small></div>
+          <label className="field-card"><span>Contact person</span><input aria-label="Service contact person" value={serviceContactPerson} onChange={(event) => setServiceContactPerson(event.target.value)} placeholder="Optional" /></label>
+          <label className="field-card"><span>Phone</span><input aria-label="Service phone" value={servicePhone} onChange={(event) => setServicePhone(event.target.value)} placeholder="Optional" inputMode="tel" /></label>
+          <label className="field-card"><span>Email</span><input aria-label="Service email" value={serviceEmail} onChange={(event) => setServiceEmail(event.target.value)} placeholder="Optional" inputMode="email" /></label>
+          <label className="field-card"><span>Department / address</span><input aria-label="Service department address" value={serviceDepartmentAddress} onChange={(event) => setServiceDepartmentAddress(event.target.value)} placeholder="Optional" /></label>
+          <label className="field-card"><span>Equipment / instrument</span><input aria-label="Service equipment" value={serviceEquipmentName} onChange={(event) => setServiceEquipmentName(event.target.value)} placeholder="Instrument name" /></label>
+          <label className="field-card"><span>Brand</span><input aria-label="Service brand" value={serviceBrandName} onChange={(event) => setServiceBrandName(event.target.value)} placeholder="Optional" /></label>
+          <label className="field-card"><span>Model</span><input aria-label="Service model" value={serviceModelName} onChange={(event) => setServiceModelName(event.target.value)} placeholder="Optional" /></label>
+          <label className="field-card"><span>Serial number</span><input aria-label="Service serial number" value={serviceSerialNumber} onChange={(event) => setServiceSerialNumber(event.target.value)} placeholder="Optional" /></label>
+          <label className="field-card"><span>Issue category</span><input aria-label="Service issue category" value={serviceIssueCategory} onChange={(event) => setServiceIssueCategory(event.target.value)} placeholder="Optional" /></label>
+          <label className="field-card"><span>Detailed issue</span><textarea aria-label="Service issue description" value={serviceIssueDescription} onChange={(event) => setServiceIssueDescription(event.target.value)} placeholder="Optional detailed issue" rows={2} /></label>
+          <label className="field-card"><span>Warranty / AMC</span><input aria-label="Service warranty AMC" value={serviceWarrantyAmc} onChange={(event) => setServiceWarrantyAmc(event.target.value)} placeholder="Optional" /></label>
+          <button type="button" className="secondary-action" disabled={serviceAnySubmitting || !serviceSaveResult} onClick={handleServiceStep2Submit}>{isServiceStep2Submitting ? 'Saving…' : 'Save Step 2'}</button>
+        </section>
+
+        <section className="step-card">
+          <div className="step-heading"><span>Step 3</span><strong>Parts, proof, office details</strong><small>For service closure and admin reporting.</small></div>
+          <label className="field-card"><span>Parts required</span><input aria-label="Service parts required" value={servicePartsRequired} onChange={(event) => setServicePartsRequired(event.target.value)} placeholder="Optional" /></label>
+          <label className="field-card"><span>Parts used</span><input aria-label="Service parts used" value={servicePartsUsed} onChange={(event) => setServicePartsUsed(event.target.value)} placeholder="Optional" /></label>
+          <label className="field-card"><span>Machine status</span><input aria-label="Service machine status" value={serviceMachineStatus} onChange={(event) => setServiceMachineStatus(event.target.value)} placeholder="Working / pending / closed" /></label>
+          <label className="field-card support-card"><span>Support required?</span><select aria-label="Service support required" value={serviceSupportRequired ? 'yes' : 'no'} onChange={(event) => setServiceSupportRequired(event.target.value === 'yes')}><option value="yes">Yes, office/parts support needed</option><option value="no">No support needed</option></select></label>
+          <label className="field-card"><span>Support note</span><textarea aria-label="Service support note" value={serviceSupportRequiredNote} onChange={(event) => setServiceSupportRequiredNote(event.target.value)} placeholder="Optional" rows={2} /></label>
+          <div className="field-card photo-action-card"><div><span>Service photos</span><small>Optional now. Use for machine, issue, part, or completed-work proof.</small></div><div className="photo-actions"><button type="button" className="secondary-action photo-button" onClick={() => setScreenNotice('Camera upload will be connected in the production app.')}>Camera</button><button type="button" className="secondary-action photo-button" onClick={() => setScreenNotice('File upload will be connected in the production app.')}>Upload</button></div><input aria-label="Service photo note" value={servicePhotoNote} onChange={(event) => setServicePhotoNote(event.target.value)} placeholder="Optional photo note" /></div>
+          <label className="field-card"><span>Final remarks</span><textarea aria-label="Service final remarks" value={serviceFinalRemarks} onChange={(event) => setServiceFinalRemarks(event.target.value)} placeholder="Optional customer confirmation / remarks" rows={2} /></label>
+          <label className="field-card"><span>Notes for office</span><textarea aria-label="Service office notes" value={serviceOfficeNotes} onChange={(event) => setServiceOfficeNotes(event.target.value)} placeholder="Optional office notes" rows={2} /></label>
+          <button type="button" className="secondary-action" disabled={serviceAnySubmitting || !serviceSaveResult} onClick={handleServiceStep3Submit}>{isServiceStep3Submitting ? 'Saving…' : 'Save Step 3'}</button>
+        </section>
+
+        {serviceSaveResult && <div className="form-card highlighted-card"><label>Latest saved service visit</label><span>{serviceSaveResult.serviceRecord.customerName} • Visit {serviceSaveResult.visit.visitNumber} • {serviceSaveResult.visit.nextAction.split('_').join(' ')}</span><span>Step 2: {serviceStep2Saved ? 'saved' : 'pending'} • Step 3: {serviceStep3Saved ? 'saved' : 'pending'}</span></div>}
+      </ScreenPanel>
+    );
+  };
 
   const renderAttendance = () => (
     <ScreenPanel title="Attendance" subtitle="Check-in, check-out, leave request, and status history.">

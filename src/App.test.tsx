@@ -73,7 +73,7 @@ describe('Crystal Bio agent view shell', () => {
     fireEvent.click(screen.getByLabelText('Home'));
     fireEvent.click(screen.getByRole('button', { name: /service report/i }));
     expect(screen.getByText('Service visit')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /save service update/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /save step 1/i })).toBeInTheDocument();
 
     fireEvent.click(screen.getByLabelText('Home'));
     fireEvent.click(screen.getByRole('button', { name: /^attendance logs & leave$/i }));
@@ -138,10 +138,18 @@ describe('Crystal Bio agent view shell', () => {
     fireEvent.click(screen.getByLabelText('Home'));
     fireEvent.click(screen.getByRole('button', { name: /service report/i }));
     await waitFor(() => expect(screen.getByText('Meera Service')).toBeInTheDocument());
-    fireEvent.click(screen.getByRole('button', { name: /save service update/i }));
+    fireEvent.click(screen.getByRole('button', { name: /save step 1/i }));
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Demo service visit saved'));
+    expect(screen.getByRole('button', { name: /step 1 saved/i })).toBeDisabled();
     expect(screen.getByText(/Metro Lab • Visit 1 • parts required/i)).toBeInTheDocument();
-    expect(screen.getByText('Work: Diagnosed issue and checked machine performance.')).toBeInTheDocument();
+    expect(screen.getAllByText(/Step 2: pending • Step 3: pending/i).length).toBeGreaterThan(0);
+    fireEvent.change(screen.getByLabelText('Service issue description'), { target: { value: 'Noise during spin cycle' } });
+    fireEvent.click(screen.getByRole('button', { name: /save step 2/i }));
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Service Step 2 saved'));
+    fireEvent.change(screen.getByLabelText('Service final remarks'), { target: { value: 'Customer informed about parts timeline' } });
+    fireEvent.click(screen.getByRole('button', { name: /save step 3/i }));
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Service Step 3 saved'));
+    expect(screen.getAllByText(/Step 2: saved • Step 3: saved/i).length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByLabelText('Attendance'));
     fireEvent.click(screen.getByRole('button', { name: /send leave request/i }));
@@ -153,5 +161,5 @@ describe('Crystal Bio agent view shell', () => {
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Demo leave request saved'));
     expect(screen.getByText(/2026-06-12 to 2026-06-13 • Personal work • pending/i)).toBeInTheDocument();
     expect(screen.getByText('Note: Family appointment')).toBeInTheDocument();
-  });
+  }, 10000);
 });

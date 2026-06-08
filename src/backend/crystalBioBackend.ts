@@ -104,7 +104,19 @@ export type ServiceRecord = {
   departmentAddress?: string;
   brandName?: string;
   equipmentName?: string;
+  modelName?: string;
   serialNumber?: string;
+  contactPerson?: string;
+  email?: string;
+  issueCategory?: string;
+  issueDescription?: string;
+  warrantyAmc?: string;
+  partsRequired?: string;
+  partsUsed?: string;
+  machineStatus?: string;
+  supportRequiredNote?: string;
+  finalRemarks?: string;
+  photoNote?: string;
   status: 'open' | 'pending_parts' | 'closed';
   visits: ServiceVisitUpdate[];
 };
@@ -469,7 +481,13 @@ export function createCrystalBioBackend(initialState?: CrystalBioBackendState) {
         departmentAddress: input.departmentAddress,
         brandName: input.brandName,
         equipmentName: input.equipmentName,
+        modelName: (input as ServiceRecord).modelName,
         serialNumber: input.serialNumber,
+        contactPerson: (input as ServiceRecord).contactPerson,
+        email: (input as ServiceRecord).email,
+        issueCategory: (input as ServiceRecord).issueCategory,
+        issueDescription: (input as ServiceRecord).issueDescription,
+        warrantyAmc: (input as ServiceRecord).warrantyAmc,
         status: 'open',
         visits: [],
       };
@@ -480,6 +498,37 @@ export function createCrystalBioBackend(initialState?: CrystalBioBackendState) {
     getServiceRecord(id: string): ServiceRecord {
       const record = service.get(id);
       if (!record) throw new ValidationError('Service record not found');
+      return record;
+    },
+
+    updateServiceRecord(serviceRecordId: string, input: Partial<ServiceRecordInput>): ServiceRecord {
+      const record = service.get(serviceRecordId);
+      if (!record) throw new ValidationError('Service record not found');
+      const allowedFields: Array<keyof ServiceRecordInput> = [
+        'customerName',
+        'phone',
+        'departmentAddress',
+        'brandName',
+        'equipmentName',
+        'modelName',
+        'serialNumber',
+        'contactPerson',
+        'email',
+        'issueCategory',
+        'issueDescription',
+        'warrantyAmc',
+        'partsRequired',
+        'partsUsed',
+        'machineStatus',
+        'supportRequiredNote',
+        'finalRemarks',
+        'photoNote',
+      ];
+      allowedFields.forEach((field) => {
+        if (field in input) {
+          (record as unknown as Record<string, unknown>)[field] = input[field];
+        }
+      });
       return record;
     },
 

@@ -137,14 +137,28 @@ export type FrontendSalesSaveResult = {
 export type FrontendServiceVisitInput = {
   customerName: string;
   phone?: string;
+  contactPerson?: string;
+  email?: string;
+  departmentAddress?: string;
   equipmentName?: string;
+  brandName?: string;
+  modelName?: string;
   serialNumber?: string;
+  issueCategory?: string;
+  issueDescription?: string;
+  warrantyAmc?: string;
   serviceType: FrontendServiceType;
   workDone: string;
   supportRequired: boolean;
   nextAction: FrontendServiceNextAction;
   nextVisitDate?: string;
   officeNotes?: string;
+  partsRequired?: string;
+  partsUsed?: string;
+  machineStatus?: string;
+  supportRequiredNote?: string;
+  finalRemarks?: string;
+  photoNote?: string;
 };
 
 export type FrontendServiceVisit = {
@@ -170,8 +184,22 @@ export type FrontendServiceSaveResult = {
     ownerAgentId: string;
     customerName: string;
     phone?: string;
+    contactPerson?: string;
+    email?: string;
+    departmentAddress?: string;
     equipmentName?: string;
+    brandName?: string;
+    modelName?: string;
     serialNumber?: string;
+    issueCategory?: string;
+    issueDescription?: string;
+    warrantyAmc?: string;
+    partsRequired?: string;
+    partsUsed?: string;
+    machineStatus?: string;
+    supportRequiredNote?: string;
+    finalRemarks?: string;
+    photoNote?: string;
     status: 'open' | 'pending_parts' | 'closed';
   };
   visit: FrontendServiceVisit;
@@ -444,8 +472,16 @@ export function createCrystalBioFrontendApi(options: ApiClientOptions = {}) {
             ownerAgentId: session.agentId,
             customerName: input.customerName,
             ...(input.phone ? { phone: input.phone } : {}),
+            ...(input.contactPerson ? { contactPerson: input.contactPerson } : {}),
+            ...(input.email ? { email: input.email } : {}),
+            ...(input.departmentAddress ? { departmentAddress: input.departmentAddress } : {}),
             ...(input.equipmentName ? { equipmentName: input.equipmentName } : {}),
+            ...(input.brandName ? { brandName: input.brandName } : {}),
+            ...(input.modelName ? { modelName: input.modelName } : {}),
             ...(input.serialNumber ? { serialNumber: input.serialNumber } : {}),
+            ...(input.issueCategory ? { issueCategory: input.issueCategory } : {}),
+            ...(input.issueDescription ? { issueDescription: input.issueDescription } : {}),
+            ...(input.warrantyAmc ? { warrantyAmc: input.warrantyAmc } : {}),
             status: input.nextAction === 'closed' ? 'closed' : input.nextAction === 'parts_required' ? 'pending_parts' : 'open',
           },
           visit: {
@@ -472,8 +508,16 @@ export function createCrystalBioFrontendApi(options: ApiClientOptions = {}) {
         {
           customerName: input.customerName,
           ...(input.phone ? { phone: input.phone } : {}),
+          ...(input.contactPerson ? { contactPerson: input.contactPerson } : {}),
+          ...(input.email ? { email: input.email } : {}),
+          ...(input.departmentAddress ? { departmentAddress: input.departmentAddress } : {}),
           ...(input.equipmentName ? { equipmentName: input.equipmentName } : {}),
+          ...(input.brandName ? { brandName: input.brandName } : {}),
+          ...(input.modelName ? { modelName: input.modelName } : {}),
           ...(input.serialNumber ? { serialNumber: input.serialNumber } : {}),
+          ...(input.issueCategory ? { issueCategory: input.issueCategory } : {}),
+          ...(input.issueDescription ? { issueDescription: input.issueDescription } : {}),
+          ...(input.warrantyAmc ? { warrantyAmc: input.warrantyAmc } : {}),
         },
         session.token,
       );
@@ -494,6 +538,49 @@ export function createCrystalBioFrontendApi(options: ApiClientOptions = {}) {
         session.token,
       );
       return { serviceRecord: recordResult.serviceRecord, visit: visitResult.visit };
+    },
+
+    async submitServiceStep2(session: FrontendSession, serviceRecordId: string, input: Partial<FrontendServiceVisitInput>): Promise<FrontendServiceSaveResult['serviceRecord']> {
+      if (!baseUrl) {
+        return {
+          id: serviceRecordId,
+          ownerAgentId: session.agentId,
+          customerName: input.customerName ?? 'Demo service customer',
+          ...(input.phone ? { phone: input.phone } : {}),
+          ...(input.contactPerson ? { contactPerson: input.contactPerson } : {}),
+          ...(input.email ? { email: input.email } : {}),
+          ...(input.departmentAddress ? { departmentAddress: input.departmentAddress } : {}),
+          ...(input.equipmentName ? { equipmentName: input.equipmentName } : {}),
+          ...(input.brandName ? { brandName: input.brandName } : {}),
+          ...(input.modelName ? { modelName: input.modelName } : {}),
+          ...(input.serialNumber ? { serialNumber: input.serialNumber } : {}),
+          ...(input.issueCategory ? { issueCategory: input.issueCategory } : {}),
+          ...(input.issueDescription ? { issueDescription: input.issueDescription } : {}),
+          ...(input.warrantyAmc ? { warrantyAmc: input.warrantyAmc } : {}),
+          status: 'open',
+        };
+      }
+      const result = await patch<{ serviceRecord: FrontendServiceSaveResult['serviceRecord'] }>(`/service-records/${serviceRecordId}`, input, session.token);
+      return result.serviceRecord;
+    },
+
+    async submitServiceStep3(session: FrontendSession, serviceRecordId: string, input: Partial<FrontendServiceVisitInput>): Promise<FrontendServiceSaveResult['serviceRecord']> {
+      if (!baseUrl) {
+        return {
+          id: serviceRecordId,
+          ownerAgentId: session.agentId,
+          customerName: input.customerName ?? 'Demo service customer',
+          ...(input.partsRequired ? { partsRequired: input.partsRequired } : {}),
+          ...(input.partsUsed ? { partsUsed: input.partsUsed } : {}),
+          ...(input.machineStatus ? { machineStatus: input.machineStatus } : {}),
+          ...(input.supportRequiredNote ? { supportRequiredNote: input.supportRequiredNote } : {}),
+          ...(input.finalRemarks ? { finalRemarks: input.finalRemarks } : {}),
+          ...(input.photoNote ? { photoNote: input.photoNote } : {}),
+          status: 'open',
+        };
+      }
+      const result = await patch<{ serviceRecord: FrontendServiceSaveResult['serviceRecord'] }>(`/service-records/${serviceRecordId}`, input, session.token);
+      return result.serviceRecord;
     },
 
     isDemoCheckedIn() {
