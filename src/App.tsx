@@ -1302,11 +1302,6 @@ function App() {
                     <span className={row.chipClass}>{row.status}</span>
                   </button>
                 ))}
-                <div className="admin-report-note">
-                  <strong>Auto-generated from field activity</strong>
-                  <span>Login → attendance → visit → leave → reports</span>
-                  <span>Uses attendance, sales visits, service updates, leave status, and follow-ups saved by each agent.</span>
-                </div>
               </section>
             )}
             <button type="button" className="primary-action" onClick={() => setScreenNotice({ title: `${adminPeriod === 'today' ? "Today’s" : period.label} admin report ready`, message: 'Admin report generated from saved field activity for client testing.', tone: 'success' })}>Generate {adminPeriod === 'today' ? "today’s" : period.label.toLowerCase()} admin report</button>

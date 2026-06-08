@@ -258,7 +258,7 @@ describe('Crystal Bio agent view shell', () => {
     expect(screen.getByText('Rahul Sales')).toBeInTheDocument();
     expect(screen.getByText('Meera Service')).toBeInTheDocument();
     expect(screen.getByText('Anil Sales')).toBeInTheDocument();
-    expect(screen.getByText('Auto-generated from field activity')).toBeInTheDocument();
+    expect(screen.queryByText('Auto-generated from field activity')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Week' }));
     expect(screen.getByText('8 sales visits • 3 follow-ups')).toBeInTheDocument();
