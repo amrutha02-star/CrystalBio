@@ -1,9 +1,10 @@
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
-import { CalendarCheck, CheckCircle2, ChevronLeft, ClipboardList, Clock3, FileText, Home, MapPin, Plus, Search, UserRound } from 'lucide-react';
+import { CalendarCheck, CheckCircle2, ChevronLeft, ClipboardList, Clock3, FileText, Home, MapPin, Plus, Search, UserRound, X } from 'lucide-react';
 import { sampleEntries } from './appData';
 import { crystalBioFrontendApi, type FrontendAttendance, type FrontendLeaveRequest, type FrontendSalesSaveResult, type FrontendSalesNextAction, type FrontendServiceSaveResult, type FrontendServiceNextAction, type FrontendServiceType, type FrontendSession } from './crystalBioFrontendApi';
 
 type AppScreen = 'home' | 'visits' | 'sales' | 'service' | 'attendance' | 'leave' | 'reports';
+type ToastNotice = { title: string; message: string; tone?: 'success' | 'info' | 'warning' | 'error' };
 
 const toneClass: Record<string, string> = {
   warning: 'chip chip-warning',
@@ -39,7 +40,7 @@ function App() {
   const [attendance, setAttendance] = useState<FrontendAttendance | null>(null);
   const [isAttendanceBusy, setIsAttendanceBusy] = useState(false);
   const [statusMessage, setStatusMessage] = useState('Loading logged-in agent…');
-  const [screenNotice, setScreenNotice] = useState<string | null>(null);
+  const [screenNotice, setScreenNotice] = useState<ToastNotice | string | null>(null);
   const [leaveFromDate, setLeaveFromDate] = useState('2026-06-12');
   const [leaveToDate, setLeaveToDate] = useState('2026-06-12');
   const [leaveReason, setLeaveReason] = useState('Sick leave');
@@ -266,11 +267,13 @@ function App() {
         ...(leaveNote.trim() ? { note: leaveNote.trim() } : {}),
       });
       setLeaveRequest(savedLeave);
-      setScreenNotice(
-        isBackendConfigured
-          ? 'Leave request sent to admin for approval.'
-          : 'Demo leave request saved. Approval status will not change until the backend is connected.',
-      );
+      setScreenNotice({
+        title: 'Leave request sent',
+        message: isBackendConfigured
+          ? 'Admin will review it. You can see the status in Leave and Reports.'
+          : 'Demo request saved. In the real app, admin will approve or reject it.',
+        tone: 'success',
+      });
     } catch (error) {
       setScreenNotice(error instanceof Error ? error.message : 'Leave request failed');
     } finally {
@@ -791,6 +794,11 @@ function App() {
           <label>GPS capture</label>
           <p>{isBackendConfigured ? 'The app saves the phone location during check-in and check-out.' : 'Demo preview uses sample GPS. Real app will save phone location during check-in and check-out.'}</p>
         </div>
+        <div className="form-card leave-status-card">
+          <label>Leave status</label>
+          <strong>{leaveRequest ? leaveRequest.status : 'No active request'}</strong>
+          <span>{leaveRequest ? `${leaveRequest.fromDate} to ${leaveRequest.toDate} • ${leaveRequest.reason}` : 'Approved or rejected leave requests will show here for the agent.'}</span>
+        </div>
         <button type="button" className="primary-action attendance-main-action" disabled={!session || isAttendanceBusy} onClick={handleAttendanceAction}>{isAttendanceBusy ? 'Saving…' : attendanceAction}</button>
         <button type="button" className="secondary-action" onClick={() => goToScreen('leave')}>Request leave</button>
         <div className="section-label">Recent attendance</div>
@@ -845,16 +853,37 @@ function App() {
     </ScreenPanel>
   );
 
-  const renderReports = () => (
-    <ScreenPanel title="My reports" subtitle="Agent can see own daily/weekly/monthly summaries. Admin sees everyone separately.">
-      <div className="report-grid">
-        <div className="metric-card"><strong>2</strong><span>Visits this week</span></div>
-        <div className="metric-card"><strong>1</strong><span>Follow-up due</span></div>
-        <div className="metric-card"><strong>0</strong><span>Pending leave</span></div>
-      </div>
-      <p className="panel-note">These preview numbers are fixed demo values. They will come from backend reports when reports are connected.</p>
-    </ScreenPanel>
-  );
+  const renderReports = () => {
+    const leaveStatus = leaveRequest?.status ?? 'No active request';
+    const leaveDate = leaveRequest ? `${leaveRequest.fromDate} to ${leaveRequest.toDate}` : 'Nothing pending';
+    return (
+      <ScreenPanel title="My reports" subtitle="Agent can see own daily/weekly/monthly summaries. Admin sees everyone separately.">
+        <div className="report-grid">
+          <div className="metric-card"><strong>2</strong><span>Visits this week</span></div>
+          <div className="metric-card"><strong>1</strong><span>Follow-up due</span></div>
+          <div className="metric-card"><strong>{leaveRequest ? '1' : '0'}</strong><span>Pending leave</span></div>
+        </div>
+        <div className="form-card leave-status-card">
+          <label>Agent leave status</label>
+          <strong>{leaveStatus}</strong>
+          <span>{leaveDate}{leaveRequest ? ` • ${leaveRequest.reason}` : ''}</span>
+        </div>
+        <div className="form-card admin-approval-card">
+          <label>Admin view</label>
+          <strong>Leave approvals</strong>
+          <span>Admin will see all agents’ leave requests here with Approve / Reject actions.</span>
+          <div className="admin-request-row">
+            <div>
+              <b>{session?.agentName ?? 'Agent'}</b>
+              <small>{leaveDate}{leaveRequest ? ` • ${leaveRequest.reason}` : ' • No pending demo request'}</small>
+            </div>
+            <span className="chip chip-warning">{leaveRequest ? leaveRequest.status : 'demo'}</span>
+          </div>
+        </div>
+        <p className="panel-note">These preview numbers are fixed demo values. They will come from backend reports when reports are connected.</p>
+      </ScreenPanel>
+    );
+  };
 
   const renderScreen = () => {
     if (screen === 'visits') return renderVisits();
@@ -865,6 +894,12 @@ function App() {
     if (screen === 'reports') return renderReports();
     return renderHome();
   };
+
+  const activeNotice: ToastNotice | null = screenNotice
+    ? typeof screenNotice === 'string'
+      ? { title: 'Saved', message: screenNotice, tone: 'success' }
+      : screenNotice
+    : null;
 
   return (
     <main className="app-shell agent-only-shell">
@@ -889,10 +924,12 @@ function App() {
 
           {renderScreen()}
 
-          {screenNotice && (
-            <div className="save-toast" role="status">
+          {activeNotice && (
+            <div className={`save-toast save-toast-${activeNotice.tone ?? 'success'}`} role="status">
+              <span className="save-toast-accent" aria-hidden="true" />
               <span className="save-toast-icon"><CheckCircle2 size={18} /></span>
-              <span>{screenNotice}</span>
+              <span className="save-toast-copy"><strong>{activeNotice.title}</strong><span>{activeNotice.message}</span></span>
+              <button type="button" className="save-toast-close" aria-label="Close message" onClick={() => setScreenNotice(null)}><X size={16} /></button>
             </div>
           )}
 

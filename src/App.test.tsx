@@ -158,7 +158,7 @@ describe('Crystal Bio agent view shell', () => {
     fireEvent.change(screen.getByLabelText('Leave reason'), { target: { value: 'Personal work' } });
     fireEvent.change(screen.getByLabelText('Leave note'), { target: { value: 'Family appointment' } });
     fireEvent.click(screen.getByRole('button', { name: /submit leave request/i }));
-    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Demo leave request saved'));
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Leave request sent'));
     expect(screen.getAllByText(/2026-06-12 to 2026-06-13/i).length).toBeGreaterThan(0);
     expect(screen.getByText('pending')).toBeInTheDocument();
     expect(screen.getByText('Note: Family appointment')).toBeInTheDocument();

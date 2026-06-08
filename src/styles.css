@@ -315,6 +315,8 @@ p { color: var(--muted); line-height: 1.5; }
 .attendance-status-card label,
 .leave-summary-card label,
 .leave-confirm-card label,
+.leave-status-card label,
+.admin-approval-card label,
 .section-label {
   display: block;
   margin-bottom: 4px;
@@ -325,7 +327,9 @@ p { color: var(--muted); line-height: 1.5; }
   text-transform: uppercase;
 }
 .attendance-status-card strong,
-.leave-confirm-card strong {
+.leave-confirm-card strong,
+.leave-status-card strong,
+.admin-approval-card strong {
   display: block;
   color: var(--ink);
   font-size: 17px;
@@ -335,6 +339,8 @@ p { color: var(--muted); line-height: 1.5; }
 .attendance-status-card span,
 .leave-summary-card span,
 .leave-confirm-card span,
+.leave-status-card span,
+.admin-approval-card span,
 .leave-summary-card p {
   display: block;
   margin: 3px 0 0;
@@ -348,6 +354,25 @@ p { color: var(--muted); line-height: 1.5; }
   background: #fffef8;
   border: 1px solid rgba(36, 133, 86, 0.26);
 }
+.leave-status-card,
+.admin-approval-card {
+  background: #fbfcf5;
+  border: 1px solid rgba(123, 139, 111, 0.22);
+}
+.admin-request-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 10px;
+  border-radius: 16px;
+  background: rgba(248, 244, 226, 0.72);
+}
+.admin-request-row b,
+.admin-request-row small { display: block; }
+.admin-request-row b { color: var(--ink); font-size: 13px; font-weight: 580; }
+.admin-request-row small { color: var(--muted); font-size: 11.5px; line-height: 1.35; }
 .metric-card strong { display: block; font-size: 30px; font-weight: 600; letter-spacing: -0.03em; }
 .metric-card span, .panel-note { color: var(--muted); font-size: 12px; line-height: 1.45; }
 .panel-note { margin: 10px 2px 0; }
@@ -389,33 +414,70 @@ p { color: var(--muted); line-height: 1.5; }
   bottom: 98px;
   z-index: 20;
   display: grid;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: 5px auto 1fr auto;
   align-items: center;
   gap: 12px;
-  border: 2px solid #15803d;
-  border-left: 8px solid #15803d;
-  border-radius: 22px;
-  background: #dcfce7;
-  color: #12351f;
-  padding: 17px 16px;
-  box-shadow: 0 24px 58px rgba(21, 128, 61, 0.32), 0 8px 18px rgba(24, 32, 20, 0.16), 0 0 0 999px rgba(18, 53, 31, 0.10);
-  font-size: 15px;
-  line-height: 1.35;
-  font-weight: 700;
+  border-radius: 16px;
+  background: #edf6e8;
+  color: #263629;
+  padding: 14px 14px 14px 0;
+  border: 1px solid rgba(117, 145, 103, 0.24);
+  box-shadow: 0 16px 34px rgba(45, 58, 39, 0.16), 0 3px 10px rgba(45, 58, 39, 0.08);
   text-align: left;
+  overflow: hidden;
   animation: toast-pop 180ms ease-out;
 }
+.save-toast-accent {
+  align-self: stretch;
+  width: 5px;
+  background: #8fbf82;
+}
 .save-toast-icon {
-  width: 40px;
-  height: 40px;
+  width: 34px;
+  height: 34px;
   border-radius: 999px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: #15803d;
-  color: #ffffff;
-  box-shadow: 0 8px 18px rgba(21, 128, 61, 0.28);
+  background: rgba(143, 191, 130, 0.20);
+  color: #5f9f60;
 }
+.save-toast-copy strong {
+  display: block;
+  margin-bottom: 3px;
+  color: #223128;
+  font-size: 15px;
+  line-height: 1.15;
+  font-weight: 560;
+  letter-spacing: -0.01em;
+}
+.save-toast-copy span {
+  display: block;
+  color: #53614e;
+  font-size: 12.5px;
+  line-height: 1.35;
+  font-weight: 400;
+}
+.save-toast-close {
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #75916f;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.save-toast-close:hover { background: rgba(117, 145, 111, 0.12); }
+.save-toast-error { background: #fff0ec; }
+.save-toast-error .save-toast-accent { background: #d27b63; }
+.save-toast-error .save-toast-icon { color: #c8614b; background: rgba(210, 123, 99, 0.16); }
+.save-toast-warning { background: #fff6df; }
+.save-toast-warning .save-toast-accent { background: #d6aa4f; }
+.save-toast-info { background: #eef4f3; }
+.save-toast-info .save-toast-accent { background: #7aa4a0; }
 @keyframes toast-pop {
   from { opacity: 0; transform: translateY(12px) scale(0.98); }
   to { opacity: 1; transform: translateY(0) scale(1); }
