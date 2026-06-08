@@ -988,11 +988,12 @@ p { color: var(--muted); line-height: 1.5; }
 .nav-item svg { stroke-width: 2.2; }
 .nav-item-selected { background: var(--sage-deep); color: #fffef8; }
 .save-toast {
-  position: absolute;
-  left: 18px;
-  right: 18px;
-  bottom: 98px;
-  z-index: 20;
+  position: fixed;
+  left: max(18px, calc(50% - 197px));
+  right: auto;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 138px);
+  width: min(394px, calc(100vw - 36px));
+  z-index: 80;
   display: grid;
   grid-template-columns: 5px auto 1fr auto;
   align-items: center;
@@ -1102,7 +1103,8 @@ p { color: var(--muted); line-height: 1.5; }
     position: fixed;
     left: 18px;
     right: 18px;
-    bottom: calc(92px + env(safe-area-inset-bottom));
+    bottom: calc(148px + env(safe-area-inset-bottom));
+    width: auto;
     border-radius: 18px;
   }
   .phone-frame::before { opacity: 0.8; }
