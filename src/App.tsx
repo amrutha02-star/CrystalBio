@@ -23,8 +23,16 @@ const sampleAttendanceLogs = [
   { date: 'Yesterday', status: 'Checked out', detail: '9:18 AM to 6:04 PM' },
 ];
 
+const screenOptions: AppScreen[] = ['home', 'visits', 'sales', 'service', 'attendance', 'leave', 'reports'];
+
+const getInitialScreen = (): AppScreen => {
+  if (typeof window === 'undefined') return 'home';
+  const requestedScreen = new URLSearchParams(window.location.search).get('screen') as AppScreen | null;
+  return requestedScreen && screenOptions.includes(requestedScreen) ? requestedScreen : 'home';
+};
+
 function App() {
-  const [screen, setScreen] = useState<AppScreen>('home');
+  const [screen, setScreen] = useState<AppScreen>(getInitialScreen);
   const [session, setSession] = useState<FrontendSession | null>(null);
   const [attendance, setAttendance] = useState<FrontendAttendance | null>(null);
   const [isAttendanceBusy, setIsAttendanceBusy] = useState(false);
