@@ -168,9 +168,13 @@ describe('Crystal Bio agent view shell', () => {
     expect(screen.getByRole('status')).toHaveClass('save-toast');
     expect(screen.queryByRole('status')).not.toHaveClass('screen-notice');
     await waitFor(() => expect(screen.queryByRole('status')).not.toBeInTheDocument(), { timeout: 4500 });
-    expect(screen.getByRole('button', { name: /step 1 saved/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /save step 1 changes/i })).toBeEnabled();
     expect(screen.getByText(/Apollo Diagnostics • Visit 1 • follow up needed/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Step 2: pending • Step 3: pending/i).length).toBeGreaterThan(0);
+
+    fireEvent.change(screen.getByLabelText('Sales visit note'), { target: { value: 'Updated after first save.' } });
+    fireEvent.click(screen.getByRole('button', { name: /save step 1 changes/i }));
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Sales Step 1 updated'));
 
     fireEvent.change(screen.getByLabelText('Sales email'), { target: { value: 'lab@example.com' } });
     fireEvent.click(screen.getByRole('button', { name: /save step 2/i }));
@@ -193,9 +197,12 @@ describe('Crystal Bio agent view shell', () => {
     await waitFor(() => expect(screen.getByText('Meera Service')).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: /save step 1/i }));
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Service visit saved'));
-    expect(screen.getByRole('button', { name: /step 1 saved/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /save step 1 changes/i })).toBeEnabled();
     expect(screen.getByText(/Metro Lab • Visit 1 • parts required/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Step 2: pending • Step 3: pending/i).length).toBeGreaterThan(0);
+    fireEvent.change(screen.getByLabelText('Service work done'), { target: { value: 'Updated after first save.' } });
+    fireEvent.click(screen.getByRole('button', { name: /save step 1 changes/i }));
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Service Step 1 updated'));
     fireEvent.change(screen.getByLabelText('Service issue description'), { target: { value: 'Noise during spin cycle' } });
     fireEvent.click(screen.getByRole('button', { name: /save step 2/i }));
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Service Step 2 saved'));

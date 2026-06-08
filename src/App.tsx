@@ -367,10 +367,6 @@ function App() {
       setScreenNotice('Please wait for login before saving the sales visit.');
       return;
     }
-    if (salesSaveResult) {
-      setScreenNotice('Step 1 is already saved. Update Step 2 or Step 3, or start a new visit from Home.');
-      return;
-    }
     if (!salesAccountName.trim() || !salesVisitNote.trim()) {
       setScreenNotice('Add customer name and today’s visit note before saving Step 1.');
       return;
@@ -380,8 +376,32 @@ function App() {
       return;
     }
     setIsSalesSubmitting(true);
-    setScreenNotice('Saving Sales Step 1 with location…');
+    setScreenNotice(salesSaveResult ? 'Updating Sales Step 1 details…' : 'Saving Sales Step 1 with location…');
     try {
+      if (salesSaveResult) {
+        const opportunity = await crystalBioFrontendApi.submitSalesStep2(session, salesSaveResult.opportunity.id, {
+          accountName: salesAccountName.trim(),
+          ...(salesContactPerson.trim() ? { contactPerson: salesContactPerson.trim() } : {}),
+          ...(salesPhone.trim() ? { phone: salesPhone.trim() } : {}),
+          ...(salesRequirement.trim() ? { requirement: salesRequirement.trim() } : {}),
+        });
+        setSalesSaveResult({
+          opportunity: { ...salesSaveResult.opportunity, ...opportunity },
+          visit: {
+            ...salesSaveResult.visit,
+            note: salesVisitNote.trim(),
+            nextAction: salesNextAction,
+            ...(salesNextAction === 'follow_up_needed' ? { followUpDate: salesFollowUpDate } : { followUpDate: undefined }),
+          },
+        });
+        setScreenNotice({
+          title: 'Sales Step 1 updated',
+          message: 'Changes are saved. Step 2 and Step 3 remain available.',
+          tone: 'success',
+        });
+        return;
+      }
+
       const savedSalesVisit = await crystalBioFrontendApi.submitSalesVisit(session, {
         accountName: salesAccountName.trim(),
         ...(salesContactPerson.trim() ? { contactPerson: salesContactPerson.trim() } : {}),
@@ -433,7 +453,11 @@ function App() {
       });
       setSalesSaveResult({ ...salesSaveResult, opportunity: { ...salesSaveResult.opportunity, ...opportunity } });
       setSalesStep2Saved(true);
-      setScreenNotice('Sales Step 2 saved. Customer and requirement details can still be updated later.');
+      setScreenNotice({
+        title: 'Sales Step 2 saved',
+        message: 'Customer and requirement details can still be updated later.',
+        tone: 'success',
+      });
     } catch (error) {
       setScreenNotice(error instanceof Error ? error.message : 'Sales Step 2 save failed');
     } finally {
@@ -485,10 +509,46 @@ function App() {
       return;
     }
     setIsServiceSubmitting(true);
-    setScreenNotice('Saving service visit with location…');
+    setScreenNotice(serviceSaveResult ? 'Updating Service Step 1 details…' : 'Saving service visit with location…');
     try {
       const serviceSession = session.agentId === 'agent_3' ? session : await crystalBioFrontendApi.login('agent_3');
       if (serviceSession !== session) setSession(serviceSession);
+
+      if (serviceSaveResult) {
+        const serviceRecord = await crystalBioFrontendApi.submitServiceStep2(serviceSession, serviceSaveResult.serviceRecord.id, {
+          customerName: serviceCustomerName.trim(),
+          ...(servicePhone.trim() ? { phone: servicePhone.trim() } : {}),
+          ...(serviceContactPerson.trim() ? { contactPerson: serviceContactPerson.trim() } : {}),
+          ...(serviceEmail.trim() ? { email: serviceEmail.trim() } : {}),
+          ...(serviceDepartmentAddress.trim() ? { departmentAddress: serviceDepartmentAddress.trim() } : {}),
+          ...(serviceEquipmentName.trim() ? { equipmentName: serviceEquipmentName.trim() } : {}),
+          ...(serviceBrandName.trim() ? { brandName: serviceBrandName.trim() } : {}),
+          ...(serviceModelName.trim() ? { modelName: serviceModelName.trim() } : {}),
+          ...(serviceSerialNumber.trim() ? { serialNumber: serviceSerialNumber.trim() } : {}),
+          ...(serviceIssueCategory.trim() ? { issueCategory: serviceIssueCategory.trim() } : {}),
+          ...(serviceIssueDescription.trim() ? { issueDescription: serviceIssueDescription.trim() } : {}),
+          ...(serviceWarrantyAmc.trim() ? { warrantyAmc: serviceWarrantyAmc.trim() } : {}),
+        });
+        setServiceSaveResult({
+          serviceRecord: { ...serviceSaveResult.serviceRecord, ...serviceRecord },
+          visit: {
+            ...serviceSaveResult.visit,
+            serviceType,
+            workDone: serviceWorkDone.trim(),
+            supportRequired: serviceSupportRequired,
+            nextAction: serviceNextAction,
+            ...(serviceNextAction === 'parts_required' || serviceNextAction === 'next_visit_needed' ? { nextVisitDate: serviceNextVisitDate } : { nextVisitDate: undefined }),
+            ...(serviceOfficeNotes.trim() ? { officeNotes: serviceOfficeNotes.trim() } : { officeNotes: undefined }),
+          },
+        });
+        setScreenNotice({
+          title: 'Service Step 1 updated',
+          message: 'Changes are saved. Step 2 and Step 3 remain available.',
+          tone: 'success',
+        });
+        return;
+      }
+
       const savedServiceVisit = await crystalBioFrontendApi.submitServiceVisit(serviceSession, {
         customerName: serviceCustomerName.trim(),
         ...(servicePhone.trim() ? { phone: servicePhone.trim() } : {}),
@@ -548,7 +608,11 @@ function App() {
       });
       setServiceSaveResult({ ...serviceSaveResult, serviceRecord: { ...serviceSaveResult.serviceRecord, ...serviceRecord } });
       setServiceStep2Saved(true);
-      setScreenNotice('Service Step 2 saved. Equipment and issue details are updated.');
+      setScreenNotice({
+        title: 'Service Step 2 saved',
+        message: 'Equipment and issue details are updated.',
+        tone: 'success',
+      });
     } catch (error) {
       setScreenNotice(error instanceof Error ? error.message : 'Service Step 2 save failed');
     } finally {
@@ -760,7 +824,7 @@ function App() {
             <input aria-label="Sales follow-up date" type="date" value={salesFollowUpDate} onChange={(event) => setSalesFollowUpDate(event.target.value)} />
           </label>
         )}
-        <button type="button" className="primary-action" disabled={salesAnySubmitting || !session || Boolean(salesSaveResult)} onClick={handleSalesSubmit}>{isSalesSubmitting ? 'Saving…' : salesSaveResult ? 'Step 1 saved' : 'Save Step 1'}</button>
+        <button type="button" className="primary-action" disabled={salesAnySubmitting || !session} onClick={handleSalesSubmit}>{isSalesSubmitting ? 'Saving…' : salesSaveResult ? 'Save Step 1 changes' : 'Save Step 1'}</button>
       </section>
 
       <section className="step-card">
@@ -872,7 +936,7 @@ function App() {
           <label className="field-card"><span>Service type</span><select aria-label="Service type" value={serviceType} onChange={(event) => setServiceType(event.target.value as FrontendServiceType)}><option value="breakdown">Breakdown</option><option value="installation">Installation</option><option value="preventive_maintenance">Preventive maintenance</option><option value="repair">Repair</option><option value="calibration">Calibration</option><option value="demo">Product demonstration</option><option value="training">Training</option><option value="other">Other</option></select></label>
           <label className="field-card"><span>Next action</span><select aria-label="Service next action" value={serviceNextAction} onChange={(event) => setServiceNextAction(event.target.value as FrontendServiceNextAction)}><option value="parts_required">Parts required</option><option value="next_visit_needed">Next visit needed</option><option value="no_follow_up">No follow-up</option><option value="closed">Closed</option></select></label>
           {(serviceNextAction === 'parts_required' || serviceNextAction === 'next_visit_needed') && <label className="field-card"><span>Next visit date</span><input aria-label="Service next visit date" type="date" value={serviceNextVisitDate} onChange={(event) => setServiceNextVisitDate(event.target.value)} /></label>}
-          <button type="button" className="primary-action" disabled={serviceAnySubmitting || !session || Boolean(serviceSaveResult)} onClick={handleServiceSubmit}>{isServiceSubmitting ? 'Saving…' : serviceSaveResult ? 'Step 1 saved' : 'Save Step 1'}</button>
+          <button type="button" className="primary-action" disabled={serviceAnySubmitting || !session} onClick={handleServiceSubmit}>{isServiceSubmitting ? 'Saving…' : serviceSaveResult ? 'Save Step 1 changes' : 'Save Step 1'}</button>
         </section>
 
         <section className="step-card">
@@ -1349,7 +1413,7 @@ function App() {
           {renderScreen()}
 
           {activeNotice && (
-            <div className={`save-toast save-toast-${activeNotice.tone ?? 'success'}`} role="status">
+            <div key={`${activeNotice.title}-${activeNotice.message}`} className={`save-toast save-toast-${activeNotice.tone ?? 'success'}`} role="status">
               <span className="save-toast-accent" aria-hidden="true" />
               <span className="save-toast-icon"><CheckCircle2 size={18} /></span>
               <span className="save-toast-copy"><strong>{activeNotice.title}</strong><span>{activeNotice.message}</span></span>
