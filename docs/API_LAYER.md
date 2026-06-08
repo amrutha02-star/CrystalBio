@@ -142,12 +142,12 @@ Both were fixed before commit.
 
 ## Next step
 
-Connect this API contract to a real HTTP server and persistent database.
+The API contract is now connected to a local HTTP server and JSON persistence layer.
 
 Recommended next build step:
 
-1. Choose persistence layer.
-2. Add database schema/migrations.
-3. Add HTTP server adapter.
-4. Run Testing Agent against real endpoint calls.
-5. Connect frontend screens to API.
+1. Add production-ready database or hosted backend storage.
+2. Add real auth/password/OTP.
+3. Add object storage for photos.
+4. Connect frontend screens to live API calls.
+5. Run Testing Agent against complete frontend + backend journeys.

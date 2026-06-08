@@ -153,6 +153,16 @@ export type AdminReport = {
   followUpsDue: string[];
 };
 
+export type CrystalBioBackendState = {
+  nextId: number;
+  agents: Agent[];
+  sessions: LoginSession[];
+  attendance: AttendanceRecord[];
+  sales: SalesOpportunity[];
+  service: ServiceRecord[];
+  leaveRequests: LeaveRequest[];
+};
+
 export class ValidationError extends Error {
   constructor(message: string) {
     super(message);
@@ -186,14 +196,19 @@ const createIdFactory = () => {
   return (prefix: string) => `${prefix}_${next++}`;
 };
 
-export function createCrystalBioBackend() {
-  const nextId = createIdFactory();
-  const agents = new Map<string, Agent>();
-  const attendance = new Map<string, AttendanceRecord>();
-  const sales = new Map<string, SalesOpportunity>();
-  const service = new Map<string, ServiceRecord>();
-  const sessions = new Map<string, LoginSession>();
-  const leaveRequests = new Map<string, LeaveRequest>();
+export function createCrystalBioBackend(initialState?: CrystalBioBackendState) {
+  let nextNumericId = initialState?.nextId ?? 1;
+  const nextId = (prefix: string) => `${prefix}_${nextNumericId++}`;
+  const agents = new Map<string, Agent>((initialState?.agents ?? []).map((agent) => [agent.id, agent]));
+  const attendance = new Map<string, AttendanceRecord>(
+    (initialState?.attendance ?? []).map((record) => [record.id, record]),
+  );
+  const sales = new Map<string, SalesOpportunity>((initialState?.sales ?? []).map((opportunity) => [opportunity.id, opportunity]));
+  const service = new Map<string, ServiceRecord>((initialState?.service ?? []).map((record) => [record.id, record]));
+  const sessions = new Map<string, LoginSession>((initialState?.sessions ?? []).map((session) => [session.token, session]));
+  const leaveRequests = new Map<string, LeaveRequest>(
+    (initialState?.leaveRequests ?? []).map((leaveRequest) => [leaveRequest.id, leaveRequest]),
+  );
 
   const getAgent = (agentId: string) => {
     const agent = agents.get(agentId);
@@ -213,6 +228,18 @@ export function createCrystalBioBackend() {
   };
 
   return {
+    exportState(): CrystalBioBackendState {
+      return {
+        nextId: nextNumericId,
+        agents: [...agents.values()],
+        sessions: [...sessions.values()],
+        attendance: [...attendance.values()],
+        sales: [...sales.values()],
+        service: [...service.values()],
+        leaveRequests: [...leaveRequests.values()],
+      };
+    },
+
     createAgent(input: { name: string; role: AgentRole }): Agent {
       requireText(input.name, 'Agent name is required');
       const agent: Agent = { id: nextId('agent'), name: input.name, role: input.role, active: true };
