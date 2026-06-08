@@ -769,6 +769,21 @@ p { color: var(--muted); line-height: 1.5; }
   background: rgba(255, 254, 248, 0.9);
 }
 .admin-agent-main { min-width: 0; }
+.admin-click-row {
+  width: 100%;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+}
+.admin-click-row:active,
+.admin-click-row:hover { background: rgba(237, 243, 232, 0.7); }
+.admin-alert-row.admin-click-row {
+  border-radius: 14px;
+  padding-left: 6px;
+  padding-right: 6px;
+}
+.admin-agent-filter-row { margin-top: -2px; }
+.admin-agent-filter-row button { font-size: 11.2px; }
 
 .bottom-nav {
   position: absolute;

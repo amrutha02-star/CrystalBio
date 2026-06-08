@@ -5,6 +5,8 @@ import { crystalBioFrontendApi, type FrontendAttendance, type FrontendLeaveReque
 
 type AppScreen = 'home' | 'visits' | 'sales' | 'service' | 'attendance' | 'leave' | 'reports' | 'admin';
 type ReportPeriod = 'today' | 'week' | 'month';
+type AdminAgentFilter = 'all' | 'sales' | 'service';
+type AdminTab = 'overview' | 'agents' | 'approvals' | 'adminReports';
 type ToastNotice = { title: string; message: string; tone?: 'success' | 'info' | 'warning' | 'error' };
 
 const toneClass: Record<string, string> = {
@@ -43,6 +45,9 @@ function App() {
   const [statusMessage, setStatusMessage] = useState('Loading logged-in agent…');
   const [screenNotice, setScreenNotice] = useState<ToastNotice | string | null>(null);
   const [reportPeriod, setReportPeriod] = useState<ReportPeriod>('week');
+  const [adminPeriod, setAdminPeriod] = useState<ReportPeriod>('today');
+  const [adminAgentFilter, setAdminAgentFilter] = useState<AdminAgentFilter>('all');
+  const [adminTab, setAdminTab] = useState<AdminTab>('overview');
   const [leaveFromDate, setLeaveFromDate] = useState('2026-06-12');
   const [leaveToDate, setLeaveToDate] = useState('2026-06-12');
   const [leaveReason, setLeaveReason] = useState('Sick leave');
@@ -250,6 +255,15 @@ function App() {
       });
     }
     setScreen(nextScreen);
+  };
+
+  const openAdminTab = (nextTab: AdminTab) => {
+    setAdminTab(nextTab);
+    setScreenNotice({
+      title: nextTab === 'overview' ? 'Overview opened' : nextTab === 'agents' ? 'Agents opened' : nextTab === 'approvals' ? 'Approvals opened' : 'Admin reports opened',
+      message: nextTab === 'agents' ? 'Use Sales / Service filters to narrow the agent list.' : nextTab === 'approvals' ? 'Pending leave and follow-up items are shown first.' : 'Preview section updated.',
+      tone: 'info',
+    });
   };
 
   const handleLeaveSubmit = async () => {
@@ -999,60 +1013,100 @@ function App() {
     );
   };
 
-  const renderAdmin = () => (
-    <ScreenPanel title="Admin overview" subtitle="Simple owner view for attendance, leave, and field work across agents.">
-      <section className="admin-hero-card">
-        <div>
-          <p>Today’s field status</p>
-          <strong>3 agents active</strong>
-          <span>1 service visit • 2 sales visits • 1 leave request pending</span>
-        </div>
-        <span className="admin-hero-icon"><UsersRound size={22} /></span>
-      </section>
+  const renderAdmin = () => {
+    const adminPeriodData: Record<ReportPeriod, { label: string; active: string; summary: string; visits: string; checkedIn: string; leave: string; followUps: string }> = {
+      today: { label: 'Today', active: '3 agents active', summary: '1 service visit • 2 sales visits • 1 leave request pending', visits: '5', checkedIn: '3', leave: '1', followUps: '4' },
+      week: { label: 'This week', active: '8 agents active', summary: '9 service visits • 14 sales visits • 3 leave requests', visits: '23', checkedIn: '8', leave: '3', followUps: '11' },
+      month: { label: 'This month', active: '11 agents tracked', summary: '38 service visits • 61 sales visits • 7 leave requests', visits: '99', checkedIn: '11', leave: '7', followUps: '26' },
+    };
+    const adminAgents = [
+      { name: 'Rahul Sales', role: 'sales' as const, detail: 'Checked in • 2 sales visits • 1 follow-up', status: 'View', chip: 'chip chip-soft' },
+      { name: 'Meera Service', role: 'service' as const, detail: 'Checked in • 1 service visit • parts required', status: 'View', chip: 'chip chip-info' },
+      { name: 'Anil Sales', role: 'sales' as const, detail: 'Not checked in yet • no update today', status: 'Missing', chip: 'chip chip-warning' },
+    ];
+    const visibleAgents = adminAgents.filter((agent) => adminAgentFilter === 'all' || agent.role === adminAgentFilter);
+    const period = adminPeriodData[adminPeriod];
+    const changePeriod = (nextPeriod: ReportPeriod) => {
+      setAdminPeriod(nextPeriod);
+      setScreenNotice({ title: `${adminPeriodData[nextPeriod].label} view selected`, message: 'Admin summary, metrics, and report numbers updated.', tone: 'success' });
+    };
+    const showOverview = adminTab === 'overview';
+    const showAgents = adminTab === 'agents';
+    const showApprovals = adminTab === 'overview' || adminTab === 'approvals';
+    const showReports = adminTab === 'overview' || adminTab === 'adminReports';
 
-      <div className="admin-filter-row" aria-label="Admin report filters">
-        <button type="button" className="admin-filter-active">Today</button>
-        <button type="button">Week</button>
-        <button type="button">Month</button>
-      </div>
+    return (
+      <ScreenPanel title={adminTab === 'overview' ? 'Admin overview' : adminTab === 'agents' ? 'Agents' : adminTab === 'approvals' ? 'Approvals' : 'Admin reports'} subtitle="Simple owner view for attendance, leave, and field work across agents.">
+        {(showOverview || showReports) && (
+          <>
+            <section className="admin-hero-card">
+              <div>
+                <p>{period.label} field status</p>
+                <strong>{period.active}</strong>
+                <span>{period.summary}</span>
+              </div>
+              <span className="admin-hero-icon"><UsersRound size={22} /></span>
+            </section>
 
-      <div className="admin-metric-grid">
-        <div className="metric-card admin-metric-card"><strong>5</strong><span>Total visits</span><small>Today</small></div>
-        <div className="metric-card admin-metric-card"><strong>3</strong><span>Checked in</span><small>Agents active</small></div>
-        <div className="metric-card admin-metric-card"><strong>1</strong><span>Leave</span><small>Pending approval</small></div>
-        <div className="metric-card admin-metric-card"><strong>4</strong><span>Follow-ups</span><small>Need action</small></div>
-      </div>
+            <div className="admin-filter-row" aria-label="Admin report filters">
+              {(['today', 'week', 'month'] as ReportPeriod[]).map((periodOption) => (
+                <button key={periodOption} type="button" className={adminPeriod === periodOption ? 'admin-filter-active' : ''} onClick={() => changePeriod(periodOption)}>
+                  {periodOption === 'today' ? 'Today' : periodOption === 'week' ? 'Week' : 'Month'}
+                </button>
+              ))}
+            </div>
 
-      <section className="admin-action-card">
-        <label>Needs admin attention</label>
-        <div className="admin-alert-row">
-          <span className="chip chip-warning">Leave</span>
-          <div><strong>Meera Service</strong><p>Leave request waiting for approve / reject.</p></div>
-        </div>
-        <div className="admin-alert-row">
-          <span className="chip chip-info">Follow-up</span>
-          <div><strong>Apollo Diagnostics</strong><p>Quote follow-up due tomorrow.</p></div>
-        </div>
-      </section>
+            <div className="admin-metric-grid">
+              <div className="metric-card admin-metric-card"><strong>{period.visits}</strong><span>Total visits</span><small>{period.label}</small></div>
+              <div className="metric-card admin-metric-card"><strong>{period.checkedIn}</strong><span>Checked in</span><small>Agents active</small></div>
+              <div className="metric-card admin-metric-card"><strong>{period.leave}</strong><span>Leave</span><small>Needs review</small></div>
+              <div className="metric-card admin-metric-card"><strong>{period.followUps}</strong><span>Follow-ups</span><small>Need action</small></div>
+            </div>
+          </>
+        )}
 
-      <div className="section-label">Agent activity</div>
-      <div className="admin-agent-row">
-        <div className="admin-agent-main"><strong>Rahul Sales</strong><p>Checked in • 2 sales visits • 1 follow-up</p></div>
-        <span className="chip chip-soft">View</span>
-      </div>
-      <div className="admin-agent-row">
-        <div className="admin-agent-main"><strong>Meera Service</strong><p>Checked in • 1 service visit • parts required</p></div>
-        <span className="chip chip-info">View</span>
-      </div>
-      <div className="admin-agent-row">
-        <div className="admin-agent-main"><strong>Anil Field</strong><p>Not checked in yet • no update today</p></div>
-        <span className="chip chip-warning">Missing</span>
-      </div>
+        {showApprovals && (
+          <section className="admin-action-card">
+            <label>Needs admin attention</label>
+            <button type="button" className="admin-alert-row admin-click-row" onClick={() => setScreenNotice({ title: 'Leave request opened', message: 'Meera Service request is ready for approve / reject in the admin approval view.', tone: 'info' })}>
+              <span className="chip chip-warning">Leave</span>
+              <div><strong>Meera Service</strong><p>Leave request waiting for approve / reject.</p></div>
+            </button>
+            <button type="button" className="admin-alert-row admin-click-row" onClick={() => setScreenNotice({ title: 'Follow-up opened', message: 'Apollo Diagnostics quote follow-up details are ready for admin review.', tone: 'info' })}>
+              <span className="chip chip-info">Follow-up</span>
+              <div><strong>Apollo Diagnostics</strong><p>Quote follow-up due tomorrow.</p></div>
+            </button>
+          </section>
+        )}
 
-      <button type="button" className="primary-action" onClick={() => setScreenNotice({ title: 'Daily admin report ready', message: 'Download/export will connect after backend reports are finalized.', tone: 'success' })}>Generate today’s admin report</button>
-      <p className="panel-note">Admin preview uses fixed demo data. Backend will connect live attendance, leave approvals, visit details, and exports.</p>
-    </ScreenPanel>
-  );
+        {showAgents && (
+          <>
+            <div className="section-label">Agent activity</div>
+            <div className="admin-filter-row admin-agent-filter-row" aria-label="Agent type filters">
+              {(['all', 'sales', 'service'] as AdminAgentFilter[]).map((filter) => (
+                <button key={filter} type="button" className={adminAgentFilter === filter ? 'admin-filter-active' : ''} onClick={() => setAdminAgentFilter(filter)}>
+                  {filter === 'all' ? 'All' : filter === 'sales' ? 'Sales agents' : 'Service agents'}
+                </button>
+              ))}
+            </div>
+            {visibleAgents.map((agent) => (
+              <button key={agent.name} type="button" className="admin-agent-row admin-click-row" onClick={() => setScreenNotice({ title: `${agent.name} opened`, message: `${agent.role === 'sales' ? 'Sales' : 'Service'} activity details will open here in the full admin app.`, tone: 'info' })}>
+                <div className="admin-agent-main"><strong>{agent.name}</strong><p>{agent.detail}</p></div>
+                <span className={agent.chip}>{agent.status}</span>
+              </button>
+            ))}
+          </>
+        )}
+
+        {showReports && (
+          <>
+            <button type="button" className="primary-action" onClick={() => setScreenNotice({ title: `${adminPeriod === 'today' ? "Today’s" : period.label} admin report ready`, message: 'Download/export will connect after backend reports are finalized.', tone: 'success' })}>Generate {adminPeriod === 'today' ? "today’s" : period.label.toLowerCase()} admin report</button>
+            <p className="panel-note">Admin preview uses fixed demo data. Backend will connect live attendance, leave approvals, visit details, and exports.</p>
+          </>
+        )}
+      </ScreenPanel>
+    );
+  };
 
   const renderScreen = () => {
     if (screen === 'visits') return renderVisits();
@@ -1106,15 +1160,15 @@ function App() {
           <nav className="bottom-nav" aria-label={screen === 'admin' ? 'Admin navigation' : 'Agent navigation'}>
             {screen === 'admin' ? (
               [
-                { label: 'Today', icon: Home },
-                { label: 'Agents', icon: UsersRound },
-                { label: 'Leave', icon: CalendarCheck },
-                { label: 'Reports', icon: FileText },
-              ].map((item, index) => {
+                { label: 'Overview', tab: 'overview' as AdminTab, icon: Home },
+                { label: 'Agents', tab: 'agents' as AdminTab, icon: UsersRound },
+                { label: 'Approvals', tab: 'approvals' as AdminTab, icon: CalendarCheck },
+                { label: 'Reports', tab: 'adminReports' as AdminTab, icon: FileText },
+              ].map((item) => {
                 const Icon = item.icon;
-                const selected = index === 0;
+                const selected = adminTab === item.tab;
                 return (
-                  <button key={item.label} type="button" className={selected ? 'nav-item nav-item-selected' : 'nav-item'} aria-label={selected ? `${item.label} selected` : item.label}>
+                  <button key={item.label} type="button" className={selected ? 'nav-item nav-item-selected' : 'nav-item'} aria-label={selected ? `${item.label} selected` : item.label} onClick={() => openAdminTab(item.tab)}>
                     <Icon size={17} />
                     {item.label}
                   </button>
