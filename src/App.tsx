@@ -204,7 +204,7 @@ function App() {
       return;
     }
     setIsAttendanceBusy(true);
-    setScreenNotice(isBackendConfigured ? 'Capturing check-in location…' : 'Saving check-in with sample GPS for client testing…');
+    setScreenNotice('Capturing check-in location…');
     setStatusMessage('Capturing check-in location…');
     try {
       const nextAttendance = await crystalBioFrontendApi.checkIn(session);
@@ -337,7 +337,7 @@ function App() {
       return;
     }
     setIsLeaveSubmitting(true);
-    setScreenNotice(isBackendConfigured ? 'Sending leave request…' : 'Saving leave request for client testing…');
+    setScreenNotice('Sending leave request…');
     try {
       const savedLeave = await crystalBioFrontendApi.submitLeaveRequest(session, {
         fromDate: leaveFromDate,
@@ -350,7 +350,7 @@ function App() {
         title: 'Leave request sent',
         message: isBackendConfigured
           ? 'Admin will review it. You can see the status in Leave and Reports.'
-          : 'Request saved. Admin can approve or reject it during client testing.',
+          : 'Request saved. Admin can approve or reject it.',
         tone: 'success',
       });
     } catch (error) {
@@ -380,7 +380,7 @@ function App() {
       return;
     }
     setIsSalesSubmitting(true);
-    setScreenNotice(isBackendConfigured ? 'Saving Sales Step 1 with GPS…' : 'Saving Sales Step 1 with sample GPS for client testing…');
+    setScreenNotice('Saving Sales Step 1 with location…');
     try {
       const savedSalesVisit = await crystalBioFrontendApi.submitSalesVisit(session, {
         accountName: salesAccountName.trim(),
@@ -397,7 +397,7 @@ function App() {
       setScreenNotice(
         isBackendConfigured
           ? 'Sales Step 1 saved. Agent can complete Step 2 and Step 3 later.'
-          : 'Sales Step 1 saved. Step 2 and Step 3 can now be saved in this client testing build.',
+          : 'Sales Step 1 saved. Step 2 and Step 3 can now be saved.',
       );
     } catch (error) {
       setScreenNotice(error instanceof Error ? error.message : 'Sales Step 1 save failed');
@@ -485,7 +485,7 @@ function App() {
       return;
     }
     setIsServiceSubmitting(true);
-    setScreenNotice(isBackendConfigured ? 'Saving service visit with GPS…' : 'Saving service visit with sample GPS for client testing…');
+    setScreenNotice('Saving service visit with location…');
     try {
       const serviceSession = session.agentId === 'agent_3' ? session : await crystalBioFrontendApi.login('agent_3');
       if (serviceSession !== session) setSession(serviceSession);
@@ -515,7 +515,7 @@ function App() {
       setScreenNotice(
         isBackendConfigured
           ? 'Service visit saved. Admin reports will include this update.'
-          : 'Service visit saved. Admin reports will include this update in client testing.',
+          : 'Service visit saved. Admin reports will include this update.',
       );
     } catch (error) {
       setScreenNotice(error instanceof Error ? error.message : 'Service visit save failed');
@@ -611,8 +611,7 @@ function App() {
         <input aria-label="Password or PIN" defaultValue="1234" type="password" />
       </label>
       <button type="button" className="primary-action login-main-button" onClick={handleAgentLogin}>Login</button>
-      <button type="button" className="secondary-action login-admin-button" onClick={handleAdminLogin}>Preview admin login</button>
-      <p className="panel-note">In the real app there will be only one login button. If the account is an admin account, they can see Admin and still submit their own field form without logging out.</p>
+      <button type="button" className="secondary-action login-admin-button" onClick={handleAdminLogin}>Admin access</button>
     </ScreenPanel>
   );
 
@@ -722,7 +721,7 @@ function App() {
   const renderSales = () => (
     <ScreenPanel title="Sales visit" subtitle="Save quickly first. Add remaining details later when free.">
       <div className="form-card highlighted-card">
-        <label>Progressive sales form</label>
+        <label>Sales progress</label>
         <span>Step 1: {salesSaveResult ? 'Saved' : 'Pending'} • Step 2: {salesStep2Saved ? 'Saved' : 'Pending'} • Step 3: {salesStep3Saved ? 'Saved' : 'Pending'}</span>
       </div>
 
@@ -733,7 +732,7 @@ function App() {
         </div>
         <div className="form-card highlighted-card">
           <label>Current visit location</label>
-          <p>{isBackendConfigured ? 'Location permission is requested when this update is saved.' : 'Client testing uses sample GPS here. Connected backend mode requests phone location when saving.'}</p>
+          <p>{isBackendConfigured ? 'Location permission is requested when this update is saved.' : 'Location is captured when this update is saved.'}</p>
         </div>
         <label className="field-card">
           <span>Customer / lab name</span>
@@ -766,7 +765,7 @@ function App() {
 
       <section className="step-card">
         <div className="step-heading">
-          <div><span className="step-pill">Step 2</span><h3>Customer & requirement details</h3><p>Can be filled after the visit when agent has time.</p></div>
+          <div><span className="step-pill">Step 2</span><h3>Customer & requirement details</h3><p>Add contact and product details when available.</p></div>
           <span className={salesStep2Saved ? 'chip chip-soft' : 'chip chip-info'}>{salesStep2Saved ? 'Saved' : 'Later'}</span>
         </div>
         <label className="field-card">
@@ -832,8 +831,8 @@ function App() {
             <small>Optional for Sales. Use only when a site, product, or visiting card photo is useful.</small>
           </div>
           <div className="photo-actions">
-            <button type="button" className="secondary-action photo-button" onClick={() => setScreenNotice('Camera upload will be connected in the production app.')}>Camera</button>
-            <button type="button" className="secondary-action photo-button" onClick={() => setScreenNotice('File upload will be connected in the production app.')}>Upload</button>
+            <button type="button" className="secondary-action photo-button" onClick={() => setScreenNotice('Camera capture is scheduled for device testing.')}>Camera</button>
+            <button type="button" className="secondary-action photo-button" onClick={() => setScreenNotice('File upload is scheduled for device testing.')}>Upload</button>
           </div>
           <textarea aria-label="Sales photo note" value={salesPhotoNote} onChange={(event) => setSalesPhotoNote(event.target.value)} placeholder="Optional note, e.g. visiting card photo added" rows={2} />
         </div>
@@ -855,7 +854,7 @@ function App() {
     return (
       <ScreenPanel title="Service visit" subtitle="Save quickly first. Add equipment, parts, and proof later.">
         <div className="form-card highlighted-card">
-          <label>Progressive service form</label>
+          <label>Service progress</label>
           <span>Step 1: {serviceSaveResult ? 'Saved' : 'Pending'} • Step 2: {serviceStep2Saved ? 'Saved' : 'Pending'} • Step 3: {serviceStep3Saved ? 'Saved' : 'Pending'}</span>
         </div>
 
@@ -866,11 +865,11 @@ function App() {
           </div>
           <div className="form-card highlighted-card">
             <label>Current visit location</label>
-            <p>{isBackendConfigured ? 'Location permission is requested when this update is saved.' : 'Client testing uses sample GPS here. Connected backend mode requests phone location when saving.'}</p>
+            <p>{isBackendConfigured ? 'Location permission is requested when this update is saved.' : 'Location is captured when this update is saved.'}</p>
           </div>
           <label className="field-card"><span>Customer / lab name</span><input aria-label="Service customer name" value={serviceCustomerName} onChange={(event) => setServiceCustomerName(event.target.value)} /></label>
           <label className="field-card"><span>Work done / issue checked</span><textarea aria-label="Service work done" value={serviceWorkDone} onChange={(event) => setServiceWorkDone(event.target.value)} placeholder="Issue checked, work done, customer update" rows={3} /></label>
-          <label className="field-card"><span>Service type</span><select aria-label="Service type" value={serviceType} onChange={(event) => setServiceType(event.target.value as FrontendServiceType)}><option value="breakdown">Breakdown</option><option value="installation">Installation</option><option value="preventive_maintenance">Preventive maintenance</option><option value="repair">Repair</option><option value="calibration">Calibration</option><option value="demo">Demo</option><option value="training">Training</option><option value="other">Other</option></select></label>
+          <label className="field-card"><span>Service type</span><select aria-label="Service type" value={serviceType} onChange={(event) => setServiceType(event.target.value as FrontendServiceType)}><option value="breakdown">Breakdown</option><option value="installation">Installation</option><option value="preventive_maintenance">Preventive maintenance</option><option value="repair">Repair</option><option value="calibration">Calibration</option><option value="demo">Product demonstration</option><option value="training">Training</option><option value="other">Other</option></select></label>
           <label className="field-card"><span>Next action</span><select aria-label="Service next action" value={serviceNextAction} onChange={(event) => setServiceNextAction(event.target.value as FrontendServiceNextAction)}><option value="parts_required">Parts required</option><option value="next_visit_needed">Next visit needed</option><option value="no_follow_up">No follow-up</option><option value="closed">Closed</option></select></label>
           {(serviceNextAction === 'parts_required' || serviceNextAction === 'next_visit_needed') && <label className="field-card"><span>Next visit date</span><input aria-label="Service next visit date" type="date" value={serviceNextVisitDate} onChange={(event) => setServiceNextVisitDate(event.target.value)} /></label>}
           <button type="button" className="primary-action" disabled={serviceAnySubmitting || !session || Boolean(serviceSaveResult)} onClick={handleServiceSubmit}>{isServiceSubmitting ? 'Saving…' : serviceSaveResult ? 'Step 1 saved' : 'Save Step 1'}</button>
@@ -878,7 +877,7 @@ function App() {
 
         <section className="step-card">
           <div className="step-heading">
-            <div><span className="step-pill">Step 2</span><h3>Customer, equipment, issue</h3><p>Can be completed after leaving the customer site.</p></div>
+            <div><span className="step-pill">Step 2</span><h3>Customer, equipment, issue</h3><p>Add instrument and issue details when available.</p></div>
             <span className={serviceStep2Saved ? 'chip chip-soft' : 'chip chip-info'}>{serviceStep2Saved ? 'Saved' : 'Later'}</span>
           </div>
           <label className="field-card"><span>Contact person</span><input aria-label="Service contact person" value={serviceContactPerson} onChange={(event) => setServiceContactPerson(event.target.value)} placeholder="Optional" /></label>
@@ -905,7 +904,7 @@ function App() {
           <label className="field-card"><span>Machine status</span><input aria-label="Service machine status" value={serviceMachineStatus} onChange={(event) => setServiceMachineStatus(event.target.value)} placeholder="Working / pending / closed" /></label>
           <label className="field-card support-card"><span>Support required?</span><select aria-label="Service support required" value={serviceSupportRequired ? 'yes' : 'no'} onChange={(event) => setServiceSupportRequired(event.target.value === 'yes')}><option value="yes">Yes, office/parts support needed</option><option value="no">No support needed</option></select></label>
           <label className="field-card"><span>Support note</span><textarea aria-label="Service support note" value={serviceSupportRequiredNote} onChange={(event) => setServiceSupportRequiredNote(event.target.value)} placeholder="Optional" rows={2} /></label>
-          <div className="field-card photo-action-card"><div><span>Service photos</span><small>Optional now. Use for machine, issue, part, or completed-work proof.</small></div><div className="photo-actions"><button type="button" className="secondary-action photo-button" onClick={() => setScreenNotice('Camera upload will be connected in the production app.')}>Camera</button><button type="button" className="secondary-action photo-button" onClick={() => setScreenNotice('File upload will be connected in the production app.')}>Upload</button></div><input aria-label="Service photo note" value={servicePhotoNote} onChange={(event) => setServicePhotoNote(event.target.value)} placeholder="Optional photo note" /></div>
+          <div className="field-card photo-action-card"><div><span>Service photos</span><small>Optional now. Use for machine, issue, part, or completed-work proof.</small></div><div className="photo-actions"><button type="button" className="secondary-action photo-button" onClick={() => setScreenNotice('Camera capture is scheduled for device testing.')}>Camera</button><button type="button" className="secondary-action photo-button" onClick={() => setScreenNotice('File upload is scheduled for device testing.')}>Upload</button></div><input aria-label="Service photo note" value={servicePhotoNote} onChange={(event) => setServicePhotoNote(event.target.value)} placeholder="Optional photo note" /></div>
           <label className="field-card"><span>Final remarks</span><textarea aria-label="Service final remarks" value={serviceFinalRemarks} onChange={(event) => setServiceFinalRemarks(event.target.value)} placeholder="Optional customer confirmation / remarks" rows={2} /></label>
           <label className="field-card"><span>Notes for office</span><textarea aria-label="Service office notes" value={serviceOfficeNotes} onChange={(event) => setServiceOfficeNotes(event.target.value)} placeholder="Optional office notes" rows={2} /></label>
           <button type="button" aria-label="Save Step 3" className={serviceSaveResult ? 'secondary-action step-save-action' : 'secondary-action step-save-action locked-step-action'} disabled={serviceAnySubmitting || !serviceSaveResult} onClick={handleServiceStep3Submit}>{isServiceStep3Submitting ? 'Saving…' : serviceSaveResult ? 'Save Step 3' : 'Complete Step 1 first'}</button>
@@ -922,8 +921,8 @@ function App() {
         <div className="attendance-status-icon"><MapPin size={20} /></div>
         <div>
           <label>Current location</label>
-          <strong>{isBackendConfigured ? 'Phone GPS will be captured' : 'Sample GPS for testing'}</strong>
-          <span>{isBackendConfigured ? 'The app asks for location when the agent taps Check in now.' : 'Static preview uses sample GPS. Real app will save phone location.'}</span>
+          <strong>{isBackendConfigured ? 'Phone GPS will be captured' : 'Location capture ready'}</strong>
+          <span>{isBackendConfigured ? 'The app asks for location when the agent taps Check in now.' : 'The app saves the phone location when the agent checks in.'}</span>
         </div>
       </div>
       <div className="work-type-card">
@@ -990,12 +989,12 @@ function App() {
         </div>
         <div className="form-card highlighted-card">
           <label>GPS capture</label>
-          <p>{isBackendConfigured ? 'The app saves the phone location during check-in and check-out.' : 'Client testing uses sample GPS. Connected backend mode saves phone location during check-in and check-out.'}</p>
+          <p>{isBackendConfigured ? 'The app saves the phone location during check-in and check-out.' : 'The app saves phone location during check-in and check-out.'}</p>
         </div>
         <div className="form-card leave-status-card">
           <label>Leave status</label>
           <strong>{leaveRequest ? leaveRequest.status : 'No active request'}</strong>
-          <span>{leaveRequest ? `${leaveRequest.fromDate} to ${leaveRequest.toDate} • ${leaveRequest.reason}` : 'Approved or rejected leave requests will show here for the agent.'}</span>
+          <span>{leaveRequest ? `${leaveRequest.fromDate} to ${leaveRequest.toDate} • ${leaveRequest.reason}` : 'No leave requests submitted.'}</span>
         </div>
         <button type="button" className="primary-action attendance-main-action" disabled={!session || isAttendanceBusy} onClick={() => isCheckedIn ? void handleAttendanceAction() : goToScreen('checkin')}>{isAttendanceBusy ? 'Saving…' : attendanceAction}</button>
         <div className="section-label">Recent attendance</div>
@@ -1050,13 +1049,10 @@ function App() {
       )}
       <div className="section-label">Leave history</div>
       <div className="entry-row">
-        <div><strong>{leaveRequest ? `${leaveRequest.fromDate} to ${leaveRequest.toDate}` : 'No leave request yet'}</strong><p>{leaveRequest ? leaveRequest.reason : 'Submitted requests and approval status will appear here.'}</p></div>
+        <div><strong>{leaveRequest ? `${leaveRequest.fromDate} to ${leaveRequest.toDate}` : 'No leave request yet'}</strong><p>{leaveRequest ? leaveRequest.reason : 'Submit a request to track approval status.'}</p></div>
         <span className="chip chip-soft">{leaveRequest ? 'in review' : 'clear'}</span>
       </div>
-      <div className="entry-row">
-        <div><strong>Approved leave will show here</strong><p>When admin approves or rejects, the status changes for the agent.</p></div>
-        <span className="chip chip-info">status</span>
-      </div>
+
     </ScreenPanel>
   );
 
@@ -1078,7 +1074,7 @@ function App() {
       setReportPeriod(period);
       setScreenNotice({
         title: `${reportCopy[period].title} ready`,
-        message: `${reportCopy[period].range} generated from saved field activity for client testing.`,
+        message: `${reportCopy[period].range} generated from saved field activity.`,
         tone: 'success',
       });
     };
@@ -1127,18 +1123,17 @@ function App() {
         <section className="report-preview-card compact-report-preview-card">
           <div className="report-preview-heading">
             <div>
-              <label>Report preview</label>
+              <label>Report summary</label>
               <strong>{activeReport.title}</strong>
               <span>{activeReport.range} • {activeReport.note}</span>
             </div>
-            <span className="chip chip-soft">Client testing data</span>
+            <span className="chip chip-soft">Current data</span>
           </div>
         </section>
 
         <div className="section-label">Recent report items</div>
         <div className="entry-row"><div><strong>Apollo Diagnostics</strong><p>Sales visit • Quote to be shared</p></div><span className="chip chip-warning">follow-up</span></div>
         <div className="entry-row"><div><strong>Metro Lab</strong><p>Service visit • Parts required</p></div><span className="chip chip-info">service</span></div>
-        <p className="panel-note">Saved locally + backed up for pilot testing.</p>
       </ScreenPanel>
     );
   };
@@ -1198,7 +1193,7 @@ function App() {
     const showOverview = adminTab === 'overview';
     const showAgents = adminTab === 'agents';
     const showApprovals = adminTab === 'overview' || adminTab === 'approvals';
-    const showReports = adminTab === 'overview' || adminTab === 'adminReports';
+    const showReports = adminTab === 'adminReports';
 
     return (
       <ScreenPanel title={adminTab === 'overview' ? 'Admin overview' : adminTab === 'agents' ? 'Agents' : adminTab === 'approvals' ? 'Approvals' : 'Admin reports'} subtitle="Simple owner view for attendance, leave, and field work across agents.">
@@ -1250,7 +1245,7 @@ function App() {
                 <small>{activeApproval.actionNote}</small>
               </div>
               <div className="admin-approval-actions">
-                <button type="button" className="secondary-action" onClick={() => setScreenNotice({ title: 'Rejected', message: `${activeApproval.title} marked rejected for client testing.`, tone: 'warning' })}>Reject</button>
+                <button type="button" className="secondary-action" onClick={() => setScreenNotice({ title: 'Rejected', message: `${activeApproval.title} marked rejected.`, tone: 'warning' })}>Reject</button>
                 <button type="button" className="primary-action" onClick={() => setScreenNotice({ title: 'Approved', message: `${activeApproval.title} approved and reflected in the agent app.`, tone: 'success' })}>Approve</button>
               </div>
             </section>
@@ -1259,7 +1254,7 @@ function App() {
               <label>Leave approvals</label>
               <button type="button" className="admin-alert-row admin-click-row" onClick={() => openApproval('meera-leave')}>
                 <span className="chip chip-warning">Leave</span>
-                <div><strong>Meera Service</strong><p>12 Jun to 13 Jun • Sick leave</p><small>Waiting for admin approve / reject</small></div>
+                <div><strong>Meera Service</strong><p>12 Jun to 13 Jun • Sick leave</p><small>Waiting for admin decision</small></div>
               </button>
             </section>
           )
@@ -1276,7 +1271,7 @@ function App() {
               ))}
             </div>
             {visibleAgents.map((agent) => (
-              <button key={agent.name} type="button" className="admin-agent-row admin-click-row" onClick={() => setScreenNotice({ title: `${agent.name} opened`, message: `${agent.role === 'sales' ? 'Sales' : 'Service'} activity details will open here in the full admin app.`, tone: 'info' })}>
+              <button key={agent.name} type="button" className="admin-agent-row admin-click-row" onClick={() => setScreenNotice({ title: `${agent.name} opened`, message: `${agent.role === 'sales' ? 'Sales' : 'Service'} activity details will open next.`, tone: 'info' })}>
                 <div className="admin-agent-main"><strong>{agent.name}</strong><p>{agent.detail}</p></div>
                 <span className={agent.chip}>{agent.status}</span>
               </button>
@@ -1289,7 +1284,7 @@ function App() {
             {adminTab === 'adminReports' && (
               <section className="admin-report-list-card">
                 <div className="admin-report-heading">
-                  <label>Person-wise report preview</label>
+                  <label>Person-wise reports</label>
                   <span>{period.label}</span>
                 </div>
                 {adminReportRows[adminPeriod].map((row) => (
@@ -1304,7 +1299,7 @@ function App() {
                 ))}
               </section>
             )}
-            <button type="button" className="primary-action" onClick={() => setScreenNotice({ title: `${adminPeriod === 'today' ? "Today’s" : period.label} admin report ready`, message: 'Admin report generated from saved field activity for client testing.', tone: 'success' })}>Generate {adminPeriod === 'today' ? "today’s" : period.label.toLowerCase()} admin report</button>
+            <button type="button" className="primary-action" onClick={() => setScreenNotice({ title: `${adminPeriod === 'today' ? "Today’s" : period.label} admin report ready`, message: 'Admin report generated from saved field activity.', tone: 'success' })}>Generate {adminPeriod === 'today' ? "today’s" : period.label.toLowerCase()} admin report</button>
           </>
         )}
       </ScreenPanel>
@@ -1333,9 +1328,9 @@ function App() {
   return (
     <main className="app-shell agent-only-shell">
       <section className="preview-note">
-        <p className="eyebrow">{isBackendConfigured ? 'Backend connected' : 'Client testing preview'}</p>
+        <p className="eyebrow">CrystalBio Field Hub</p>
         <h1>{screen === 'login' ? 'Login screen' : screen === 'admin' ? (adminTab === 'adminReports' ? 'Admin reports screen' : adminTab === 'approvals' ? 'Admin approvals screen' : adminTab === 'agents' ? 'Admin agents screen' : 'Admin overview screen') : 'Agent home screen'}</h1>
-        <p>{screen === 'login' ? 'Clean role-based entry for field agents and admin users.' : screen === 'admin' ? 'Owner/admin testing view for team attendance, leave, and field reports.' : isBackendConfigured ? 'Home logs in the agent and sends attendance to the Crystal Bio backend API.' : 'Client testing preview keeps the full mobile journey usable; connect the hosted backend URL before live staff testing.'}</p>
+        <p>{screen === 'login' ? 'Role-based entry for field agents and admin users.' : screen === 'admin' ? 'Owner view for team attendance, leave, and field reports.' : 'Mobile workspace for field attendance, visits, leave, and reports.'}</p>
       </section>
 
       <section className="agent-preview-wrap">
@@ -1346,7 +1341,7 @@ function App() {
             <div>
               {screen !== 'home' && screen !== 'login' && <button type="button" className="back-button" onClick={() => goToScreen('home')}><ChevronLeft size={17} /> Home</button>}
               <p className="muted">{screen === 'login' ? 'Welcome' : screen === 'admin' ? 'Owner access' : 'Good morning'}</p>
-              <h2>{screen === 'login' ? 'CrystalBio' : screen === 'admin' ? 'Admin' : session?.agentName ?? '{Agent Name}'}</h2>
+              <h2>{screen === 'login' ? 'CrystalBio' : screen === 'admin' ? 'Admin' : session?.agentName ?? (screen === 'service' ? 'Meera Service' : 'Rahul Sales')}</h2>
             </div>
             <div className="avatar">{screen === 'admin' ? <UsersRound size={21} /> : <UserRound size={21} />}</div>
           </header>

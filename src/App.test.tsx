@@ -16,7 +16,7 @@ describe('Crystal Bio agent view shell', () => {
     expect(screen.getByLabelText('Mobile number or employee ID')).toBeInTheDocument();
     expect(screen.getByLabelText('Password or PIN')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^login$/i })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /preview admin login/i }));
+    fireEvent.click(screen.getByRole('button', { name: /admin access/i }));
     expect(await screen.findByLabelText('My form')).toBeInTheDocument();
     fireEvent.click(screen.getByLabelText('My form'));
     expect(await screen.findByText('Quick actions')).toBeInTheDocument();
@@ -27,7 +27,7 @@ describe('Crystal Bio agent view shell', () => {
     render(<App />);
 
     expect(screen.getByText('Agent home screen')).toBeInTheDocument();
-    expect(screen.getByText('Client testing preview')).toBeInTheDocument();
+    expect(screen.getByText('CrystalBio Field Hub')).toBeInTheDocument();
     expect(screen.getByText('Quick actions')).toBeInTheDocument();
     expect(await screen.findByText('Rahul Sales')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /check in/i })).toBeInTheDocument();
@@ -111,7 +111,7 @@ describe('Crystal Bio agent view shell', () => {
     expect(screen.getByRole('button', { name: /request leave/i })).toBeInTheDocument();
   });
 
-  it('opens bottom navigation screens and presents reports as client-testing data, not fixed demo numbers', async () => {
+  it('opens bottom navigation screens and presents reports as current field data, not fixed demo numbers', async () => {
     render(<App />);
 
     await screen.findByText('Rahul Sales');
@@ -123,8 +123,8 @@ describe('Crystal Bio agent view shell', () => {
     fireEvent.click(screen.getByRole('button', { name: /^reports$/i }));
     expect(screen.getByText('My reports')).toBeInTheDocument();
     expect(screen.getByText('Weekly summary')).toBeInTheDocument();
-    expect(screen.getByText('Client testing data')).toBeInTheDocument();
-    expect(screen.getByText('Saved locally + backed up for pilot testing.')).toBeInTheDocument();
+    expect(screen.getByText('Current data')).toBeInTheDocument();
+    expect(screen.getByText('Report summary')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /^month$/i }));
     expect(screen.getByText('Monthly summary')).toBeInTheDocument();
     expect(screen.getAllByText(/June 2026/).length).toBeGreaterThan(0);
@@ -254,7 +254,7 @@ describe('Crystal Bio agent view shell', () => {
     render(<App />);
 
     expect(screen.getByRole('heading', { name: 'Admin reports' })).toBeInTheDocument();
-    expect(screen.getByText('Person-wise report preview')).toBeInTheDocument();
+    expect(screen.getByText('Person-wise reports')).toBeInTheDocument();
     expect(screen.getByText('Rahul Sales')).toBeInTheDocument();
     expect(screen.getByText('Meera Service')).toBeInTheDocument();
     expect(screen.getByText('Anil Sales')).toBeInTheDocument();
