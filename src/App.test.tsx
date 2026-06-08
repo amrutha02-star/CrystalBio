@@ -186,7 +186,8 @@ describe('Crystal Bio agent view shell', () => {
     expect(screen.getByText('Admin overview screen')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Admin overview' })).toBeInTheDocument();
     expect(screen.getByText('3 agents active')).toBeInTheDocument();
-    expect(screen.getByText('Needs admin attention')).toBeInTheDocument();
+    expect(screen.getByText('Leave approvals')).toBeInTheDocument();
+    expect(screen.queryByText('Apollo Diagnostics')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Week' }));
     expect(screen.getByText('8 agents active')).toBeInTheDocument();
@@ -201,7 +202,7 @@ describe('Crystal Bio agent view shell', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Approvals' }));
     expect(screen.getByRole('heading', { name: 'Approvals' })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /Meera Service Leave request/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Meera Service.*Sick leave/i }));
     expect(screen.getByText('Back to approvals')).toBeInTheDocument();
     expect(screen.getByText('12 Jun to 13 Jun • Sick leave')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Approve' })).toBeInTheDocument();

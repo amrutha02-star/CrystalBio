@@ -7,7 +7,7 @@ type AppScreen = 'home' | 'visits' | 'sales' | 'service' | 'attendance' | 'leave
 type ReportPeriod = 'today' | 'week' | 'month';
 type AdminAgentFilter = 'all' | 'sales' | 'service';
 type AdminTab = 'overview' | 'agents' | 'approvals' | 'adminReports';
-type AdminApprovalId = 'meera-leave' | 'apollo-followup';
+type AdminApprovalId = 'meera-leave';
 type ToastNotice = { title: string; message: string; tone?: 'success' | 'info' | 'warning' | 'error' };
 
 const toneClass: Record<string, string> = {
@@ -47,7 +47,7 @@ const getInitialAdminTab = (): AdminTab => {
 const getInitialAdminApproval = (): AdminApprovalId | null => {
   if (typeof window === 'undefined') return null;
   const requestedApproval = new URLSearchParams(window.location.search).get('approval') as AdminApprovalId | null;
-  return requestedApproval && ['meera-leave', 'apollo-followup'].includes(requestedApproval) ? requestedApproval : null;
+  return requestedApproval && ['meera-leave'].includes(requestedApproval) ? requestedApproval : null;
 };
 
 function App() {
@@ -274,11 +274,7 @@ function App() {
   const openAdminTab = (nextTab: AdminTab) => {
     setAdminTab(nextTab);
     if (nextTab !== 'approvals') setSelectedAdminApproval(null);
-    setScreenNotice({
-      title: nextTab === 'overview' ? 'Overview opened' : nextTab === 'agents' ? 'Agents opened' : nextTab === 'approvals' ? 'Approvals opened' : 'Admin reports opened',
-      message: nextTab === 'agents' ? 'Use Sales / Service filters to narrow the agent list.' : nextTab === 'approvals' ? 'Pending leave and follow-up items are shown first.' : 'Preview section updated.',
-      tone: 'info',
-    });
+    setScreenNotice(null);
   };
 
   const handleLeaveSubmit = async () => {
@@ -1050,16 +1046,6 @@ function App() {
         meta: 'Service agent • Submitted today',
         actionNote: 'Approval status will show in Meera’s Leave and Reports pages.',
       },
-      'apollo-followup': {
-        label: 'Follow-up',
-        chipClass: 'chip chip-info',
-        agent: 'Rahul Sales',
-        title: 'Apollo Diagnostics',
-        summary: 'Quote follow-up due tomorrow',
-        detail: 'Sales follow-up needs admin attention because the quote is pending and next action is due.',
-        meta: 'Sales agent • Apollo Diagnostics',
-        actionNote: 'Admin can assign a next action or mark this follow-up reviewed.',
-      },
     };
     const openApproval = (approvalId: AdminApprovalId) => {
       setSelectedAdminApproval(approvalId);
@@ -1132,14 +1118,10 @@ function App() {
             </section>
           ) : (
             <section className="admin-action-card admin-approval-list-card">
-              <label>Needs admin attention</label>
+              <label>Leave approvals</label>
               <button type="button" className="admin-alert-row admin-click-row" onClick={() => openApproval('meera-leave')}>
                 <span className="chip chip-warning">Leave</span>
-                <div><strong>Meera Service</strong><p>Leave request waiting for approve / reject.</p></div>
-              </button>
-              <button type="button" className="admin-alert-row admin-click-row" onClick={() => openApproval('apollo-followup')}>
-                <span className="chip chip-info">Follow-up</span>
-                <div><strong>Apollo Diagnostics</strong><p>Quote follow-up due tomorrow.</p></div>
+                <div><strong>Meera Service</strong><p>12 Jun to 13 Jun • Sick leave</p><small>Waiting for admin approve / reject</small></div>
               </button>
             </section>
           )
