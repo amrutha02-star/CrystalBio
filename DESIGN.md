@@ -1,29 +1,29 @@
 ---
 version: alpha
 name: Crystal Bio Field Hub
-description: Calm field-work companion for non-technical service and sales agents; soft planner-inspired mobile UI with warm, clean, professional restraint.
+description: Calm field-work companion for non-technical service and sales agents; soft sage/olive-led planner-inspired mobile UI with clean, professional restraint.
 colors:
-  primary: "#111015"
-  secondary: "#F4D983"
-  tertiary: "#9AAD8F"
-  ink: "#111015"
-  inkSoft: "#3A3640"
-  textMuted: "#8B858F"
-  canvasWarm: "#F4D983"
-  canvasCream: "#FFF8E8"
-  surface: "#FFFFFF"
-  surfaceSoft: "#F8F7F4"
-  line: "#EFEAE2"
-  sage: "#9AAD8F"
-  sageSoft: "#EEF4EC"
-  mint: "#D9F7DE"
+  primary: "#5F714F"
+  secondary: "#E8EFDF"
+  tertiary: "#F3DFA1"
+  ink: "#263024"
+  inkSoft: "#53604D"
+  textMuted: "#7B8376"
+  canvasWarm: "#FBF5DF"
+  canvasCream: "#F3F7EF"
+  surface: "#FFFEF8"
+  surfaceSoft: "#F7FAF3"
+  line: "#E3E8DC"
+  sage: "#8FA17F"
+  sageSoft: "#E8EFDF"
+  mint: "#DFE8D4"
   peach: "#F4B39B"
   peachSoft: "#FFF0E8"
   sky: "#C8DDF1"
   skySoft: "#EEF6FC"
-  warning: "#F6D982"
+  warning: "#F3DFA1"
   danger: "#D95B46"
-  success: "#4E8E57"
+  success: "#5F714F"
 typography:
   display:
     fontFamily: Google Sans
@@ -75,7 +75,7 @@ spacing:
   xl: 28px
 components:
   screen-background:
-    backgroundColor: "{colors.canvasWarm}"
+    backgroundColor: "{colors.canvasCream}"
     textColor: "{colors.ink}"
   phone-surface:
     backgroundColor: "{colors.surface}"
@@ -93,12 +93,12 @@ components:
     rounded: "{rounded.xl}"
     padding: 18px
   button-primary:
-    backgroundColor: "{colors.ink}"
+    backgroundColor: "{colors.primary}"
     textColor: "{colors.surface}"
     rounded: "{rounded.md}"
     padding: 14px
   nav-selected:
-    backgroundColor: "{colors.ink}"
+    backgroundColor: "{colors.primary}"
     textColor: "{colors.surface}"
     rounded: "{rounded.md}"
     padding: 10px
@@ -113,9 +113,10 @@ The field agents are not tech-savvy, so the UI must reduce thinking. The product
 The visual reference direction is:
 
 - soft planner/task app
-- warm cream/yellow environment
-- white phone surfaces and cards
-- black primary text and actions
+- sage/olive-led calm healthcare field-work palette
+- warm yellow only as a small helper accent, not the main background
+- white/off-white surfaces and calm cards
+- olive primary actions instead of black buttons
 - very limited pastel accents
 - rounded cards with generous spacing
 - simple line icons and optional hand-drawn illustrations
@@ -126,20 +127,21 @@ The most important design rule: **agent screens first, admin later**. Do not opt
 
 ### Core palette
 
-- **Ink `#111015`**: main text, selected nav, primary CTAs. This gives the UI confidence and avoids washed-out pastel weakness.
-- **Warm canvas `#F4D983`**: outer background / brand warmth. Use sparingly inside the phone.
-- **Cream `#FFF8E8`**: soft background sections, empty states, warm panels.
-- **White `#FFFFFF`**: main app surface and most cards.
-- **Sage `#9AAD8F`**: Crystal Bio’s professional green reference. Use as a quiet brand anchor, not as the whole interface.
-- **Mint, peach, sky**: gentle status/accent colors only.
+- **Ink `#263024`**: main text, softer than pure black.
+- **Deep olive `#5F714F`**: primary CTAs, selected nav, important active states.
+- **Sage canvas `#F3F7EF`**: real mobile app background.
+- **Off-white `#FFFEF8`**: main cards and form fields.
+- **Soft sage `#E8EFDF`**: secondary buttons, calm status chips, light highlights.
+- **Warm accent `#F3DFA1` / `#FFF7DC`**: only for warnings or tiny helper accents, not dominant backgrounds.
 
 ### Color rules
 
 1. Do **not** make every action card a loud different color.
 2. Use one primary visual area per screen.
 3. Prefer white cards with small pastel accents over fully colored cards.
-4. Black/ink should carry hierarchy; color should guide, not decorate.
-5. Avoid dull hospital green as the dominant background.
+4. Olive should carry actions and selected states; color should guide, not decorate.
+5. Avoid black primary buttons and yellow-heavy screens.
+6. Avoid dull hospital green as the dominant background.
 6. Avoid neon, saturated blue, bright orange, and corporate gradient overload.
 
 ## Typography
@@ -243,7 +245,7 @@ The app preview should look like a real mobile app screen, not a web report.
 Rules:
 
 - white/cream app surface
-- soft warm environment outside phone
+- soft sage environment outside phone
 - rounded black phone border only for preview/demo; real app should not need a phone border
 
 ### Today status card
@@ -388,7 +390,7 @@ Monitoring is for project/internal team only. It must not be visible to field ag
 
 - Prioritize the agent’s first 5 seconds on the screen.
 - Keep screens warm, clean, and calm.
-- Use black/ink for hierarchy and CTAs.
+- Use deep olive for hierarchy and CTAs; avoid black primary buttons.
 - Use pastel colors carefully and consistently.
 - Keep quick actions short and tappable.
 - Show selected nav state clearly.
@@ -400,7 +402,7 @@ Monitoring is for project/internal team only. It must not be visible to field ag
 - Do not make the UI look like a PDF/report.
 - Do not use too many bright colors at once.
 - Do not make every card a different saturated color.
-- Do not use dull green as the whole visual identity.
+- Do not use dull green as the whole visual identity, but keep sage/olive as the clean primary direction.
 - Do not expose monitoring/debugging UI to client users.
 - Do not start admin polish before agent UX is approved.
 
@@ -408,7 +410,7 @@ Monitoring is for project/internal team only. It must not be visible to field ag
 
 Before any Crystal Bio UI change is accepted, verify:
 
-- Does it follow the palette above?
+- Does it follow the sage/olive-led palette above and avoid black primary buttons/yellow-heavy screens?
 - Is the home screen compact?
 - Are the 4 agent actions visible quickly?
 - Are labels plain and non-technical?
