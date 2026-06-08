@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
-import { CalendarCheck, ChevronLeft, ClipboardList, FileText, Home, MapPin, Plus, Search, UserRound } from 'lucide-react';
+import { CalendarCheck, CheckCircle2, ChevronLeft, ClipboardList, FileText, Home, MapPin, Plus, Search, UserRound } from 'lucide-react';
 import { sampleEntries } from './appData';
 import { crystalBioFrontendApi, type FrontendAttendance, type FrontendLeaveRequest, type FrontendSalesSaveResult, type FrontendSalesNextAction, type FrontendServiceSaveResult, type FrontendServiceNextAction, type FrontendServiceType, type FrontendSession } from './crystalBioFrontendApi';
 
@@ -107,6 +107,12 @@ function App() {
       isMounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!screenNotice) return undefined;
+    const timer = window.setTimeout(() => setScreenNotice(null), 3200);
+    return () => window.clearTimeout(timer);
+  }, [screenNotice]);
 
   const isCheckedIn = attendance?.status === 'checked_in';
   const attendanceAction = isCheckedIn ? 'Check out' : 'Check in';
@@ -757,7 +763,12 @@ function App() {
 
           {renderScreen()}
 
-          {screenNotice && <div className="save-toast" role="status">{screenNotice}</div>}
+          {screenNotice && (
+            <div className="save-toast" role="status">
+              <span className="save-toast-icon"><CheckCircle2 size={18} /></span>
+              <span>{screenNotice}</span>
+            </div>
+          )}
 
           <nav className="bottom-nav" aria-label="Agent navigation">
             {navItems.map((item) => {

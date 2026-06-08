@@ -114,6 +114,7 @@ describe('Crystal Bio agent view shell', () => {
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Demo Sales Step 1 saved'));
     expect(screen.getByRole('status')).toHaveClass('save-toast');
     expect(screen.queryByRole('status')).not.toHaveClass('screen-notice');
+    await waitFor(() => expect(screen.queryByRole('status')).not.toBeInTheDocument(), { timeout: 4500 });
     expect(screen.getByRole('button', { name: /step 1 saved/i })).toBeDisabled();
     expect(screen.getByText(/Apollo Diagnostics • Visit 1 • follow up needed/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Step 2: pending • Step 3: pending/i).length).toBeGreaterThan(0);
