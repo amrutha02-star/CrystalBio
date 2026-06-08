@@ -104,6 +104,21 @@ components:
     padding: 10px
 ---
 
+## Approved visual baseline
+
+**Locked by client/user on 2026-06-08.** This sage/olive full-screen mobile direction is now the approved baseline for CrystalBio agent screens.
+
+Future work should preserve:
+
+- full-screen real mobile behavior, not a phone mockup inside mobile browser
+- sage/olive-led palette with warm yellow only as a small accent
+- deep olive primary buttons and selected nav states, not black buttons
+- lighter Google Sans-style typography with natural letter spacing
+- compact but breathable planner-like spacing
+- calm cards/actions that do not feel chunky, loud, or dashboard-like
+
+Do not restart visual direction while building new Sales, Service, Attendance, or Reports screens unless the user explicitly asks for a redesign. New screens should inherit this baseline and only make small polish adjustments where needed.
+
 ## Overview
 
 Crystal Bio Field Hub must feel like a **calm daily work companion**, not an enterprise dashboard, PDF report, or complicated CRM.
