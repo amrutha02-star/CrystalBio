@@ -45,6 +45,19 @@ describe('CrystalBio HTTP server adapter', () => {
 
     expect(checkInResponse.status).toBe(201);
     expect(checkIn.attendance.agentName).toBe('Rahul');
+
+    const checkOutResponse = await fetch(`${baseUrl}/attendance/check-out`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        authorization: `Bearer ${login.session.token}`,
+      },
+      body: JSON.stringify({ timestamp: '2026-06-07T18:00:00.000Z', gps }),
+    });
+    const checkOut = await checkOutResponse.json();
+
+    expect(checkOutResponse.status).toBe(200);
+    expect(checkOut.attendance.status).toBe('checked_out');
   });
 
   it('returns clean JSON errors for malformed JSON', async () => {
@@ -64,5 +77,22 @@ describe('CrystalBio HTTP server adapter', () => {
 
     expect(response.status).toBe(400);
     expect(body.error).toBe('Malformed JSON body');
+  });
+
+  it('handles browser CORS preflight requests', async () => {
+    const backend = createCrystalBioBackend();
+    const server = createCrystalBioHttpServer(createCrystalBioApi(backend));
+    servers.push(server);
+    await server.listen(0);
+    const address = server.address() as AddressInfo;
+
+    const response = await fetch(`http://127.0.0.1:${address.port}/attendance/check-in`, {
+      method: 'OPTIONS',
+      headers: { origin: 'http://127.0.0.1:5173' },
+    });
+
+    expect(response.status).toBe(204);
+    expect(response.headers.get('access-control-allow-origin')).toBe('*');
+    expect(response.headers.get('access-control-allow-headers')).toContain('authorization');
   });
 });

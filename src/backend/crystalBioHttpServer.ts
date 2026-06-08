@@ -20,13 +20,28 @@ const readJsonBody = async (request: IncomingMessage) => {
 
 const writeJson = (response: ServerResponse, status: number, body: Record<string, unknown>) => {
   response.statusCode = status;
+  response.setHeader('access-control-allow-origin', '*');
+  response.setHeader('access-control-allow-methods', 'GET,POST,PATCH,OPTIONS');
+  response.setHeader('access-control-allow-headers', 'content-type,authorization');
   response.setHeader('content-type', 'application/json');
   response.end(JSON.stringify(body));
+};
+
+const writeCorsPreflight = (response: ServerResponse) => {
+  response.statusCode = 204;
+  response.setHeader('access-control-allow-origin', '*');
+  response.setHeader('access-control-allow-methods', 'GET,POST,PATCH,OPTIONS');
+  response.setHeader('access-control-allow-headers', 'content-type,authorization');
+  response.end();
 };
 
 export function createCrystalBioHttpServer(api: CrystalBioApiHandler) {
   const server: Server = createServer(async (request, response) => {
     try {
+      if (request.method === 'OPTIONS') {
+        writeCorsPreflight(response);
+        return;
+      }
       const body = await readJsonBody(request);
       const apiResponse = api.handle({
         method: (request.method ?? 'GET') as ApiRequest['method'],

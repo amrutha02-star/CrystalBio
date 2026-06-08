@@ -3,7 +3,7 @@ export type AppModule = {
   title: string;
   description: string;
   sourceForm: string;
-  supportsDrafts: boolean;
+  supportsPartialSave: boolean;
   steps: string[];
   highlights: string[];
   statusOptions: string[];
@@ -21,7 +21,7 @@ export const formModules: AppModule[] = [
     title: 'Daily Check-in',
     description: 'Simple start-of-day attendance with optional location and notes.',
     sourceForm: 'crystal-bio-login',
-    supportsDrafts: false,
+    supportsPartialSave: false,
     steps: ['Confirm name', 'Capture time and location', 'Add optional note', 'Submit check-in'],
     highlights: ['Auto-filled agent name', 'Auto time stamp', 'Missing check-in alerts'],
     statusOptions: ['Checked in', 'Not checked in', 'On leave'],
@@ -31,7 +31,7 @@ export const formModules: AppModule[] = [
     title: 'Sales Visit',
     description: 'Sales visit and pipeline update split into small, mobile-friendly steps.',
     sourceForm: 'crystal-bio-sales',
-    supportsDrafts: true,
+    supportsPartialSave: true,
     steps: [
       'Customer/account details',
       'Requirement and product details',
@@ -48,7 +48,7 @@ export const formModules: AppModule[] = [
     title: 'Service Visit',
     description: 'Service/engineering work report with equipment history and next action.',
     sourceForm: 'crystal-bio-service',
-    supportsDrafts: true,
+    supportsPartialSave: true,
     steps: [
       'Customer details',
       'Equipment details',
@@ -66,7 +66,7 @@ export const formModules: AppModule[] = [
     title: 'Leave Request',
     description: 'Agent leave request with admin approval instead of agent-filled approver.',
     sourceForm: 'crystal-bio-leave',
-    supportsDrafts: false,
+    supportsPartialSave: false,
     steps: ['Select leave dates', 'Add reason', 'Add optional note', 'Submit for admin approval'],
     highlights: ['Date range', 'Reason', 'Admin approval', 'Agent status visibility'],
     statusOptions: ['Pending', 'Approved', 'Rejected'],
@@ -123,7 +123,7 @@ export const buildPhases: BuildPhase[] = [
   {
     title: 'Phase 1: Core Agent App',
     goal: 'Prove agents can submit work comfortably without frustration.',
-    deliverables: ['Email login', 'Agent home', 'Daily check-in', 'Sales entry', 'Service entry', 'Leave request', 'Save draft', 'My Entries'],
+    deliverables: ['Email login', 'Agent home', 'Daily check-in', 'Sales entry', 'Service entry', 'Leave request', 'Saved visit updates', 'Visits'],
   },
   {
     title: 'Phase 2: Admin Dashboard',
@@ -172,8 +172,8 @@ export function getRequiredMvpModules(): string[] {
     'Sales report',
     'Service report',
     'Leave request',
-    'Save draft',
-    'My Entries',
+    'Saved visit updates',
+    'Visits',
     'Admin dashboard',
     'Leave approval',
     'Basic reports',

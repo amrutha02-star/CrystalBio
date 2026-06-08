@@ -17,8 +17,8 @@ describe('Crystal Bio product model', () => {
 
     expect(sales?.steps.length).toBeGreaterThanOrEqual(5);
     expect(service?.steps.length).toBeGreaterThanOrEqual(5);
-    expect(sales?.supportsDrafts).toBe(true);
-    expect(service?.supportsDrafts).toBe(true);
+    expect(sales?.supportsPartialSave).toBe(true);
+    expect(service?.supportsPartialSave).toBe(true);
   });
 
   it('prioritizes agent usability before advanced reporting', () => {
@@ -53,8 +53,8 @@ describe('Crystal Bio product model', () => {
       'Sales report',
       'Service report',
       'Leave request',
-      'Save draft',
-      'My Entries',
+      'Saved visit updates',
+      'Visits',
       'Admin dashboard',
       'Leave approval',
       'Basic reports',
