@@ -48,13 +48,38 @@ function App() {
   const [isLeaveSubmitting, setIsLeaveSubmitting] = useState(false);
   const [salesAccountName, setSalesAccountName] = useState('Apollo Diagnostics');
   const [salesContactPerson, setSalesContactPerson] = useState('Lab manager');
+  const [salesDesignation, setSalesDesignation] = useState('Lab manager');
   const [salesPhone, setSalesPhone] = useState('');
+  const [salesEmail, setSalesEmail] = useState('');
+  const [salesDepartmentAddress, setSalesDepartmentAddress] = useState('');
+  const [salesLeadSource, setSalesLeadSource] = useState('Field visit');
+  const [salesProductType, setSalesProductType] = useState('Laboratory equipment');
+  const [salesBrandName, setSalesBrandName] = useState('');
+  const [salesEquipmentModel, setSalesEquipmentModel] = useState('');
   const [salesRequirement, setSalesRequirement] = useState('Biochemistry analyzer requirement');
   const [salesVisitNote, setSalesVisitNote] = useState('Requirement confirmed. Quote to be shared.');
   const [salesNextAction, setSalesNextAction] = useState<FrontendSalesNextAction>('follow_up_needed');
   const [salesFollowUpDate, setSalesFollowUpDate] = useState('2026-06-10');
+  const [salesQuoteSubmitted, setSalesQuoteSubmitted] = useState<'yes' | 'no' | ''>('');
+  const [salesBudgetaryProposal, setSalesBudgetaryProposal] = useState('');
+  const [salesQuoteStatus, setSalesQuoteStatus] = useState('New inquiry');
+  const [salesFundStatus, setSalesFundStatus] = useState('Unknown');
+  const [salesProbability, setSalesProbability] = useState('');
+  const [salesClosingDate, setSalesClosingDate] = useState('');
+  const [salesSupportRequired, setSalesSupportRequired] = useState('');
+  const [salesRemarksTimeline, setSalesRemarksTimeline] = useState('');
+  const [salesOfficeNotes, setSalesOfficeNotes] = useState('');
+  const [salesSitePhoto, setSalesSitePhoto] = useState('');
+  const [salesEquipmentPlatePhoto, setSalesEquipmentPlatePhoto] = useState('');
+  const [salesInstallationPhoto, setSalesInstallationPhoto] = useState('');
+  const [salesIssuePhoto, setSalesIssuePhoto] = useState('');
+  const [salesVisitingCardPhoto, setSalesVisitingCardPhoto] = useState('');
+  const [salesStep2Saved, setSalesStep2Saved] = useState(false);
+  const [salesStep3Saved, setSalesStep3Saved] = useState(false);
   const [salesSaveResult, setSalesSaveResult] = useState<FrontendSalesSaveResult | null>(null);
   const [isSalesSubmitting, setIsSalesSubmitting] = useState(false);
+  const [isSalesStep2Submitting, setIsSalesStep2Submitting] = useState(false);
+  const [isSalesStep3Submitting, setIsSalesStep3Submitting] = useState(false);
   const [serviceCustomerName, setServiceCustomerName] = useState('Metro Lab');
   const [servicePhone, setServicePhone] = useState('');
   const [serviceEquipmentName, setServiceEquipmentName] = useState('Centrifuge');
@@ -122,8 +147,43 @@ function App() {
     }
   };
 
-  const goToScreen = (nextScreen: AppScreen) => {
+  const resetSalesFormForNewVisit = () => {
+    setSalesAccountName('Apollo Diagnostics');
+    setSalesContactPerson('Lab manager');
+    setSalesDesignation('Lab manager');
+    setSalesPhone('');
+    setSalesEmail('');
+    setSalesDepartmentAddress('');
+    setSalesLeadSource('Field visit');
+    setSalesProductType('Laboratory equipment');
+    setSalesBrandName('');
+    setSalesEquipmentModel('');
+    setSalesRequirement('Biochemistry analyzer requirement');
+    setSalesVisitNote('Requirement confirmed. Quote to be shared.');
+    setSalesNextAction('follow_up_needed');
+    setSalesFollowUpDate('2026-06-10');
+    setSalesQuoteSubmitted('');
+    setSalesBudgetaryProposal('');
+    setSalesQuoteStatus('New inquiry');
+    setSalesFundStatus('Unknown');
+    setSalesProbability('');
+    setSalesClosingDate('');
+    setSalesSupportRequired('');
+    setSalesRemarksTimeline('');
+    setSalesOfficeNotes('');
+    setSalesSitePhoto('');
+    setSalesEquipmentPlatePhoto('');
+    setSalesInstallationPhoto('');
+    setSalesIssuePhoto('');
+    setSalesVisitingCardPhoto('');
+    setSalesStep2Saved(false);
+    setSalesStep3Saved(false);
+    setSalesSaveResult(null);
+  };
+
+  const goToScreen = (nextScreen: AppScreen, options?: { newSalesVisit?: boolean }) => {
     setScreenNotice(null);
+    if (options?.newSalesVisit) resetSalesFormForNewVisit();
     if (nextScreen === 'sales' || nextScreen === 'service') {
       setStatusMessage('Loading logged-in agent…');
       crystalBioFrontendApi.login(agentIdForScreen(nextScreen)).then((nextSession) => {
@@ -171,13 +231,19 @@ function App() {
     }
   };
 
+  const salesAnySubmitting = isSalesSubmitting || isSalesStep2Submitting || isSalesStep3Submitting;
+
   const handleSalesSubmit = async () => {
     if (!session) {
       setScreenNotice('Please wait for login before saving the sales visit.');
       return;
     }
+    if (salesSaveResult) {
+      setScreenNotice('Step 1 is already saved. Update Step 2 or Step 3, or start a new visit from Home.');
+      return;
+    }
     if (!salesAccountName.trim() || !salesVisitNote.trim()) {
-      setScreenNotice('Add customer name and today’s visit note before saving.');
+      setScreenNotice('Add customer name and today’s visit note before saving Step 1.');
       return;
     }
     if (salesNextAction === 'follow_up_needed' && !salesFollowUpDate) {
@@ -185,7 +251,7 @@ function App() {
       return;
     }
     setIsSalesSubmitting(true);
-    setScreenNotice(isBackendConfigured ? 'Saving sales visit with GPS…' : 'Saving demo sales visit with GPS…');
+    setScreenNotice(isBackendConfigured ? 'Saving Sales Step 1 with GPS…' : 'Saving demo Sales Step 1 with sample GPS…');
     try {
       const savedSalesVisit = await crystalBioFrontendApi.submitSalesVisit(session, {
         accountName: salesAccountName.trim(),
@@ -197,15 +263,86 @@ function App() {
         ...(salesNextAction === 'follow_up_needed' ? { followUpDate: salesFollowUpDate } : {}),
       });
       setSalesSaveResult(savedSalesVisit);
+      setSalesStep2Saved(false);
+      setSalesStep3Saved(false);
       setScreenNotice(
         isBackendConfigured
-          ? 'Sales visit saved. Admin reports will include this update.'
-          : 'Demo sales visit saved. Admin reports will update when the backend is connected.',
+          ? 'Sales Step 1 saved. Agent can complete Step 2 and Step 3 later.'
+          : 'Demo Sales Step 1 saved. Step 2 and Step 3 can now be saved in this preview.',
       );
     } catch (error) {
-      setScreenNotice(error instanceof Error ? error.message : 'Sales visit save failed');
+      setScreenNotice(error instanceof Error ? error.message : 'Sales Step 1 save failed');
     } finally {
       setIsSalesSubmitting(false);
+    }
+  };
+
+  const handleSalesStep2Submit = async () => {
+    if (!session || !salesSaveResult) {
+      setScreenNotice('Save Sales Step 1 first, then complete Step 2.');
+      return;
+    }
+    if (!salesAccountName.trim()) {
+      setScreenNotice('Customer / lab name is required before saving Step 2.');
+      return;
+    }
+    setIsSalesStep2Submitting(true);
+    setScreenNotice('Saving Sales Step 2 customer and requirement details…');
+    try {
+      const opportunity = await crystalBioFrontendApi.submitSalesStep2(session, salesSaveResult.opportunity.id, {
+        accountName: salesAccountName.trim(),
+        ...(salesContactPerson.trim() ? { contactPerson: salesContactPerson.trim() } : {}),
+        ...(salesDesignation.trim() ? { designation: salesDesignation.trim() } : {}),
+        ...(salesPhone.trim() ? { phone: salesPhone.trim() } : {}),
+        ...(salesEmail.trim() ? { email: salesEmail.trim() } : {}),
+        ...(salesDepartmentAddress.trim() ? { departmentAddress: salesDepartmentAddress.trim() } : {}),
+        ...(salesLeadSource.trim() ? { leadSource: salesLeadSource.trim() } : {}),
+        ...(salesProductType.trim() ? { productType: salesProductType.trim() } : {}),
+        ...(salesBrandName.trim() ? { brandName: salesBrandName.trim() } : {}),
+        ...(salesEquipmentModel.trim() ? { equipmentModel: salesEquipmentModel.trim() } : {}),
+        ...(salesRequirement.trim() ? { requirement: salesRequirement.trim() } : {}),
+      });
+      setSalesSaveResult({ ...salesSaveResult, opportunity: { ...salesSaveResult.opportunity, ...opportunity } });
+      setSalesStep2Saved(true);
+      setScreenNotice('Sales Step 2 saved. Customer and requirement details can still be updated later.');
+    } catch (error) {
+      setScreenNotice(error instanceof Error ? error.message : 'Sales Step 2 save failed');
+    } finally {
+      setIsSalesStep2Submitting(false);
+    }
+  };
+
+  const handleSalesStep3Submit = async () => {
+    if (!session || !salesSaveResult) {
+      setScreenNotice('Save Sales Step 1 first, then complete Step 3.');
+      return;
+    }
+    setIsSalesStep3Submitting(true);
+    setScreenNotice('Saving Sales Step 3 quote, photos, and office details…');
+    try {
+      const opportunity = await crystalBioFrontendApi.submitSalesStep3(session, salesSaveResult.opportunity.id, {
+        quoteSubmitted: salesQuoteSubmitted,
+        ...(salesBudgetaryProposal.trim() ? { budgetaryProposal: salesBudgetaryProposal.trim() } : {}),
+        ...(salesQuoteStatus.trim() ? { quoteStatus: salesQuoteStatus.trim() } : {}),
+        ...(salesFundStatus.trim() ? { fundStatus: salesFundStatus.trim() } : {}),
+        ...(salesProbability.trim() ? { probability: salesProbability.trim() } : {}),
+        ...(salesClosingDate ? { closingDate: salesClosingDate } : {}),
+        ...(salesSupportRequired.trim() ? { supportRequired: salesSupportRequired.trim() } : {}),
+        ...(salesRemarksTimeline.trim() ? { remarksTimeline: salesRemarksTimeline.trim() } : {}),
+        ...(salesOfficeNotes.trim() ? { officeNotes: salesOfficeNotes.trim() } : {}),
+        ...(salesSitePhoto.trim() ? { sitePhoto: salesSitePhoto.trim() } : {}),
+        ...(salesEquipmentPlatePhoto.trim() ? { equipmentPlatePhoto: salesEquipmentPlatePhoto.trim() } : {}),
+        ...(salesInstallationPhoto.trim() ? { installationPhoto: salesInstallationPhoto.trim() } : {}),
+        ...(salesIssuePhoto.trim() ? { issuePhoto: salesIssuePhoto.trim() } : {}),
+        ...(salesVisitingCardPhoto.trim() ? { visitingCardPhoto: salesVisitingCardPhoto.trim() } : {}),
+      });
+      setSalesSaveResult({ ...salesSaveResult, opportunity: { ...salesSaveResult.opportunity, ...opportunity } });
+      setSalesStep3Saved(true);
+      setScreenNotice('Sales Step 3 saved. Admin can see quote/proof completion later.');
+    } catch (error) {
+      setScreenNotice(error instanceof Error ? error.message : 'Sales Step 3 save failed');
+    } finally {
+      setIsSalesStep3Submitting(false);
     }
   };
 
@@ -257,7 +394,7 @@ function App() {
       void handleAttendanceAction();
       return;
     }
-    goToScreen(action);
+    goToScreen(action, action === 'sales' ? { newSalesVisit: true } : undefined);
   };
 
   const renderHome = () => (
@@ -318,7 +455,7 @@ function App() {
     <ScreenPanel notice={screenNotice} title="Visits" subtitle="Search previous entries or start a new field update.">
       <div className="search-card"><Search size={17} /><span>Search customer, phone, equipment, serial number</span></div>
       <div className="split-actions">
-        <button type="button" className="primary-action" onClick={() => goToScreen('sales')}>New sales visit update</button>
+        <button type="button" className="primary-action" onClick={() => goToScreen('sales', { newSalesVisit: true })}>New sales visit update</button>
         <button type="button" className="secondary-action" onClick={() => goToScreen('service')}>New service visit update</button>
       </div>
       {sampleEntries.map((entry) => (
@@ -334,51 +471,125 @@ function App() {
   );
 
   const renderSales = () => (
-    <ScreenPanel notice={screenNotice} title="Sales visit" subtitle="Save today’s customer update with GPS.">
+    <ScreenPanel notice={screenNotice} title="Sales visit" subtitle="Save quickly first. Add remaining details later when free.">
       <div className="form-card highlighted-card">
-        <label>Current visit location</label>
-        <p>{isBackendConfigured ? 'Location permission is requested when this update is saved.' : 'Demo preview uses fixed sample GPS. Connected backend mode requests location permission when saving.'}</p>
+        <label>Progressive sales form</label>
+        <span>Step 1: {salesSaveResult ? 'Saved' : 'Pending'} • Step 2: {salesStep2Saved ? 'Saved' : 'Pending'} • Step 3: {salesStep3Saved ? 'Saved' : 'Pending'}</span>
       </div>
-      <label className="field-card">
-        <span>Customer / lab name</span>
-        <input aria-label="Sales customer name" value={salesAccountName} onChange={(event) => setSalesAccountName(event.target.value)} />
-      </label>
-      <label className="field-card">
-        <span>Contact person</span>
-        <input aria-label="Sales contact person" value={salesContactPerson} onChange={(event) => setSalesContactPerson(event.target.value)} placeholder="Optional" />
-      </label>
-      <label className="field-card">
-        <span>Phone</span>
-        <input aria-label="Sales phone" value={salesPhone} onChange={(event) => setSalesPhone(event.target.value)} placeholder="Optional" inputMode="tel" />
-      </label>
-      <label className="field-card">
-        <span>Requirement</span>
-        <textarea aria-label="Sales requirement" value={salesRequirement} onChange={(event) => setSalesRequirement(event.target.value)} placeholder="Product need, quote, budget, status" rows={2} />
-      </label>
-      <label className="field-card">
-        <span>Today’s visit note</span>
-        <textarea aria-label="Sales visit note" value={salesVisitNote} onChange={(event) => setSalesVisitNote(event.target.value)} placeholder="What happened in this visit?" rows={3} />
-      </label>
-      <label className="field-card">
-        <span>Next action</span>
-        <select aria-label="Sales next action" value={salesNextAction} onChange={(event) => setSalesNextAction(event.target.value as FrontendSalesNextAction)}>
-          <option value="follow_up_needed">Follow-up needed</option>
-          <option value="no_follow_up">No follow-up</option>
-          <option value="closed">Closed</option>
-        </select>
-      </label>
-      {salesNextAction === 'follow_up_needed' && (
+
+      <section className="step-card">
+        <div className="step-heading">
+          <div><span className="step-pill">Step 1</span><h3>Quick visit update</h3><p>For use at client place or immediately after coming out.</p></div>
+          <span className={salesSaveResult ? 'chip chip-soft' : 'chip chip-warning'}>{salesSaveResult ? 'Saved' : 'Required'}</span>
+        </div>
+        <div className="form-card highlighted-card">
+          <label>Current visit location</label>
+          <p>{isBackendConfigured ? 'Location permission is requested when this update is saved.' : 'Demo preview uses fixed sample GPS. Connected backend mode requests location permission when saving.'}</p>
+        </div>
         <label className="field-card">
-          <span>Follow-up date</span>
-          <input aria-label="Sales follow-up date" type="date" value={salesFollowUpDate} onChange={(event) => setSalesFollowUpDate(event.target.value)} />
+          <span>Customer / lab name</span>
+          <input aria-label="Sales customer name" value={salesAccountName} onChange={(event) => setSalesAccountName(event.target.value)} />
         </label>
-      )}
-      <button type="button" className="primary-action" disabled={isSalesSubmitting || !session} onClick={handleSalesSubmit}>{isSalesSubmitting ? 'Saving…' : 'Save visit update'}</button>
+        <label className="field-card">
+          <span>Rough requirement</span>
+          <textarea aria-label="Sales requirement" value={salesRequirement} onChange={(event) => setSalesRequirement(event.target.value)} placeholder="Product need, quote, budget, status" rows={2} />
+        </label>
+        <label className="field-card">
+          <span>Today’s visit note</span>
+          <textarea aria-label="Sales visit note" value={salesVisitNote} onChange={(event) => setSalesVisitNote(event.target.value)} placeholder="What happened in this visit?" rows={3} />
+        </label>
+        <label className="field-card">
+          <span>Next action</span>
+          <select aria-label="Sales next action" value={salesNextAction} onChange={(event) => setSalesNextAction(event.target.value as FrontendSalesNextAction)}>
+            <option value="follow_up_needed">Follow-up needed</option>
+            <option value="no_follow_up">No follow-up</option>
+            <option value="closed">Closed</option>
+          </select>
+        </label>
+        {salesNextAction === 'follow_up_needed' && (
+          <label className="field-card">
+            <span>Follow-up date</span>
+            <input aria-label="Sales follow-up date" type="date" value={salesFollowUpDate} onChange={(event) => setSalesFollowUpDate(event.target.value)} />
+          </label>
+        )}
+        <button type="button" className="primary-action" disabled={salesAnySubmitting || !session || Boolean(salesSaveResult)} onClick={handleSalesSubmit}>{isSalesSubmitting ? 'Saving…' : salesSaveResult ? 'Step 1 saved' : 'Save Step 1'}</button>
+      </section>
+
+      <section className="step-card">
+        <div className="step-heading">
+          <div><span className="step-pill">Step 2</span><h3>Customer & requirement details</h3><p>Can be filled after the visit when agent has time.</p></div>
+          <span className={salesStep2Saved ? 'chip chip-soft' : 'chip chip-info'}>{salesStep2Saved ? 'Saved' : 'Later'}</span>
+        </div>
+        <label className="field-card">
+          <span>Contact person</span>
+          <input aria-label="Sales contact person" value={salesContactPerson} onChange={(event) => setSalesContactPerson(event.target.value)} placeholder="Optional" />
+        </label>
+        <label className="field-card">
+          <span>Designation</span>
+          <input aria-label="Sales designation" value={salesDesignation} onChange={(event) => setSalesDesignation(event.target.value)} placeholder="Optional" />
+        </label>
+        <label className="field-card">
+          <span>Phone</span>
+          <input aria-label="Sales phone" value={salesPhone} onChange={(event) => setSalesPhone(event.target.value)} placeholder="Optional" inputMode="tel" />
+        </label>
+        <label className="field-card">
+          <span>Email</span>
+          <input aria-label="Sales email" value={salesEmail} onChange={(event) => setSalesEmail(event.target.value)} placeholder="Optional" inputMode="email" />
+        </label>
+        <label className="field-card">
+          <span>Department / address</span>
+          <textarea aria-label="Sales department address" value={salesDepartmentAddress} onChange={(event) => setSalesDepartmentAddress(event.target.value)} placeholder="Department, address, location details" rows={2} />
+        </label>
+        <label className="field-card">
+          <span>Lead source</span>
+          <select aria-label="Sales lead source" value={salesLeadSource} onChange={(event) => setSalesLeadSource(event.target.value)}>
+            <option>Existing customer</option><option>Referral</option><option>IndiaMART</option><option>Website</option><option>Phone call</option><option>Field visit</option><option>Other</option>
+          </select>
+        </label>
+        <label className="field-card">
+          <span>Product type</span>
+          <select aria-label="Sales product type" value={salesProductType} onChange={(event) => setSalesProductType(event.target.value)}>
+            <option>Laboratory equipment</option><option>Hospital equipment</option><option>Biotech instrument</option><option>Consumables</option><option>Maintenance/service</option><option>Installation support</option><option>Other requirement</option>
+          </select>
+        </label>
+        <label className="field-card">
+          <span>Brand name</span>
+          <input aria-label="Sales brand name" value={salesBrandName} onChange={(event) => setSalesBrandName(event.target.value)} placeholder="Optional" />
+        </label>
+        <label className="field-card">
+          <span>Equipment name / model</span>
+          <input aria-label="Sales equipment model" value={salesEquipmentModel} onChange={(event) => setSalesEquipmentModel(event.target.value)} placeholder="Optional" />
+        </label>
+        <button type="button" className="secondary-action" disabled={salesAnySubmitting || !salesSaveResult} onClick={handleSalesStep2Submit}>{isSalesStep2Submitting ? 'Saving…' : 'Save Step 2'}</button>
+      </section>
+
+      <section className="step-card">
+        <div className="step-heading">
+          <div><span className="step-pill">Step 3</span><h3>Quote, proof & office details</h3><p>Useful for follow-up, admin reports, and office team work.</p></div>
+          <span className={salesStep3Saved ? 'chip chip-soft' : 'chip chip-info'}>{salesStep3Saved ? 'Saved' : 'Later'}</span>
+        </div>
+        <label className="field-card"><span>Quote submitted?</span><select aria-label="Sales quote submitted" value={salesQuoteSubmitted} onChange={(event) => setSalesQuoteSubmitted(event.target.value as 'yes' | 'no' | '')}><option value="">Not updated</option><option value="yes">Yes</option><option value="no">No</option></select></label>
+        <label className="field-card"><span>Budgetary proposal</span><input aria-label="Sales budgetary proposal" value={salesBudgetaryProposal} onChange={(event) => setSalesBudgetaryProposal(event.target.value)} placeholder="Optional" /></label>
+        <label className="field-card"><span>Quote / deal status</span><select aria-label="Sales quote status" value={salesQuoteStatus} onChange={(event) => setSalesQuoteStatus(event.target.value)}><option>New inquiry</option><option>Quote pending</option><option>Budgetary quote</option><option>Negotiation</option><option>Closed won</option><option>Closed lost</option><option>Follow up later</option></select></label>
+        <label className="field-card"><span>Fund status</span><select aria-label="Sales fund status" value={salesFundStatus} onChange={(event) => setSalesFundStatus(event.target.value)}><option>Available</option><option>Pending approval</option><option>Budget requested</option><option>Tender/procurement</option><option>Unknown</option><option>Not applicable</option></select></label>
+        <label className="field-card"><span>Probability</span><input aria-label="Sales probability" value={salesProbability} onChange={(event) => setSalesProbability(event.target.value)} placeholder="Example: 40%" /></label>
+        <label className="field-card"><span>Closing date</span><input aria-label="Sales closing date" type="date" value={salesClosingDate} onChange={(event) => setSalesClosingDate(event.target.value)} /></label>
+        <label className="field-card"><span>Support required</span><textarea aria-label="Sales support required" value={salesSupportRequired} onChange={(event) => setSalesSupportRequired(event.target.value)} placeholder="Office/product/quote support needed" rows={2} /></label>
+        <label className="field-card"><span>Remarks and timeline</span><textarea aria-label="Sales remarks timeline" value={salesRemarksTimeline} onChange={(event) => setSalesRemarksTimeline(event.target.value)} placeholder="Timeline, discussion points, blockers" rows={2} /></label>
+        <label className="field-card"><span>Notes for office team</span><textarea aria-label="Sales office notes" value={salesOfficeNotes} onChange={(event) => setSalesOfficeNotes(event.target.value)} placeholder="Internal notes" rows={2} /></label>
+        <label className="field-card"><span>Site photo</span><input aria-label="Sales site photo" value={salesSitePhoto} onChange={(event) => setSalesSitePhoto(event.target.value)} placeholder="Camera/upload file name for preview" /></label>
+        <label className="field-card"><span>Equipment plate photo</span><input aria-label="Sales equipment plate photo" value={salesEquipmentPlatePhoto} onChange={(event) => setSalesEquipmentPlatePhoto(event.target.value)} placeholder="Camera/upload file name for preview" /></label>
+        <label className="field-card"><span>Installation photo</span><input aria-label="Sales installation photo" value={salesInstallationPhoto} onChange={(event) => setSalesInstallationPhoto(event.target.value)} placeholder="Camera/upload file name for preview" /></label>
+        <label className="field-card"><span>Issue photo</span><input aria-label="Sales issue photo" value={salesIssuePhoto} onChange={(event) => setSalesIssuePhoto(event.target.value)} placeholder="Camera/upload file name for preview" /></label>
+        <label className="field-card"><span>Visiting card photo</span><input aria-label="Sales visiting card photo" value={salesVisitingCardPhoto} onChange={(event) => setSalesVisitingCardPhoto(event.target.value)} placeholder="Camera/upload file name for preview" /></label>
+        <button type="button" className="secondary-action" disabled={salesAnySubmitting || !salesSaveResult} onClick={handleSalesStep3Submit}>{isSalesStep3Submitting ? 'Saving…' : 'Save Step 3'}</button>
+      </section>
+
       {salesSaveResult && (
         <div className="form-card highlighted-card">
-          <label>Latest saved visit</label>
+          <label>Latest saved sales entry</label>
           <span>{salesSaveResult.opportunity.accountName} • Visit {salesSaveResult.visit.visitNumber} • {salesSaveResult.visit.nextAction.split('_').join(' ')}</span>
-          <span>Note: {salesSaveResult.visit.note}</span>
+          <span>Step 2: {salesStep2Saved ? 'saved' : 'pending'} • Step 3: {salesStep3Saved ? 'saved' : 'pending'}</span>
         </div>
       )}
     </ScreenPanel>

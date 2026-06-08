@@ -65,6 +65,61 @@ describe('CrystalBio backend core', () => {
     expect(backend.getSalesOpportunity(opportunity.id).visits).toHaveLength(2);
   });
 
+  it('updates sales opportunity details without creating another visit', () => {
+    const backend = createCrystalBioBackend();
+    const agent = backend.createAgent({ name: 'Rahul', role: 'sales' });
+    const opportunity = backend.createSalesOpportunity(agent.id, { accountName: 'Apollo Diagnostics' });
+    backend.addSalesVisitUpdate(agent.id, opportunity.id, {
+      visitDate: '2026-06-07',
+      visitTime: '11:18',
+      gps,
+      note: 'Requirement confirmed',
+      nextAction: 'no_follow_up',
+      photos: [],
+    });
+
+    const updated = backend.updateSalesOpportunity(agent.id, opportunity.id, {
+      email: 'lab@example.com',
+      leadSource: 'Field visit',
+      productType: 'Laboratory equipment',
+      quoteSubmitted: 'yes',
+      quoteStatus: 'Quote pending',
+      officeNotes: 'Prepare quote',
+    });
+
+    expect(updated.email).toBe('lab@example.com');
+    expect(updated.quoteStatus).toBe('Quote pending');
+    expect(backend.getSalesOpportunity(opportunity.id).visits).toHaveLength(1);
+  });
+
+  it('ignores protected sales fields during opportunity detail updates', () => {
+    const backend = createCrystalBioBackend();
+    const agent = backend.createAgent({ name: 'Rahul', role: 'sales' });
+    const opportunity = backend.createSalesOpportunity(agent.id, { accountName: 'Apollo Diagnostics' });
+    backend.addSalesVisitUpdate(agent.id, opportunity.id, {
+      visitDate: '2026-06-07',
+      visitTime: '11:18',
+      gps,
+      note: 'Requirement confirmed',
+      nextAction: 'no_follow_up',
+      photos: [],
+    });
+
+    const updated = backend.updateSalesOpportunity(agent.id, opportunity.id, {
+      email: 'safe@example.com',
+      id: 'hacked',
+      ownerAgentId: 'agent_999',
+      visits: [],
+      status: 'closed',
+    } as any);
+
+    expect(updated.id).toBe(opportunity.id);
+    expect(updated.ownerAgentId).toBe(agent.id);
+    expect(updated.status).toBe('open');
+    expect(updated.email).toBe('safe@example.com');
+    expect(updated.visits).toHaveLength(1);
+  });
+
   it('blocks sales visit save when required date or GPS logic is missing', () => {
     const backend = createCrystalBioBackend();
     const agent = backend.createAgent({ name: 'Rahul', role: 'sales' });

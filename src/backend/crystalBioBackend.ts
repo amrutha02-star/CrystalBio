@@ -38,10 +38,29 @@ export type SalesOpportunity = {
   ownerAgentId: string;
   accountName: string;
   contactPerson?: string;
+  designation?: string;
   phone?: string;
   email?: string;
   departmentAddress?: string;
+  leadSource?: string;
+  productType?: string;
+  brandName?: string;
+  equipmentModel?: string;
   requirement?: string;
+  quoteSubmitted?: 'yes' | 'no' | '';
+  budgetaryProposal?: string;
+  quoteStatus?: string;
+  fundStatus?: string;
+  probability?: string;
+  closingDate?: string;
+  supportRequired?: string;
+  remarksTimeline?: string;
+  officeNotes?: string;
+  sitePhoto?: string;
+  equipmentPlatePhoto?: string;
+  installationPhoto?: string;
+  issuePhoto?: string;
+  visitingCardPhoto?: string;
   status: 'open' | 'closed';
   visits: SalesVisitUpdate[];
 };
@@ -335,10 +354,29 @@ export function createCrystalBioBackend(initialState?: CrystalBioBackendState) {
         ownerAgentId: agentId,
         accountName: input.accountName,
         contactPerson: input.contactPerson,
+        designation: input.designation,
         phone: input.phone,
         email: input.email,
         departmentAddress: input.departmentAddress,
+        leadSource: input.leadSource,
+        productType: input.productType,
+        brandName: input.brandName,
+        equipmentModel: input.equipmentModel,
         requirement: input.requirement,
+        quoteSubmitted: input.quoteSubmitted,
+        budgetaryProposal: input.budgetaryProposal,
+        quoteStatus: input.quoteStatus,
+        fundStatus: input.fundStatus,
+        probability: input.probability,
+        closingDate: input.closingDate,
+        supportRequired: input.supportRequired,
+        remarksTimeline: input.remarksTimeline,
+        officeNotes: input.officeNotes,
+        sitePhoto: input.sitePhoto,
+        equipmentPlatePhoto: input.equipmentPlatePhoto,
+        installationPhoto: input.installationPhoto,
+        issuePhoto: input.issuePhoto,
+        visitingCardPhoto: input.visitingCardPhoto,
         status: 'open',
         visits: [],
       };
@@ -349,6 +387,48 @@ export function createCrystalBioBackend(initialState?: CrystalBioBackendState) {
     getSalesOpportunity(id: string): SalesOpportunity {
       const opportunity = sales.get(id);
       if (!opportunity) throw new ValidationError('Sales opportunity not found');
+      return opportunity;
+    },
+
+    updateSalesOpportunity(agentId: string, id: string, input: Partial<SalesOpportunityInput>): SalesOpportunity {
+      getAgent(agentId);
+      const opportunity = sales.get(id);
+      if (!opportunity) throw new ValidationError('Sales opportunity not found');
+      if (opportunity.ownerAgentId !== agentId) throw new ValidationError('Only the owning agent can update this sales opportunity');
+      const nextAccountName = input.accountName ?? opportunity.accountName;
+      requireText(nextAccountName, 'Account name is required');
+      const allowedUpdates: Partial<SalesOpportunityInput> = {
+        accountName: nextAccountName,
+        contactPerson: input.contactPerson,
+        designation: input.designation,
+        phone: input.phone,
+        email: input.email,
+        departmentAddress: input.departmentAddress,
+        leadSource: input.leadSource,
+        productType: input.productType,
+        brandName: input.brandName,
+        equipmentModel: input.equipmentModel,
+        requirement: input.requirement,
+        quoteSubmitted: input.quoteSubmitted,
+        budgetaryProposal: input.budgetaryProposal,
+        quoteStatus: input.quoteStatus,
+        fundStatus: input.fundStatus,
+        probability: input.probability,
+        closingDate: input.closingDate,
+        supportRequired: input.supportRequired,
+        remarksTimeline: input.remarksTimeline,
+        officeNotes: input.officeNotes,
+        sitePhoto: input.sitePhoto,
+        equipmentPlatePhoto: input.equipmentPlatePhoto,
+        installationPhoto: input.installationPhoto,
+        issuePhoto: input.issuePhoto,
+        visitingCardPhoto: input.visitingCardPhoto,
+      };
+      Object.entries(allowedUpdates).forEach(([key, value]) => {
+        if (value !== undefined) {
+          (opportunity as unknown as Record<string, unknown>)[key] = value;
+        }
+      });
       return opportunity;
     },
 

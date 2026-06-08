@@ -109,6 +109,13 @@ export function createCrystalBioApi(backend: Backend) {
           return ok({ opportunity }, 201);
         }
 
+        const salesOpportunityMatch = pathname.match(/^\/sales-opportunities\/([^/]+)$/);
+        if (request.method === 'PATCH' && salesOpportunityMatch) {
+          const session = sessionFor(request);
+          const opportunity = backend.updateSalesOpportunity(session.agentId, salesOpportunityMatch[1], requireBody(request.body) as any);
+          return ok({ opportunity });
+        }
+
         const salesVisitMatch = pathname.match(/^\/sales-opportunities\/([^/]+)\/visits$/);
         if (request.method === 'POST' && salesVisitMatch) {
           const session = sessionFor(request);

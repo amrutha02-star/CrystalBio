@@ -68,7 +68,7 @@ describe('Crystal Bio agent view shell', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /sales new visit/i }));
     expect(screen.getByText('Sales visit')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /save visit update/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /save step 1/i })).toBeInTheDocument();
 
     fireEvent.click(screen.getByLabelText('Home'));
     fireEvent.click(screen.getByRole('button', { name: /service report/i }));
@@ -110,10 +110,27 @@ describe('Crystal Bio agent view shell', () => {
     await screen.findByText('Rahul Sales');
 
     fireEvent.click(screen.getByRole('button', { name: /sales new visit/i }));
-    fireEvent.click(screen.getByRole('button', { name: /save visit update/i }));
-    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Demo sales visit saved'));
+    fireEvent.click(screen.getByRole('button', { name: /save step 1/i }));
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Demo Sales Step 1 saved'));
+    expect(screen.getByRole('button', { name: /step 1 saved/i })).toBeDisabled();
     expect(screen.getByText(/Apollo Diagnostics • Visit 1 • follow up needed/i)).toBeInTheDocument();
-    expect(screen.getByText('Note: Requirement confirmed. Quote to be shared.')).toBeInTheDocument();
+    expect(screen.getAllByText(/Step 2: pending • Step 3: pending/i).length).toBeGreaterThan(0);
+
+    fireEvent.change(screen.getByLabelText('Sales email'), { target: { value: 'lab@example.com' } });
+    fireEvent.click(screen.getByRole('button', { name: /save step 2/i }));
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Sales Step 2 saved'));
+    expect(screen.getAllByText(/Step 2: saved • Step 3: pending/i).length).toBeGreaterThan(0);
+
+    fireEvent.change(screen.getByLabelText('Sales quote submitted'), { target: { value: 'yes' } });
+    fireEvent.change(screen.getByLabelText('Sales office notes'), { target: { value: 'Prepare quote follow-up' } });
+    fireEvent.click(screen.getByRole('button', { name: /save step 3/i }));
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Sales Step 3 saved'));
+    expect(screen.getAllByText(/Step 2: saved • Step 3: saved/i).length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getByLabelText('Home'));
+    fireEvent.click(screen.getByRole('button', { name: /sales new visit/i }));
+    expect(screen.getByRole('button', { name: /save step 1/i })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /save step 2/i })).toBeDisabled();
 
     fireEvent.click(screen.getByLabelText('Home'));
     fireEvent.click(screen.getByRole('button', { name: /service report/i }));

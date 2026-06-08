@@ -55,6 +55,37 @@ export type FrontendSalesVisitInput = {
   followUpDate?: string;
 };
 
+export type FrontendSalesStep2Input = {
+  accountName: string;
+  contactPerson?: string;
+  designation?: string;
+  phone?: string;
+  email?: string;
+  departmentAddress?: string;
+  leadSource?: string;
+  productType?: string;
+  brandName?: string;
+  equipmentModel?: string;
+  requirement?: string;
+};
+
+export type FrontendSalesStep3Input = {
+  quoteSubmitted?: 'yes' | 'no' | '';
+  budgetaryProposal?: string;
+  quoteStatus?: string;
+  fundStatus?: string;
+  probability?: string;
+  closingDate?: string;
+  supportRequired?: string;
+  remarksTimeline?: string;
+  officeNotes?: string;
+  sitePhoto?: string;
+  equipmentPlatePhoto?: string;
+  installationPhoto?: string;
+  issuePhoto?: string;
+  visitingCardPhoto?: string;
+};
+
 export type FrontendSalesVisit = {
   id: string;
   opportunityId: string;
@@ -75,8 +106,29 @@ export type FrontendSalesSaveResult = {
     ownerAgentId: string;
     accountName: string;
     contactPerson?: string;
+    designation?: string;
     phone?: string;
+    email?: string;
+    departmentAddress?: string;
+    leadSource?: string;
+    productType?: string;
+    brandName?: string;
+    equipmentModel?: string;
     requirement?: string;
+    quoteSubmitted?: 'yes' | 'no' | '';
+    budgetaryProposal?: string;
+    quoteStatus?: string;
+    fundStatus?: string;
+    probability?: string;
+    closingDate?: string;
+    supportRequired?: string;
+    remarksTimeline?: string;
+    officeNotes?: string;
+    sitePhoto?: string;
+    equipmentPlatePhoto?: string;
+    installationPhoto?: string;
+    issuePhoto?: string;
+    visitingCardPhoto?: string;
     status: 'open' | 'closed';
   };
   visit: FrontendSalesVisit;
@@ -183,6 +235,19 @@ export function createCrystalBioFrontendApi(options: ApiClientOptions = {}) {
     if (!baseUrl) throw new Error('Backend URL is not configured');
     const response = await fetcher(`${baseUrl}${path}`, {
       method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        ...(token ? { authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(body),
+    });
+    return parseJson<T>(response);
+  };
+
+  const patch = async <T>(path: string, body: unknown, token?: string) => {
+    if (!baseUrl) throw new Error('Backend URL is not configured');
+    const response = await fetcher(`${baseUrl}${path}`, {
+      method: 'PATCH',
       headers: {
         'content-type': 'application/json',
         ...(token ? { authorization: `Bearer ${token}` } : {}),
@@ -330,6 +395,41 @@ export function createCrystalBioFrontendApi(options: ApiClientOptions = {}) {
         session.token,
       );
       return { opportunity: opportunityResult.opportunity, visit: visitResult.visit };
+    },
+
+    async submitSalesStep2(session: FrontendSession, opportunityId: string, input: FrontendSalesStep2Input): Promise<FrontendSalesSaveResult['opportunity']> {
+      if (!baseUrl) {
+        return {
+          id: opportunityId,
+          ownerAgentId: session.agentId,
+          status: 'open',
+          ...input,
+        };
+      }
+      const result = await patch<{ opportunity: FrontendSalesSaveResult['opportunity'] }>(
+        `/sales-opportunities/${opportunityId}`,
+        input,
+        session.token,
+      );
+      return result.opportunity;
+    },
+
+    async submitSalesStep3(session: FrontendSession, opportunityId: string, input: FrontendSalesStep3Input): Promise<FrontendSalesSaveResult['opportunity']> {
+      if (!baseUrl) {
+        return {
+          id: opportunityId,
+          ownerAgentId: session.agentId,
+          accountName: 'Demo sales opportunity',
+          status: input.quoteStatus === 'Closed won' || input.quoteStatus === 'Closed lost' ? 'closed' : 'open',
+          ...input,
+        };
+      }
+      const result = await patch<{ opportunity: FrontendSalesSaveResult['opportunity'] }>(
+        `/sales-opportunities/${opportunityId}`,
+        input,
+        session.token,
+      );
+      return result.opportunity;
     },
 
     async submitServiceVisit(session: FrontendSession, input: FrontendServiceVisitInput): Promise<FrontendServiceSaveResult> {

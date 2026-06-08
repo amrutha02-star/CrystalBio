@@ -142,6 +142,25 @@ describe('CrystalBio API layer', () => {
     expect(visit.status).toBe(201);
     expect(visit.body.visit.agentName).toBe('Rahul');
     expect(visit.body.visit.visitNumber).toBe(1);
+
+    const step2 = api.handle({
+      method: 'PATCH',
+      path: `/sales-opportunities/${opportunity.body.opportunity.id}`,
+      headers: { authorization: `Bearer ${token}` },
+      body: { email: 'lab@example.com', leadSource: 'Field visit', productType: 'Laboratory equipment' },
+    });
+    expect(step2.status).toBe(200);
+    expect(step2.body.opportunity.email).toBe('lab@example.com');
+
+    const step3 = api.handle({
+      method: 'PATCH',
+      path: `/sales-opportunities/${opportunity.body.opportunity.id}`,
+      headers: { authorization: `Bearer ${token}` },
+      body: { quoteSubmitted: 'yes', quoteStatus: 'Quote pending', officeNotes: 'Prepare quote' },
+    });
+    expect(step3.status).toBe(200);
+    expect(step3.body.opportunity.quoteStatus).toBe('Quote pending');
+    expect(backend.getSalesOpportunity(opportunity.body.opportunity.id).visits).toHaveLength(1);
   });
 
   it('creates service record and visit update using logged-in engineer identity', () => {

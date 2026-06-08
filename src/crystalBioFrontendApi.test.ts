@@ -255,6 +255,44 @@ describe('CrystalBio frontend API client', () => {
     );
   });
 
+  it('patches Sales Step 2 and Step 3 through configured backend with session authorization', async () => {
+    const fetcher = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
+      if (String(url).endsWith('/auth/login')) {
+        return new Response(JSON.stringify({
+          session: { token: 'token-1', agentId: 'agent_2', agentName: 'Rahul Sales', role: 'sales' },
+        }), { status: 200, headers: { 'content-type': 'application/json' } });
+      }
+      if (String(url).endsWith('/sales-opportunities/sales_1')) {
+        return new Response(JSON.stringify({
+          opportunity: { id: 'sales_1', ownerAgentId: 'agent_2', accountName: 'Apollo Diagnostics', email: 'lab@example.com', quoteSubmitted: 'yes', status: 'open' },
+        }), { status: 200, headers: { 'content-type': 'application/json' } });
+      }
+      throw new Error(`unexpected ${String(url)} ${init?.method}`);
+    }) as unknown as typeof fetch;
+    const api = createCrystalBioFrontendApi({ baseUrl: 'http://127.0.0.1:8787', fetcher });
+    const session = await api.login('agent_2');
+
+    await api.submitSalesStep2(session, 'sales_1', { accountName: 'Apollo Diagnostics', email: 'lab@example.com', productType: 'Laboratory equipment' });
+    await api.submitSalesStep3(session, 'sales_1', { quoteSubmitted: 'yes', officeNotes: 'Prepare quote' });
+
+    expect(fetcher).toHaveBeenCalledWith(
+      'http://127.0.0.1:8787/sales-opportunities/sales_1',
+      expect.objectContaining({
+        method: 'PATCH',
+        headers: expect.objectContaining({ authorization: 'Bearer token-1' }),
+        body: JSON.stringify({ accountName: 'Apollo Diagnostics', email: 'lab@example.com', productType: 'Laboratory equipment' }),
+      }),
+    );
+    expect(fetcher).toHaveBeenCalledWith(
+      'http://127.0.0.1:8787/sales-opportunities/sales_1',
+      expect.objectContaining({
+        method: 'PATCH',
+        headers: expect.objectContaining({ authorization: 'Bearer token-1' }),
+        body: JSON.stringify({ quoteSubmitted: 'yes', officeNotes: 'Prepare quote' }),
+      }),
+    );
+  });
+
   it('creates a stable demo sales visit when no backend URL is configured', async () => {
     const api = createCrystalBioFrontendApi({
       now: () => new Date('2026-06-08T11:18:00.000Z'),
