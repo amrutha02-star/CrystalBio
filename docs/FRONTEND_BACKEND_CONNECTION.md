@@ -120,12 +120,20 @@ Fixes added:
 
 Recommended order:
 
-1. Leave request
-2. Sales visit save
-3. Service visit save
-4. Admin reports
+1. Complete Sales/Service progressive fields
+   - keep current quick save as Step 1
+   - add Step 2 customer/requirement/equipment details
+   - add Step 3 quote/parts/photos/office details
+   - each step must save separately
+2. Admin reports
+   - include daily/weekly/monthly reports
+   - show Step 1/2/3 completion and missing fields
 
 Reason:
 
-- leave request is smaller and validates auth/session/API wiring
-- sales/service are larger and should reuse proven save/error/session patterns
+- leave request, sales Step 1, and service Step 1 are already workable
+- client sheet fields should not be skipped
+- field agents cannot fill every field while standing at the client place
+- progressive saves preserve usability while still collecting all required details
+
+See also: `docs/PROGRESSIVE_VISIT_FIELDS.md`

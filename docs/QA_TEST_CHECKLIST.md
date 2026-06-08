@@ -37,13 +37,16 @@ Use this checklist for the Testing Agent. Each item should be marked:
 - Sales button opens sales flow.
 - Agent can search previous customer/account/phone.
 - Agent can create new sales visit entry.
+- Sales form is split into Step 1 / Step 2 / Step 3 sections.
+- Step 1 quick visit update saves separately.
+- Step 2 customer/requirement details save separately.
+- Step 3 quote/photos/office details save separately.
 - Customer details save.
 - Requirement details save.
 - Quote/deal status saves.
 - New visit update creates a separate visit record.
-- Visit date has date selector.
-- Visit time saves.
-- Current visit GPS is mandatory.
+- Visit date/time is auto-captured for Step 1.
+- Step 1 current visit GPS is mandatory.
 - Visit note saves.
 - Next action saves.
 - Follow-up date appears when follow-up is needed.
@@ -51,7 +54,9 @@ Use this checklist for the Testing Agent. Each item should be marked:
 - Expected closing date has date selector.
 - Camera action works.
 - Upload action works.
-- Save button is visible and works.
+- Save buttons are visible and work for each step.
+- Partial records can be reopened and completed later.
+- Admin/reporting shows Step 1/2/3 completion and missing fields.
 - Multiple sales visits appear in history.
 - Old visit history is read-only unless deliberately opened.
 - Closed opportunity can be reopened or new visit after closed is handled clearly.
@@ -61,6 +66,10 @@ Use this checklist for the Testing Agent. Each item should be marked:
 - Service button opens service flow.
 - Agent can search customer/equipment/serial number/phone.
 - Agent can create new service visit entry.
+- Service form is split into Step 1 / Step 2 / Step 3 sections.
+- Step 1 quick service update saves separately.
+- Step 2 customer/equipment/issue details save separately.
+- Step 3 parts/photos/office details save separately.
 - Customer fields save.
 - Equipment fields save.
 - Brand name saves.
@@ -72,10 +81,12 @@ Use this checklist for the Testing Agent. Each item should be marked:
 - Next action saves.
 - Next visit date appears when needed.
 - Next visit date has date selector.
-- Current service visit GPS is mandatory.
+- Step 1 current service visit GPS is mandatory.
 - Camera action works.
 - Upload action works.
-- Save service update is visible and works.
+- Save buttons are visible and work for each step.
+- Partial service records can be reopened and completed later.
+- Admin/reporting shows Step 1/2/3 completion and missing fields.
 - Multiple service visits appear in history.
 - Closed service case can be reopened or new visit after closed is handled clearly.
 
