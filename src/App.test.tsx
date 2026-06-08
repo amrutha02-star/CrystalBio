@@ -8,15 +8,19 @@ describe('Crystal Bio agent view shell', () => {
     window.history.pushState({}, '', '/?screen=home');
   });
 
-  it('shows a simple role-based login with active Agent and Admin access', async () => {
+  it('shows a clean login form and lets admins submit without logging out', async () => {
     window.history.pushState({}, '', '/?screen=login');
     render(<App />);
 
     expect(screen.getByText('Login screen')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /agent login/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /admin access/i })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /agent login/i }));
+    expect(screen.getByLabelText('Mobile number or employee ID')).toBeInTheDocument();
+    expect(screen.getByLabelText('Password or PIN')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^login$/i })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /preview admin login/i }));
+    expect(await screen.findByText('Fill my own field form')).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Fill my own field form'));
     expect(await screen.findByText('Quick actions')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /back to admin dashboard/i })).toBeInTheDocument();
   });
 
   it('renders the connected agent home with compact quick actions', async () => {

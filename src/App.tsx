@@ -52,6 +52,7 @@ const getInitialAdminApproval = (): AdminApprovalId | null => {
 
 function App() {
   const [screen, setScreen] = useState<AppScreen>(getInitialScreen);
+  const [isAdminSignedIn, setIsAdminSignedIn] = useState(() => getInitialScreen() === 'admin');
   const [session, setSession] = useState<FrontendSession | null>(null);
   const [attendance, setAttendance] = useState<FrontendAttendance | null>(null);
   const [isAttendanceBusy, setIsAttendanceBusy] = useState(false);
@@ -305,6 +306,20 @@ function App() {
     setAdminTab(nextTab);
     if (nextTab !== 'approvals') setSelectedAdminApproval(null);
     setScreenNotice(null);
+  };
+
+  const handleAgentLogin = () => {
+    setIsAdminSignedIn(false);
+    setScreenNotice(null);
+    goToScreen('home');
+  };
+
+  const handleAdminLogin = () => {
+    setIsAdminSignedIn(true);
+    setAdminTab('overview');
+    setSelectedAdminApproval(null);
+    setScreenNotice(null);
+    goToScreen('admin');
   };
 
 
@@ -581,23 +596,23 @@ function App() {
   };
 
   const renderLogin = () => (
-    <ScreenPanel title="Login" subtitle="Choose the right access before starting work.">
-      <section className="login-hero-card">
-        <p>CrystalBio field app</p>
-        <strong>Simple access for field agents and admins</strong>
-        <span>Agents see daily work actions. Admins see team reports and approvals.</span>
+    <ScreenPanel title="Login" subtitle="Enter your employee details to open the app.">
+      <section className="login-hero-card clean-login-card">
+        <p>CrystalBio</p>
+        <strong>Field work login</strong>
+        <span>One simple login. The app opens the right access based on the person’s account.</span>
       </section>
-      <div className="login-action-stack">
-        <button type="button" className="login-access-card" onClick={() => goToScreen('home')}>
-          <span className="visit-action-icon"><UserRound size={19} /></span>
-          <div><strong>Agent login</strong><small>Check in, visits, leave, and my reports</small></div>
-        </button>
-        <button type="button" className="login-access-card admin-login-card" onClick={() => goToScreen('admin')}>
-          <span className="visit-action-icon service-icon"><UsersRound size={19} /></span>
-          <div><strong>Admin access</strong><small>Everyone’s reports, leave approvals, and team status</small></div>
-        </button>
-      </div>
-      <p className="panel-note">Preview uses demo login. Real app will connect mobile number/password or company login.</p>
+      <label className="field-card login-field-card">
+        <span>Mobile number / Employee ID</span>
+        <input aria-label="Mobile number or employee ID" defaultValue="rahul.sales" inputMode="text" />
+      </label>
+      <label className="field-card login-field-card">
+        <span>Password / PIN</span>
+        <input aria-label="Password or PIN" defaultValue="1234" type="password" />
+      </label>
+      <button type="button" className="primary-action login-main-button" onClick={handleAgentLogin}>Login</button>
+      <button type="button" className="secondary-action login-admin-button" onClick={handleAdminLogin}>Preview admin login</button>
+      <p className="panel-note">In the real app there will be only one login button. If the account is an admin account, they can see Admin and still submit their own field form without logging out.</p>
     </ScreenPanel>
   );
 
@@ -611,6 +626,10 @@ function App() {
         </div>
         <div className="hero-scribble" aria-hidden="true" />
       </section>
+
+      {isAdminSignedIn && (
+        <button type="button" className="secondary-action admin-return-action" onClick={() => goToScreen('admin')}>Back to admin dashboard</button>
+      )}
 
       <div className="section-title action-title">
         <h3>Quick actions</h3>
@@ -1185,6 +1204,8 @@ function App() {
               <span className="admin-hero-icon"><UsersRound size={22} /></span>
             </section>
 
+            <button type="button" className="secondary-action admin-submit-action" onClick={() => goToScreen('home')}>Fill my own field form</button>
+
             <div className="admin-filter-row" aria-label="Admin report filters">
               {(['today', 'week', 'month'] as ReportPeriod[]).map((periodOption) => (
                 <button key={periodOption} type="button" className={adminPeriod === periodOption ? 'admin-filter-active' : ''} onClick={() => changePeriod(periodOption)}>
@@ -1340,18 +1361,20 @@ function App() {
             </div>
           )}
 
-          {screen !== 'login' && <nav className="bottom-nav" aria-label={screen === 'admin' ? 'Admin navigation' : 'Agent navigation'}>
+          {screen !== 'login' && <nav className={screen === 'admin' ? 'bottom-nav admin-bottom-nav' : 'bottom-nav'} aria-label={screen === 'admin' ? 'Admin navigation' : 'Agent navigation'}>
             {screen === 'admin' ? (
               [
                 { label: 'Overview', tab: 'overview' as AdminTab, icon: Home },
+                { label: 'Submit', tab: 'overview' as AdminTab, screen: 'home' as AppScreen, icon: ClipboardList },
                 { label: 'Agents', tab: 'agents' as AdminTab, icon: UsersRound },
                 { label: 'Approvals', tab: 'approvals' as AdminTab, icon: CalendarCheck },
                 { label: 'Reports', tab: 'adminReports' as AdminTab, icon: FileText },
               ].map((item) => {
                 const Icon = item.icon;
-                const selected = adminTab === item.tab;
+                const isSubmitItem = item.label === 'Submit';
+                const selected = !isSubmitItem && adminTab === (item.tab as AdminTab);
                 return (
-                  <button key={item.label} type="button" className={selected ? 'nav-item nav-item-selected' : 'nav-item'} aria-label={selected ? `${item.label} selected` : item.label} onClick={() => openAdminTab(item.tab)}>
+                  <button key={item.label} type="button" className={selected ? 'nav-item nav-item-selected' : 'nav-item'} aria-label={selected ? `${item.label} selected` : item.label} onClick={() => isSubmitItem ? goToScreen('home') : openAdminTab(item.tab as AdminTab)}>
                     <Icon size={17} />
                     {item.label}
                   </button>

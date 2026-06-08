@@ -246,25 +246,28 @@ p { color: var(--muted); line-height: 1.5; }
 .login-hero-card p { margin: 0 0 6px; color: var(--sage-deep); font-size: 11.5px; font-weight: 560; text-transform: uppercase; letter-spacing: 0.035em; }
 .login-hero-card strong { color: var(--ink); font-size: 18px; line-height: 1.2; font-weight: 550; letter-spacing: -0.01em; }
 .login-hero-card span { margin-top: 7px; color: var(--muted); font-size: 12.5px; line-height: 1.42; }
-.login-action-stack { display: grid; gap: 10px; }
-.login-access-card {
-  width: 100%;
+.clean-login-card {
+  margin-top: 4px;
+  padding: 20px;
+  min-height: 132px;
   display: flex;
-  align-items: center;
-  gap: 12px;
-  text-align: left;
-  border-radius: 21px;
-  padding: 14px;
-  background: #fffef8;
-  border: 1.5px solid rgba(95, 124, 78, 0.34);
-  box-shadow: 0 10px 22px rgba(47, 61, 40, 0.06);
+  flex-direction: column;
+  justify-content: center;
 }
-.login-access-card strong,
-.login-access-card small { display: block; }
-.login-access-card strong { color: var(--ink); font-size: 14.5px; font-weight: 560; }
-.login-access-card small { margin-top: 3px; color: var(--muted); font-size: 11.8px; line-height: 1.35; }
-.login-access-card:focus-visible { outline: 3px solid rgba(21, 18, 23, 0.24); outline-offset: 3px; }
-.admin-login-card { background: #f8fbf4; }
+.login-field-card {
+  background: #fffef8;
+  border-color: rgba(123, 139, 111, 0.24);
+}
+.login-main-button { min-height: 52px; margin-top: 12px; }
+.login-admin-button {
+  min-height: 44px;
+  margin-top: 2px;
+  background: transparent;
+  box-shadow: none;
+}
+.admin-submit-action,
+.admin-return-action { margin-top: 0; margin-bottom: 10px; }
+.admin-return-action { background: var(--warm-accent-soft); color: #6f6130; border-color: rgba(196, 167, 82, 0.32); }
 .empty-state { padding: 18px 6px; color: var(--muted); font-size: 12.5px; text-align: center; }
 .form-card label, .field-card span { display: block; color: var(--ink); font-size: 12.5px; font-weight: 550; margin-bottom: 4px; }
 .form-card span, .form-card p { display: block; color: var(--muted); font-size: 12px; line-height: 1.4; margin: 0; }
@@ -985,6 +988,8 @@ p { color: var(--muted); line-height: 1.5; }
   text-align: center;
   justify-content: center;
 }
+.admin-bottom-nav { grid-template-columns: repeat(5, 1fr); gap: 3px; }
+.admin-bottom-nav .nav-item { font-size: 10px; padding-left: 1px; padding-right: 1px; }
 .nav-item svg { stroke-width: 2.2; }
 .nav-item-selected { background: var(--sage-deep); color: #fffef8; }
 .save-toast {
