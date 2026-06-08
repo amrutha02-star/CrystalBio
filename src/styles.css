@@ -386,6 +386,13 @@ p { color: var(--muted); line-height: 1.5; }
 .photo-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .photo-button { min-height: 44px; margin: 0; padding: 10px 12px; border-radius: 15px; }
 .split-actions { display: grid; grid-template-columns: 1fr; gap: 6px; margin-bottom: 6px; }
+.inline-field-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  align-items: start;
+}
+.inline-field-grid .field-card { min-width: 0; }
 .report-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
 .tracking-grid {
   display: grid;
@@ -1132,6 +1139,17 @@ p { color: var(--muted); line-height: 1.5; }
   .screen-heading p { font-size: 15px; line-height: 1.35; color: var(--muted); margin-bottom: 0; }
   .screen-notice { margin: 12px 0; padding: 14px 16px; border-radius: 20px; }
   .field-card { border-radius: 19px; padding: 13px 15px; margin-bottom: 9px; background: var(--surface); }
+  .step-card { padding: 9px; margin: 9px 0; border-radius: 22px; }
+  .step-heading { margin-bottom: 7px; }
+  .step-heading p { display: none; }
+  .step-card .field-card,
+  .step-card .form-card { padding: 8px 10px; margin-bottom: 7px; }
+  .step-card .field-card textarea { min-height: 40px; }
+  .step-card .field-card input,
+  .step-card .field-card select { min-height: 28px; font-size: 15px; }
+  .compact-date-card { max-width: calc(50% - 4px); }
+  .inline-field-grid { gap: 7px; }
+  .inline-field-grid .field-card span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .field-card span { font-size: 13px; margin-bottom: 7px; }
   .field-card input, .field-card select, .field-card textarea {
     min-height: 34px;
