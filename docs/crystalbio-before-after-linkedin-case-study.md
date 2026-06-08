@@ -22,6 +22,13 @@ The goal was not to build “another form.”
 
 The goal was to make field reporting easy enough for non-technical users to actually use every day.
 
+Expected real-world usage:
+
+- Around 12–13 daily users
+- Up to about 20 visit reports per day
+- Weekly reports generated without agents or admins manually collecting forgotten updates
+- Within 30 days, the app should become a dependable daily operating layer for field visibility, client work tracking, attendance, leave, and reporting
+
 ## Before
 
 The client had sales and service agents visiting customers in the field.
@@ -180,6 +187,8 @@ Clean buttons. Plain language. Small forms. Clear saved status. No unnecessary c
 AI helped me move from idea to working prototype much faster.
 
 But the real leverage was understanding the business problem clearly enough to guide what should be built.
+
+The success metric I care about: by the end of the first 30 days, this should not feel like a “nice-to-have app.” It should become the place the business depends on to know what happened in the field, who followed up, who checked in, what clients need attention, and what report needs to go out each week.
 
 ## Alternate shorter LinkedIn post
 
