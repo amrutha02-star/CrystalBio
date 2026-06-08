@@ -277,12 +277,6 @@ function App() {
     setScreenNotice(null);
   };
 
-  const openAdminReportFlow = () => {
-    setAdminTab('adminReports');
-    setSelectedAdminApproval(null);
-    setScreenNotice(null);
-    setScreen('admin');
-  };
 
   const handleLeaveSubmit = async () => {
     if (!session) {
@@ -588,21 +582,6 @@ function App() {
         })}
       </div>
 
-      <section className="home-flow-card">
-        <div className="section-title">
-          <h3>End-to-end demo flow</h3>
-          <span>Client story</span>
-        </div>
-        <div className="flow-step-row" aria-label="Login to report flow">
-          {['Agent login', 'Attendance', 'Visit update', 'Leave request', 'Admin reports'].map((step, index) => (
-            <div key={step} className="flow-step-pill">
-              <span>{index + 1}</span>
-              <strong>{step}</strong>
-            </div>
-          ))}
-        </div>
-        <button type="button" className="flow-preview-button" onClick={openAdminReportFlow}>Preview admin report flow</button>
-      </section>
 
       <section className="panel entries-panel">
         <div className="section-title">
