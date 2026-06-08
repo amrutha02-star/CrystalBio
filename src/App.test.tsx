@@ -211,11 +211,20 @@ describe('Crystal Bio agent view shell', () => {
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Approved in demo'));
   });
 
-  it('shows feedback when admin generates today report', async () => {
-    window.history.pushState({}, '', '/?screen=admin');
+  it('shows person-wise admin reports and feedback when generating reports', async () => {
+    window.history.pushState({}, '', '/?screen=admin&adminTab=adminReports');
     render(<App />);
 
-    fireEvent.click(await screen.findByRole('button', { name: /generate today’s admin report/i }));
-    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Today’s admin report ready'));
+    expect(screen.getByRole('heading', { name: 'Admin reports' })).toBeInTheDocument();
+    expect(screen.getByText('Person-wise report preview')).toBeInTheDocument();
+    expect(screen.getByText('Rahul Sales')).toBeInTheDocument();
+    expect(screen.getByText('Meera Service')).toBeInTheDocument();
+    expect(screen.getByText('Anil Sales')).toBeInTheDocument();
+    expect(screen.getByText('Auto-generated from field activity')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Week' }));
+    expect(screen.getByText('8 sales visits • 3 follow-ups')).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole('button', { name: /generate this week admin report/i }));
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('This week admin report ready'));
   });
 });

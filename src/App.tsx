@@ -1035,6 +1035,23 @@ function App() {
       { name: 'Meera Service', role: 'service' as const, detail: 'Checked in • 1 service visit • parts required', status: 'View', chip: 'chip chip-info' },
       { name: 'Anil Sales', role: 'sales' as const, detail: 'Not checked in yet • no update today', status: 'Missing', chip: 'chip chip-warning' },
     ];
+    const adminReportRows: Record<ReportPeriod, Array<{ name: string; role: string; attendance: string; visits: string; status: string; chipClass: string }>> = {
+      today: [
+        { name: 'Rahul Sales', role: 'Sales agent', attendance: 'Checked in', visits: '2 sales visits • 1 follow-up', status: 'Ready', chipClass: 'chip chip-soft' },
+        { name: 'Meera Service', role: 'Service agent', attendance: 'Checked in', visits: '1 service visit • parts required', status: 'Ready', chipClass: 'chip chip-info' },
+        { name: 'Anil Sales', role: 'Sales agent', attendance: 'Not checked in', visits: 'No visit update today', status: 'Missing', chipClass: 'chip chip-warning' },
+      ],
+      week: [
+        { name: 'Rahul Sales', role: 'Sales agent', attendance: '5 / 6 days', visits: '8 sales visits • 3 follow-ups', status: 'Ready', chipClass: 'chip chip-soft' },
+        { name: 'Meera Service', role: 'Service agent', attendance: '5 / 6 days', visits: '6 service visits • 2 pending parts', status: 'Ready', chipClass: 'chip chip-info' },
+        { name: 'Anil Sales', role: 'Sales agent', attendance: '4 / 6 days', visits: '6 sales visits • 1 missing day', status: 'Review', chipClass: 'chip chip-warning' },
+      ],
+      month: [
+        { name: 'Rahul Sales', role: 'Sales agent', attendance: '21 / 24 days', visits: '31 sales visits • 9 follow-ups', status: 'Ready', chipClass: 'chip chip-soft' },
+        { name: 'Meera Service', role: 'Service agent', attendance: '22 / 24 days', visits: '24 service visits • 5 open parts', status: 'Ready', chipClass: 'chip chip-info' },
+        { name: 'Anil Sales', role: 'Sales agent', attendance: '18 / 24 days', visits: '30 sales visits • 3 missing updates', status: 'Review', chipClass: 'chip chip-warning' },
+      ],
+    };
     const adminApprovals: Record<AdminApprovalId, { label: string; chipClass: string; agent: string; title: string; summary: string; detail: string; meta: string; actionNote: string }> = {
       'meera-leave': {
         label: 'Leave',
@@ -1085,12 +1102,14 @@ function App() {
               ))}
             </div>
 
-            <div className="admin-metric-grid">
-              <div className="metric-card admin-metric-card"><strong>{period.visits}</strong><span>Total visits</span><small>{period.label}</small></div>
-              <div className="metric-card admin-metric-card"><strong>{period.checkedIn}</strong><span>Checked in</span><small>Agents active</small></div>
-              <div className="metric-card admin-metric-card"><strong>{period.leave}</strong><span>Leave</span><small>Needs review</small></div>
-              <div className="metric-card admin-metric-card"><strong>{period.followUps}</strong><span>Follow-ups</span><small>Need action</small></div>
-            </div>
+            {showOverview && (
+              <div className="admin-metric-grid">
+                <div className="metric-card admin-metric-card"><strong>{period.visits}</strong><span>Total visits</span><small>{period.label}</small></div>
+                <div className="metric-card admin-metric-card"><strong>{period.checkedIn}</strong><span>Checked in</span><small>Agents active</small></div>
+                <div className="metric-card admin-metric-card"><strong>{period.leave}</strong><span>Leave</span><small>Needs review</small></div>
+                <div className="metric-card admin-metric-card"><strong>{period.followUps}</strong><span>Follow-ups</span><small>Need action</small></div>
+              </div>
+            )}
           </>
         )}
 
@@ -1148,6 +1167,28 @@ function App() {
 
         {showReports && (
           <>
+            {adminTab === 'adminReports' && (
+              <section className="admin-report-list-card">
+                <div className="admin-report-heading">
+                  <label>Person-wise report preview</label>
+                  <span>{period.label}</span>
+                </div>
+                {adminReportRows[adminPeriod].map((row) => (
+                  <button key={row.name} type="button" className="admin-report-row admin-click-row" onClick={() => setScreenNotice({ title: `${row.name} report opened`, message: `${row.role} report detail will show attendance, visits, leave, and follow-ups.`, tone: 'info' })}>
+                    <div className="admin-report-row-main">
+                      <strong>{row.name}</strong>
+                      <p>{row.role} • {row.attendance}</p>
+                      <small>{row.visits}</small>
+                    </div>
+                    <span className={row.chipClass}>{row.status}</span>
+                  </button>
+                ))}
+                <div className="admin-report-note">
+                  <strong>Auto-generated from field activity</strong>
+                  <span>Uses attendance, sales visits, service updates, leave status, and follow-ups saved by each agent.</span>
+                </div>
+              </section>
+            )}
             <button type="button" className="primary-action" onClick={() => setScreenNotice({ title: `${adminPeriod === 'today' ? "Today’s" : period.label} admin report ready`, message: 'Download/export will connect after backend reports are finalized.', tone: 'success' })}>Generate {adminPeriod === 'today' ? "today’s" : period.label.toLowerCase()} admin report</button>
             <p className="panel-note">Admin preview uses fixed demo data. Backend will connect live attendance, leave approvals, visit details, and exports.</p>
           </>
@@ -1177,7 +1218,7 @@ function App() {
     <main className="app-shell agent-only-shell">
       <section className="preview-note">
         <p className="eyebrow">{isBackendConfigured ? 'Backend connected' : 'Demo preview'}</p>
-        <h1>{screen === 'admin' ? 'Admin overview screen' : 'Agent home screen'}</h1>
+        <h1>{screen === 'admin' ? (adminTab === 'adminReports' ? 'Admin reports screen' : adminTab === 'approvals' ? 'Admin approvals screen' : adminTab === 'agents' ? 'Admin agents screen' : 'Admin overview screen') : 'Agent home screen'}</h1>
         <p>{screen === 'admin' ? 'Owner/admin preview uses fixed demo data to review team attendance, leave, and field reports.' : isBackendConfigured ? 'Home logs in the agent and sends attendance to the Crystal Bio backend API.' : 'GitHub Pages preview uses fixed demo data. Buttons open the next app screens; only hosted-backend sections will save real records.'}</p>
       </section>
 
