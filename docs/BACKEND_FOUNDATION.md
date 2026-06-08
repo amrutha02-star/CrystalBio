@@ -99,20 +99,22 @@ Current result:
 
 ## Next backend step
 
-The next step is to add an API layer over this tested core.
+The route-style API layer has now been added and tested.
 
-Recommended API groups:
+Next step: connect the tested backend/API contract to a real HTTP server and persistent database/storage.
+
+Recommended API groups implemented in the contract:
 
 1. `/auth`
 2. `/attendance`
 3. `/leave-requests`
 4. `/sales-opportunities`
-5. `/sales-visit-updates`
+5. `/sales-visit-updates` via opportunity visit routes
 6. `/service-records`
-7. `/service-visit-updates`
+7. `/service-visit-updates` via service record visit routes
 8. `/admin/reports`
 
-After API layer, connect to persistent database/storage.
+After HTTP server and database are added, connect the frontend screens to live API calls.
 
 ## Important production notes
 
