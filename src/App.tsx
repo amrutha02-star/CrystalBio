@@ -1502,13 +1502,12 @@ function App() {
           <>
             {adminAgentsView === 'list' && (
               <>
-                <section className="admin-seat-hero-card">
+                <section className="admin-agents-compact-head">
                   <div>
-                    <p>Team seats</p>
-                    <strong>{adminSeats.length} profiles</strong>
-                    <span>{adminSeats.filter((seat) => seat.status === 'invited').length} invite pending • {adminSeats.filter((seat) => seat.status === 'active').length} active users</span>
+                    <p>Agent activity</p>
+                    <span>{adminSeats.length} profiles • {adminSeats.filter((seat) => seat.status === 'invited').length} invite pending • {adminSeats.filter((seat) => seat.status === 'active').length} active</span>
                   </div>
-                  <button type="button" className="primary-action admin-add-seat-button" onClick={() => setAdminAgentsView('add')}>Add agent</button>
+                  <button type="button" className="admin-icon-add-button" aria-label="Add agent" title="Add agent" onClick={() => setAdminAgentsView('add')}><Plus size={19} /></button>
                 </section>
                 <label className="search-card visit-search-card admin-seat-search-card">
                   <Search size={17} />
