@@ -891,17 +891,6 @@ function App() {
         <span>Step 1: {salesSaveResult ? 'Saved' : 'Pending'} • Step 2: {salesStep2Saved ? 'Saved' : 'Pending'} • Step 3: {salesStep3Saved ? 'Saved' : 'Pending'}</span>
       </div>
 
-      <div className="visit-assistant-card">
-        <div>
-          <label>Field visit assistant</label>
-          <strong>{salesSaveResult ? 'Continue this sales opportunity' : 'Start with today’s update'}</strong>
-          <span>Agent, time, and visit GPS stay automatic. The agent only enters what happened.</span>
-        </div>
-        <div className="visit-assistant-actions">
-          <button type="button" className="secondary-action mini-action" onClick={resetSalesFormForNewVisit}>New visit update</button>
-          <button type="button" className="secondary-action mini-action" onClick={() => goToScreen('visits')}>Previous entries</button>
-        </div>
-      </div>
 
       <section className="step-card">
         <div className="step-heading">
@@ -1054,17 +1043,6 @@ function App() {
           <span>Step 1: {serviceSaveResult ? 'Saved' : 'Pending'} • Step 2: {serviceStep2Saved ? 'Saved' : 'Pending'} • Step 3: {serviceStep3Saved ? 'Saved' : 'Pending'}</span>
         </div>
 
-        <div className="visit-assistant-card service-assistant-card">
-          <div>
-            <label>Field visit assistant</label>
-            <strong>{serviceSaveResult ? 'Continue this service case' : 'Save the site update first'}</strong>
-            <span>Engineer identity, time, and GPS stay automatic. Parts and proof can be completed later.</span>
-          </div>
-          <div className="visit-assistant-actions">
-            <button type="button" className="secondary-action mini-action" onClick={resetServiceFormForNewVisit}>New service update</button>
-            <button type="button" className="secondary-action mini-action" onClick={() => goToScreen('visits')}>Previous entries</button>
-          </div>
-        </div>
 
         <section className="step-card">
           <div className="step-heading">

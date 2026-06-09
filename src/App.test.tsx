@@ -125,9 +125,8 @@ describe('Crystal Bio agent view shell', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /sales new visit/i }));
     expect(screen.getByText('Sales visit')).toBeInTheDocument();
-    expect(screen.getByText('Field visit assistant')).toBeInTheDocument();
-    expect(screen.getByText('Start with today’s update')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /previous entries/i })).toBeInTheDocument();
+    expect(screen.queryByText('Field visit assistant')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /previous entries/i })).not.toBeInTheDocument();
     expect(screen.getByLabelText('Sales quick contact person')).toBeInTheDocument();
     expect(screen.getByLabelText('Sales quick phone')).toBeInTheDocument();
     expect(screen.getByText('Office action markers')).toBeInTheDocument();
@@ -136,7 +135,7 @@ describe('Crystal Bio agent view shell', () => {
     fireEvent.click(screen.getByLabelText('Home'));
     fireEvent.click(screen.getByRole('button', { name: /service report/i }));
     expect(screen.getByText('Service visit')).toBeInTheDocument();
-    expect(screen.getByText('Save the site update first')).toBeInTheDocument();
+    expect(screen.queryByText('Save the site update first')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Service quick equipment')).toBeInTheDocument();
     expect(screen.getByLabelText('Service quick contact person')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /arrange parts/i })).toBeInTheDocument();
