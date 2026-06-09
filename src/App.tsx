@@ -1483,7 +1483,7 @@ function App() {
     const showProfiles = adminTab === 'profiles';
 
     return (
-      <ScreenPanel title={adminTab === 'overview' ? 'Admin overview' : adminTab === 'agents' ? 'Agents' : adminTab === 'approvals' ? 'Approvals' : adminTab === 'profiles' ? 'Profiles' : 'Admin reports'} subtitle="Simple owner view for attendance, leave, and field work across agents.">
+      <ScreenPanel title={adminTab === 'overview' ? 'Admin overview' : adminTab === 'agents' ? 'Agents' : adminTab === 'approvals' ? 'Approvals' : adminTab === 'profiles' ? 'Profiles' : 'Admin reports'} subtitle="">
         {(showOverview || showReports) && (
           <>
             {showOverview && (
@@ -1803,12 +1803,12 @@ function App() {
   );
 }
 
-function ScreenPanel({ title, subtitle, children }: { title: string; subtitle: string; children: ReactNode }) {
+function ScreenPanel({ title, subtitle, children }: { title: string; subtitle?: string; children: ReactNode }) {
   return (
     <section className="panel screen-panel">
       <div className="screen-heading">
         <h3>{title}</h3>
-        <p>{subtitle}</p>
+        {subtitle && <p>{subtitle}</p>}
       </div>
       {children}
     </section>
