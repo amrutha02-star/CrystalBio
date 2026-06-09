@@ -5,13 +5,15 @@ import { JsonFileCrystalBioStore } from './crystalBioPersistence';
 
 const main = async () => {
   const port = Number(process.env.PORT ?? 8787);
+  const host = process.env.HOST ?? '127.0.0.1';
+  const allowedOrigin = process.env.CRYSTALBIO_ALLOWED_ORIGIN ?? '*';
   const databasePath = resolve(process.env.CRYSTALBIO_DB_PATH ?? 'data/crystalbio-db.json');
   const seedDemoUsers = process.env.CRYSTALBIO_SEED_DEMO !== 'false';
 
   mkdirSync(dirname(databasePath), { recursive: true });
 
   const store = new JsonFileCrystalBioStore(databasePath);
-  const app = createCrystalBioPersistentHttpApp(store);
+  const app = createCrystalBioPersistentHttpApp(store, { allowedOrigin, host });
 
   if (seedDemoUsers && app.backend.exportState().agents.length === 0) {
     app.backend.createAgent({ name: 'Admin User', role: 'admin', loginCode: 'admin', passcode: 'admin1234' });
@@ -22,7 +24,8 @@ const main = async () => {
   }
 
   await app.listen(port);
-  console.log(`CrystalBio backend listening on http://127.0.0.1:${port}`);
+  console.log(`CrystalBio backend listening on http://${host}:${port}`);
+  console.log(`Allowed frontend origin: ${allowedOrigin}`);
   console.log(`Database file: ${databasePath}`);
 
   const shutdown = async () => {

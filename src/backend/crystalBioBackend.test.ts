@@ -120,6 +120,50 @@ describe('CrystalBio backend core', () => {
     expect(updated.visits).toHaveLength(1);
   });
 
+  it('blocks another agent from updating or adding visits to someone else’s sales opportunity', () => {
+    const backend = createCrystalBioBackend();
+    const owner = backend.createAgent({ name: 'Rahul', role: 'sales' });
+    const otherSales = backend.createAgent({ name: 'Priya', role: 'sales' });
+    const opportunity = backend.createSalesOpportunity(owner.id, { accountName: 'Metro Lab' });
+
+    expect(() =>
+      backend.updateSalesOpportunity(otherSales.id, opportunity.id, {
+        quoteStatus: 'Changed by wrong user',
+      }),
+    ).toThrow(/Only the owning agent or admin can update this sales opportunity/);
+
+    expect(() =>
+      backend.addSalesVisitUpdate(otherSales.id, opportunity.id, {
+        visitDate: '2026-06-07',
+        visitTime: '12:00',
+        gps,
+        note: 'Wrong user visit',
+        nextAction: 'no_follow_up',
+        photos: [],
+      }),
+    ).toThrow(/Only the owning agent or admin can add sales visits to this opportunity/);
+
+    expect(backend.getSalesOpportunity(opportunity.id).quoteStatus).toBeUndefined();
+    expect(backend.getSalesOpportunity(opportunity.id).visits).toHaveLength(0);
+  });
+
+  it('allows admin to correct sales opportunity details without changing ownership', () => {
+    const backend = createCrystalBioBackend();
+    const owner = backend.createAgent({ name: 'Rahul', role: 'sales' });
+    const admin = backend.createAgent({ name: 'Admin User', role: 'admin' });
+    const opportunity = backend.createSalesOpportunity(owner.id, { accountName: 'Metro Lab' });
+
+    const updated = backend.updateSalesOpportunity(admin.id, opportunity.id, {
+      quoteStatus: 'Office reviewed',
+      ownerAgentId: admin.id,
+      visits: [],
+    } as any);
+
+    expect(updated.quoteStatus).toBe('Office reviewed');
+    expect(updated.ownerAgentId).toBe(owner.id);
+    expect(updated.visits).toHaveLength(0);
+  });
+
   it('blocks sales visit save when required date or GPS logic is missing', () => {
     const backend = createCrystalBioBackend();
     const agent = backend.createAgent({ name: 'Rahul', role: 'sales' });
@@ -194,6 +238,58 @@ describe('CrystalBio backend core', () => {
     expect(first.visitNumber).toBe(1);
     expect(second.visitNumber).toBe(2);
     expect(backend.getServiceRecord(record.id).visits).toHaveLength(2);
+  });
+
+  it('blocks another agent from editing or adding visits to someone else’s service record', () => {
+    const backend = createCrystalBioBackend();
+    const owner = backend.createAgent({ name: 'Meera', role: 'service' });
+    const otherEngineer = backend.createAgent({ name: 'Sanjay', role: 'service' });
+    const record = backend.createServiceRecord(owner.id, {
+      customerName: 'Apollo Diagnostics',
+      equipmentName: 'HPLC',
+    });
+
+    expect(() =>
+      backend.updateServiceRecord(otherEngineer.id, record.id, {
+        serialNumber: 'HACKED-01',
+      }),
+    ).toThrow(/Only the owning agent or admin can update this service record/);
+
+    expect(() =>
+      backend.addServiceVisitUpdate(otherEngineer.id, record.id, {
+        visitDate: '2026-06-11',
+        visitTime: '14:15',
+        gps,
+        serviceType: 'repair',
+        workDone: 'Changed someone else record',
+        supportRequired: false,
+        nextAction: 'closed',
+        photos: [],
+      }),
+    ).toThrow(/Only the owning agent or admin can add service visits to this record/);
+
+    expect(backend.getServiceRecord(record.id).serialNumber).toBeUndefined();
+    expect(backend.getServiceRecord(record.id).visits).toHaveLength(0);
+  });
+
+  it('allows admin to correct service record details without changing ownership', () => {
+    const backend = createCrystalBioBackend();
+    const owner = backend.createAgent({ name: 'Meera', role: 'service' });
+    const admin = backend.createAgent({ name: 'Admin User', role: 'admin' });
+    const record = backend.createServiceRecord(owner.id, {
+      customerName: 'Apollo Diagnostics',
+      equipmentName: 'HPLC',
+    });
+
+    const updated = backend.updateServiceRecord(admin.id, record.id, {
+      serialNumber: 'HPLC-01',
+      ownerAgentId: admin.id,
+      visits: [],
+    } as any);
+
+    expect(updated.serialNumber).toBe('HPLC-01');
+    expect(updated.ownerAgentId).toBe(owner.id);
+    expect(updated.visits).toHaveLength(0);
   });
 
   it('generates daily report counts per agent across attendance sales and service', () => {

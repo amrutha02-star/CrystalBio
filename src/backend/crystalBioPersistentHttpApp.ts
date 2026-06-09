@@ -1,11 +1,11 @@
 import { createCrystalBioApi, type ApiRequest } from './crystalBioApi';
 import { createCrystalBioBackend } from './crystalBioBackend';
-import { createCrystalBioHttpServer } from './crystalBioHttpServer';
+import { createCrystalBioHttpServer, type CrystalBioHttpServerOptions } from './crystalBioHttpServer';
 import type { JsonFileCrystalBioStore } from './crystalBioPersistence';
 
 const mutatesState = (request: ApiRequest) => request.method === 'POST' || request.method === 'PATCH';
 
-export function createCrystalBioPersistentHttpApp(store: JsonFileCrystalBioStore) {
+export function createCrystalBioPersistentHttpApp(store: JsonFileCrystalBioStore, options: CrystalBioHttpServerOptions = {}) {
   const backend = createCrystalBioBackend(store.load());
   const api = createCrystalBioApi(backend);
   const persistentApi = {
@@ -17,7 +17,7 @@ export function createCrystalBioPersistentHttpApp(store: JsonFileCrystalBioStore
       return response;
     },
   };
-  const server = createCrystalBioHttpServer(persistentApi);
+  const server = createCrystalBioHttpServer(persistentApi, options);
 
   return {
     backend,

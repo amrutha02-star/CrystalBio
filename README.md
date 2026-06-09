@@ -53,6 +53,15 @@ Backend pilot accounts seeded by `npm run backend:dev` when the database is empt
 
 To connect the web app to the backend, build/run it with `VITE_CRYSTALBIO_API_URL` pointing to the backend URL.
 
+Production/pilot backend settings:
+
+- `CRYSTALBIO_DB_PATH=/secure/path/crystalbio-db.json` stores the live backend file outside the repo.
+- `CRYSTALBIO_SEED_DEMO=false` disables demo account seeding for real deployments.
+- `CRYSTALBIO_ALLOWED_ORIGIN=https://your-frontend-domain` restricts browser access to the approved app URL instead of wildcard demo CORS.
+- `HOST=0.0.0.0` can be used for container/hosting deployments; local development can stay on `127.0.0.1`.
+- `/health` is available for uptime monitoring.
+- Sales/service records are protected by logged-in identity: only the owning agent or admin can update details or add visits.
+
 ---
 
 ## Backend in Plain Language

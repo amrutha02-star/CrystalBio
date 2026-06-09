@@ -134,7 +134,8 @@ export function createCrystalBioApi(backend: Backend) {
 
         const serviceRecordMatch = pathname.match(/^\/service-records\/([^/]+)$/);
         if (request.method === 'PATCH' && serviceRecordMatch) {
-          const serviceRecord = backend.updateServiceRecord(serviceRecordMatch[1], requireBody(request.body) as any);
+          const session = sessionFor(request);
+          const serviceRecord = backend.updateServiceRecord(session.agentId, serviceRecordMatch[1], requireBody(request.body) as any);
           return ok({ serviceRecord });
         }
 

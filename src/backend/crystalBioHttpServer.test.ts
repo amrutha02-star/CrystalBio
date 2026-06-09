@@ -81,18 +81,34 @@ describe('CrystalBio HTTP server adapter', () => {
 
   it('handles browser CORS preflight requests', async () => {
     const backend = createCrystalBioBackend();
-    const server = createCrystalBioHttpServer(createCrystalBioApi(backend));
+    const server = createCrystalBioHttpServer(createCrystalBioApi(backend), {
+      allowedOrigin: 'https://client.example.com',
+    });
     servers.push(server);
     await server.listen(0);
     const address = server.address() as AddressInfo;
 
     const response = await fetch(`http://127.0.0.1:${address.port}/attendance/check-in`, {
       method: 'OPTIONS',
-      headers: { origin: 'http://127.0.0.1:5173' },
+      headers: { origin: 'https://client.example.com' },
     });
 
     expect(response.status).toBe(204);
-    expect(response.headers.get('access-control-allow-origin')).toBe('*');
+    expect(response.headers.get('access-control-allow-origin')).toBe('https://client.example.com');
     expect(response.headers.get('access-control-allow-headers')).toContain('authorization');
+  });
+
+  it('exposes a health check for hosting uptime monitors', async () => {
+    const backend = createCrystalBioBackend();
+    const server = createCrystalBioHttpServer(createCrystalBioApi(backend));
+    servers.push(server);
+    await server.listen(0);
+    const address = server.address() as AddressInfo;
+
+    const response = await fetch(`http://127.0.0.1:${address.port}/health`);
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.status).toBe('ok');
   });
 });

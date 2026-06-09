@@ -6,6 +6,11 @@ export type CrystalBioApiHandler = {
   handle(request: ApiRequest): ApiResponse;
 };
 
+export type CrystalBioHttpServerOptions = {
+  allowedOrigin?: string;
+  host?: string;
+};
+
 const readJsonBody = async (request: IncomingMessage) => {
   const chunks: Buffer[] = [];
   for await (const chunk of request) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
@@ -18,28 +23,36 @@ const readJsonBody = async (request: IncomingMessage) => {
   }
 };
 
-const writeJson = (response: ServerResponse, status: number, body: Record<string, unknown>) => {
-  response.statusCode = status;
-  response.setHeader('access-control-allow-origin', '*');
+const writeCorsHeaders = (response: ServerResponse, allowedOrigin: string) => {
+  response.setHeader('access-control-allow-origin', allowedOrigin);
   response.setHeader('access-control-allow-methods', 'GET,POST,PATCH,OPTIONS');
   response.setHeader('access-control-allow-headers', 'content-type,authorization');
+};
+
+const writeJson = (response: ServerResponse, status: number, body: Record<string, unknown>, allowedOrigin: string) => {
+  response.statusCode = status;
+  writeCorsHeaders(response, allowedOrigin);
   response.setHeader('content-type', 'application/json');
   response.end(JSON.stringify(body));
 };
 
-const writeCorsPreflight = (response: ServerResponse) => {
+const writeCorsPreflight = (response: ServerResponse, allowedOrigin: string) => {
   response.statusCode = 204;
-  response.setHeader('access-control-allow-origin', '*');
-  response.setHeader('access-control-allow-methods', 'GET,POST,PATCH,OPTIONS');
-  response.setHeader('access-control-allow-headers', 'content-type,authorization');
+  writeCorsHeaders(response, allowedOrigin);
   response.end();
 };
 
-export function createCrystalBioHttpServer(api: CrystalBioApiHandler) {
+export function createCrystalBioHttpServer(api: CrystalBioApiHandler, options: CrystalBioHttpServerOptions = {}) {
+  const allowedOrigin = options.allowedOrigin ?? '*';
+  const host = options.host ?? '127.0.0.1';
   const server: Server = createServer(async (request, response) => {
     try {
       if (request.method === 'OPTIONS') {
-        writeCorsPreflight(response);
+        writeCorsPreflight(response, allowedOrigin);
+        return;
+      }
+      if (request.method === 'GET' && request.url === '/health') {
+        writeJson(response, 200, { status: 'ok' }, allowedOrigin);
         return;
       }
       const body = await readJsonBody(request);
@@ -51,19 +64,19 @@ export function createCrystalBioHttpServer(api: CrystalBioApiHandler) {
         },
         body,
       });
-      writeJson(response, apiResponse.status, apiResponse.body);
+      writeJson(response, apiResponse.status, apiResponse.body, allowedOrigin);
     } catch (error) {
       if (error instanceof Error && error.message === 'Malformed JSON body') {
-        writeJson(response, 400, { error: 'Malformed JSON body' });
+        writeJson(response, 400, { error: 'Malformed JSON body' }, allowedOrigin);
         return;
       }
-      writeJson(response, 500, { error: 'Unexpected server error' });
+      writeJson(response, 500, { error: 'Unexpected server error' }, allowedOrigin);
     }
   });
 
   return {
     listen(port: number) {
-      return new Promise<void>((resolve) => server.listen(port, '127.0.0.1', resolve));
+      return new Promise<void>((resolve) => server.listen(port, host, resolve));
     },
     close() {
       return new Promise<void>((resolve, reject) => {

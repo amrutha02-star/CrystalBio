@@ -426,10 +426,12 @@ export function createCrystalBioBackend(initialState?: CrystalBioBackendState) {
     },
 
     updateSalesOpportunity(agentId: string, id: string, input: Partial<SalesOpportunityInput>): SalesOpportunity {
-      getAgent(agentId);
+      const agent = getAgent(agentId);
       const opportunity = sales.get(id);
       if (!opportunity) throw new ValidationError('Sales opportunity not found');
-      if (opportunity.ownerAgentId !== agentId) throw new ValidationError('Only the owning agent can update this sales opportunity');
+      if (opportunity.ownerAgentId !== agentId && agent.role !== 'admin') {
+        throw new ValidationError('Only the owning agent or admin can update this sales opportunity');
+      }
       const nextAccountName = input.accountName ?? opportunity.accountName;
       requireText(nextAccountName, 'Account name is required');
       const allowedUpdates: Partial<SalesOpportunityInput> = {
@@ -471,6 +473,9 @@ export function createCrystalBioBackend(initialState?: CrystalBioBackendState) {
       const agent = getAgent(agentId);
       const opportunity = sales.get(opportunityId);
       if (!opportunity) throw new ValidationError('Sales opportunity not found');
+      if (opportunity.ownerAgentId !== agentId && agent.role !== 'admin') {
+        throw new ValidationError('Only the owning agent or admin can add sales visits to this opportunity');
+      }
       requireText(input.visitDate, 'Visit date is required');
       requireText(input.visitTime, 'Visit time is required');
       requireGps(input.gps);
@@ -524,9 +529,13 @@ export function createCrystalBioBackend(initialState?: CrystalBioBackendState) {
       return record;
     },
 
-    updateServiceRecord(serviceRecordId: string, input: Partial<ServiceRecordInput>): ServiceRecord {
+    updateServiceRecord(agentId: string, serviceRecordId: string, input: Partial<ServiceRecordInput>): ServiceRecord {
+      const agent = getAgent(agentId);
       const record = service.get(serviceRecordId);
       if (!record) throw new ValidationError('Service record not found');
+      if (record.ownerAgentId !== agentId && agent.role !== 'admin') {
+        throw new ValidationError('Only the owning agent or admin can update this service record');
+      }
       const allowedFields: Array<keyof ServiceRecordInput> = [
         'customerName',
         'phone',
@@ -559,6 +568,9 @@ export function createCrystalBioBackend(initialState?: CrystalBioBackendState) {
       const agent = getAgent(agentId);
       const record = service.get(serviceRecordId);
       if (!record) throw new ValidationError('Service record not found');
+      if (record.ownerAgentId !== agentId && agent.role !== 'admin') {
+        throw new ValidationError('Only the owning agent or admin can add service visits to this record');
+      }
       requireText(input.visitDate, 'Service visit date is required');
       requireText(input.visitTime, 'Service visit time is required');
       requireGps(input.gps);

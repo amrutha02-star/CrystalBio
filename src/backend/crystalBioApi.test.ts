@@ -213,6 +213,57 @@ describe('CrystalBio API layer', () => {
     expect(visit.body.visit.visitNumber).toBe(1);
   });
 
+  it('requires logged-in owner or admin identity to patch service record details', () => {
+    const backend = createCrystalBioBackend();
+    const owner = backend.createAgent({ name: 'Meera', role: 'service' });
+    const otherEngineer = backend.createAgent({ name: 'Sanjay', role: 'service' });
+    const admin = backend.createAgent({ name: 'Admin User', role: 'admin' });
+    const api = createCrystalBioApi(backend);
+    const ownerToken = api.handle({ method: 'POST', path: '/auth/login', body: { agentId: owner.id } }).body.session.token;
+    const otherToken = api.handle({ method: 'POST', path: '/auth/login', body: { agentId: otherEngineer.id } }).body.session.token;
+    const adminToken = api.handle({ method: 'POST', path: '/auth/login', body: { agentId: admin.id } }).body.session.token;
+    const record = api.handle({
+      method: 'POST',
+      path: '/service-records',
+      headers: { authorization: `Bearer ${ownerToken}` },
+      body: { customerName: 'Metro Lab', equipmentName: 'Centrifuge' },
+    });
+
+    const unauthenticated = api.handle({
+      method: 'PATCH',
+      path: `/service-records/${record.body.serviceRecord.id}`,
+      body: { serialNumber: 'OPEN-ACCESS' },
+    });
+    expect(unauthenticated.status).toBe(401);
+
+    const blocked = api.handle({
+      method: 'PATCH',
+      path: `/service-records/${record.body.serviceRecord.id}`,
+      headers: { authorization: `Bearer ${otherToken}` },
+      body: { serialNumber: 'OTHER-USER' },
+    });
+    expect(blocked.status).toBe(400);
+    expect(blocked.body.error).toBe('Only the owning agent or admin can update this service record');
+
+    const ownerPatch = api.handle({
+      method: 'PATCH',
+      path: `/service-records/${record.body.serviceRecord.id}`,
+      headers: { authorization: `Bearer ${ownerToken}` },
+      body: { serialNumber: 'CB-01' },
+    });
+    expect(ownerPatch.status).toBe(200);
+    expect(ownerPatch.body.serviceRecord.serialNumber).toBe('CB-01');
+
+    const adminPatch = api.handle({
+      method: 'PATCH',
+      path: `/service-records/${record.body.serviceRecord.id}`,
+      headers: { authorization: `Bearer ${adminToken}` },
+      body: { machineStatus: 'Office reviewed' },
+    });
+    expect(adminPatch.status).toBe(200);
+    expect(adminPatch.body.serviceRecord.machineStatus).toBe('Office reviewed');
+  });
+
   it('returns admin report only for admin sessions', () => {
     const backend = createCrystalBioBackend();
     const agent = backend.createAgent({ name: 'Rahul', role: 'sales' });
