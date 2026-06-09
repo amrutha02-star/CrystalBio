@@ -71,7 +71,7 @@ describe('Crystal Bio agent view shell', () => {
     expect(screen.getByRole('button', { name: /check in/i })).toBeInTheDocument();
   });
 
-  it('keeps agent bottom navigation clear with selected home and profile access', async () => {
+  it('keeps agent bottom navigation focused on work screens because profile is in the top header', async () => {
     render(<App />);
 
     await screen.findByText('Rahul Sales');
@@ -80,24 +80,33 @@ describe('Crystal Bio agent view shell', () => {
     expect(screen.getByLabelText('Visits')).toBeInTheDocument();
     expect(screen.getByLabelText('Attendance')).toBeInTheDocument();
     expect(screen.getByLabelText('Reports')).toBeInTheDocument();
-    expect(screen.getByLabelText('Profile')).toBeInTheDocument();
+    expect(screen.getByLabelText('Open profile')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Profile')).not.toBeInTheDocument();
   });
 
-  it('opens an agent profile page from the profile button with simple account and work details', async () => {
+  it('opens an agent profile page from the top profile button with login contact details only', async () => {
     render(<App />);
 
     await screen.findByText('Rahul Sales');
-    fireEvent.click(screen.getByLabelText('Profile'));
+    fireEvent.click(screen.getByLabelText('Open profile'));
 
     expect(screen.getByRole('heading', { name: 'Profile' })).toBeInTheDocument();
     expect(screen.getAllByText('Rahul Sales').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Sales agent').length).toBeGreaterThan(0);
     expect(screen.getByText('Employee ID')).toBeInTheDocument();
     expect(screen.getByText('agent_2')).toBeInTheDocument();
-    expect(screen.getByText('Today’s status')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /request leave/i })).toBeInTheDocument();
+    expect(screen.getByText('Phone')).toBeInTheDocument();
+    expect(screen.getByText('+91 98765 43210')).toBeInTheDocument();
+    expect(screen.getByText('Email ID')).toBeInTheDocument();
+    expect(screen.getByText('rahul.sales@crystalbio.in')).toBeInTheDocument();
+    expect(screen.queryByText('Today’s status')).not.toBeInTheDocument();
+    expect(screen.queryByText('Leave status')).not.toBeInTheDocument();
+    expect(screen.queryByText('What this page is for')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Agents can quickly confirm/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /request leave/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /view attendance/i })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /logout/i })).toBeInTheDocument();
-    expect(screen.getAllByLabelText('Profile selected').length).toBeGreaterThan(0);
+    expect(screen.getByLabelText('Profile selected')).toBeInTheDocument();
   });
 
   it('keeps admin and monitoring sections out of the agent review screen', async () => {

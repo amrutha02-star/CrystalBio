@@ -3,6 +3,8 @@ export type FrontendSession = {
   agentId: string;
   agentName: string;
   role: 'sales' | 'service' | 'both' | 'admin';
+  phone?: string;
+  email?: string;
 };
 
 export type FrontendLoginInput = string | { loginCode: string; passcode: string };
@@ -329,8 +331,8 @@ export function createCrystalBioFrontendApi(options: ApiClientOptions = {}) {
       const agentId = typeof input === 'string' ? input : 'agent_2';
       if (!baseUrl) {
         return agentId === 'agent_3'
-          ? { token: 'demo-token-service', agentId, agentName: 'Meera Service', role: 'service' }
-          : { token: 'demo-token', agentId, agentName: 'Rahul Sales', role: 'sales' };
+          ? { token: 'demo-token-service', agentId, agentName: 'Meera Service', role: 'service', phone: '+91 98765 43211', email: 'meera.service@crystalbio.in' }
+          : { token: 'demo-token', agentId, agentName: 'Rahul Sales', role: 'sales', phone: '+91 98765 43210', email: 'rahul.sales@crystalbio.in' };
       }
       const body = typeof input === 'string' ? { agentId: input } : input;
       const result = await post<{ session: FrontendSession }>('/auth/login', body);

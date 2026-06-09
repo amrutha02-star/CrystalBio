@@ -21,7 +21,6 @@ const navItems: Array<{ screen: AppScreen; label: string; icon: typeof Home }> =
   { screen: 'visits', label: 'Visits', icon: ClipboardList },
   { screen: 'attendance', label: 'Attendance', icon: CalendarCheck },
   { screen: 'reports', label: 'Reports', icon: FileText },
-  { screen: 'profile', label: 'Profile', icon: UserRound },
 ];
 
 const sampleAttendanceLogs = [
@@ -1273,15 +1272,11 @@ function App() {
   const renderProfile = () => {
     const agentName = session?.agentName ?? 'Rahul Sales';
     const agentId = session?.agentId ?? 'agent_2';
-    const attendanceText = attendance?.status === 'checked_in'
-      ? 'Checked in today'
-      : attendance?.status === 'checked_out'
-        ? 'Checked out today'
-        : 'Not checked in yet';
-    const leaveText = leaveRequest ? `${leaveRequest.fromDate} to ${leaveRequest.toDate} • ${leaveRequest.status}` : 'No leave request pending';
+    const agentPhone = session?.phone ?? '+91 98765 43210';
+    const agentEmail = session?.email ?? 'rahul.sales@crystalbio.in';
 
     return (
-      <ScreenPanel title="Profile" subtitle="Simple account details for the logged-in field user.">
+      <ScreenPanel title="Profile" subtitle="Logged-in account details.">
         <section className="profile-hero-card">
           <span className="profile-avatar"><UserRound size={25} /></span>
           <div>
@@ -1294,17 +1289,10 @@ function App() {
         <section className="profile-info-card">
           <div><span>Employee ID</span><strong>{agentId}</strong></div>
           <div><span>Role</span><strong>{roleLabel(session?.role)}</strong></div>
-          <div><span>Today’s status</span><strong>{attendanceText}</strong></div>
-          <div><span>Leave status</span><strong>{leaveText}</strong></div>
+          <div><span>Phone</span><strong>{agentPhone}</strong></div>
+          <div><span>Email ID</span><strong>{agentEmail}</strong></div>
         </section>
 
-        <section className="form-card profile-help-card">
-          <label>What this page is for</label>
-          <p>Agents can quickly confirm they are using the correct account before saving visits, attendance, or leave requests.</p>
-        </section>
-
-        <button type="button" className="secondary-action" onClick={() => goToScreen('attendance')}>View attendance</button>
-        <button type="button" className="secondary-action" onClick={() => goToScreen('leave')}>Request leave</button>
         <button type="button" className="secondary-action logout-action" onClick={handleLogout}>Logout</button>
       </ScreenPanel>
     );
