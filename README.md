@@ -15,11 +15,21 @@ Current app includes:
 - Service Visit action with saved service updates
 - Leave Request action with admin-review status
 - My Entries / recent visits preview
-- Admin overview, approvals, agents, and reports screens
+- Agent My Reports page with compact Daily / Weekly / Monthly report generation
+- Admin overview, approvals, agents, field entry, profiles, and reports screens
 - Backend admin report API generated from saved field activity
 - JSON-file backend persistence with backup recovery for pilot use
 - Bottom navigation with icons and selected state
 - Phased build plan
+
+Current UX corrections to preserve:
+
+- **Agents** is an operational visibility screen: who checked in, who updated visits, missing reports, and Sales/Service filtering. Do not convert it into profile creation or onboarding.
+- **Field entry** is separate from Agents. It is the admin path for entering a Sales or Service report when admin/back office needs to submit one.
+- **Profile** owns controlled user/profile creation, invites, password setup, resend/reset/deactivate, and access rules.
+- Report date controls must be compact. Do not use a large date-range card by default. Show visible From/To fields only when a custom date selection is actually needed.
+- Agent My Reports should focus on Daily, Weekly, and Monthly reports generated from saved work. Do not repeat “custom range/custom dates” in multiple places on the same screen.
+- Font sizes should follow the design scale in `DESIGN.md`; avoid oversized report cards, heavy labels, and mixed typography hierarchy.
 
 Local commands:
 

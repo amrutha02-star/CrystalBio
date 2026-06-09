@@ -1228,7 +1228,7 @@ function App() {
       today: { eyebrow: 'Today', title: 'Today’s summary', range: '08 Jun', visits: '4', sales: '2', service: '2', attendance: attendanceLabel, followUps: '1', note: '2 sales • 2 service • 1 follow-up pending' },
       week: { eyebrow: 'Current week', title: 'Weekly summary', range: '09 Jun – 15 Jun', visits: '8', sales: '5', service: '3', attendance: '5 / 6 days', followUps: '3', note: '5 sales • 3 service • 5/6 attendance' },
       month: { eyebrow: 'Current month', title: 'Monthly summary', range: 'June 2026', visits: '31', sales: '18', service: '13', attendance: '21 / 24 days', followUps: '7', note: '18 sales • 13 service • 7 follow-ups pending' },
-      custom: { eyebrow: 'Custom dates', title: 'Custom date summary', range: `${reportFromDate} to ${reportToDate}`, visits: '12', sales: '7', service: '5', attendance: 'Selected range', followUps: '2', note: 'Custom date report from saved activity' },
+      custom: { eyebrow: 'Selected dates', title: 'Selected date summary', range: `${reportFromDate} to ${reportToDate}`, visits: '12', sales: '7', service: '5', attendance: 'Selected range', followUps: '2', note: 'Saved activity for selected dates' },
     };
     const activeReport = reportCopy[reportPeriod];
     const generateReport = (period: ReportPeriod) => {
@@ -1251,19 +1251,14 @@ function App() {
           <span className="report-hero-icon"><BarChart3 size={21} /></span>
         </section>
 
-        <section className="date-filter-card" aria-label="My report date range">
-          <div className="date-filter-head">
-            <div><label>Report date range</label><strong>{activeReport.range}</strong></div>
+        <section className="date-filter-card compact-date-filter-card" aria-label="My report period">
+          <div className="date-filter-head compact-date-filter-head">
+            <div><label>Report period</label><strong>{activeReport.range}</strong></div>
             <select aria-label="My report preset" value={reportPeriod} onChange={(event) => setReportPeriod(event.target.value as ReportPeriod)}>
-              <option value="today">Today</option>
-              <option value="week">This week</option>
-              <option value="month">This month</option>
-              <option value="custom">Custom range</option>
+              <option value="today">Daily</option>
+              <option value="week">Weekly</option>
+              <option value="month">Monthly</option>
             </select>
-          </div>
-          <div className="date-range-fields">
-            <label><span>From</span><input aria-label="Report from date" type="date" value={reportFromDate} onChange={(event) => { setReportFromDate(event.target.value); setReportPeriod('custom'); }} /></label>
-            <label><span>To</span><input aria-label="Report to date" type="date" value={reportToDate} onChange={(event) => { setReportToDate(event.target.value); setReportPeriod('custom'); }} /></label>
           </div>
         </section>
 
@@ -1276,12 +1271,11 @@ function App() {
 
         <section className="form-card report-generate-card">
           <label>Generate my report</label>
-          <p>Select the report period below. No report type is selected by default.</p>
-          <div className="report-generate-actions">
+          <p>Choose the report the agent actually needs. Daily, weekly, and monthly summaries are generated from saved attendance and visits.</p>
+          <div className="report-generate-actions three-report-actions">
             <button type="button" onClick={() => generateReport('today')}>Daily</button>
             <button type="button" onClick={() => generateReport('week')}>Weekly</button>
             <button type="button" onClick={() => generateReport('month')}>Monthly</button>
-            <button type="button" onClick={() => generateReport('custom')}>Custom dates</button>
           </div>
         </section>
 
@@ -1429,20 +1423,22 @@ function App() {
       setScreenNotice(null);
     };
     const renderAdminDateFilter = (label: string) => (
-      <section className="date-filter-card" aria-label={`${label} date range`}>
-        <div className="date-filter-head">
+      <section className={`date-filter-card compact-date-filter-card ${adminPeriod === 'custom' ? 'date-filter-card-expanded' : ''}`} aria-label={`${label} period`}>
+        <div className="date-filter-head compact-date-filter-head">
           <div><label>{label}</label><strong>{period.label}</strong></div>
           <select aria-label={`${label} preset`} value={adminPeriod} onChange={(event) => changePeriod(event.target.value as ReportPeriod)}>
             <option value="today">Today</option>
             <option value="week">This week</option>
             <option value="month">This month</option>
-            <option value="custom">Custom range</option>
+            <option value="custom">Choose dates</option>
           </select>
         </div>
-        <div className="date-range-fields">
-          <label><span>From</span><input aria-label={`${label} from date`} type="date" value={adminReportFromDate} onChange={(event) => { setAdminReportFromDate(event.target.value); setAdminPeriod('custom'); }} /></label>
-          <label><span>To</span><input aria-label={`${label} to date`} type="date" value={adminReportToDate} onChange={(event) => { setAdminReportToDate(event.target.value); setAdminPeriod('custom'); }} /></label>
-        </div>
+        {adminPeriod === 'custom' && (
+          <div className="date-range-fields compact-date-range-fields">
+            <label><span>From</span><input aria-label={`${label} from date`} type="date" value={adminReportFromDate} onChange={(event) => { setAdminReportFromDate(event.target.value); setAdminPeriod('custom'); }} /></label>
+            <label><span>To</span><input aria-label={`${label} to date`} type="date" value={adminReportToDate} onChange={(event) => { setAdminReportToDate(event.target.value); setAdminPeriod('custom'); }} /></label>
+          </div>
+        )}
       </section>
     );
     const showOverview = adminTab === 'overview';
@@ -1724,7 +1720,7 @@ function App() {
             {screen === 'admin' ? (
               [
                 { label: 'Overview', tab: 'overview' as AdminTab, icon: Home },
-                { label: 'Field entry', tab: 'overview' as AdminTab, screen: 'home' as AppScreen, icon: ClipboardList },
+                { label: 'Field entry', tab: 'overview' as AdminTab, screen: 'visits' as AppScreen, icon: ClipboardList },
                 { label: 'Agents', tab: 'agents' as AdminTab, icon: UsersRound },
                 { label: 'Approvals', tab: 'approvals' as AdminTab, icon: CalendarCheck },
                 { label: 'Reports', tab: 'adminReports' as AdminTab, icon: FileText },
