@@ -1,10 +1,11 @@
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
-import { BarChart3, CalendarCheck, CheckCircle2, ChevronLeft, ClipboardList, Clock3, FileText, Home, MapPin, Plus, Search, UserRound, UsersRound, X } from 'lucide-react';
+import { CalendarCheck, CheckCircle2, ChevronLeft, ClipboardList, Clock3, FileText, Home, MapPin, Plus, Search, UserRound, UsersRound, X } from 'lucide-react';
 import { sampleEntries } from './appData';
 import { crystalBioFrontendApi, type FrontendAttendance, type FrontendLeaveRequest, type FrontendLoginInput, type FrontendSalesSaveResult, type FrontendSalesNextAction, type FrontendServiceSaveResult, type FrontendServiceNextAction, type FrontendServiceType, type FrontendSession } from './crystalBioFrontendApi';
 
 type AppScreen = 'login' | 'home' | 'visits' | 'sales' | 'service' | 'checkin' | 'attendance' | 'leave' | 'reports' | 'profile' | 'admin';
 type ReportPeriod = 'today' | 'week' | 'month' | 'custom';
+type AgentReportKind = 'attendance' | 'visits' | 'combined';
 type AdminAgentFilter = 'all' | 'sales' | 'service';
 type AdminTab = 'overview' | 'agents' | 'approvals' | 'adminReports' | 'profiles';
 type AdminApprovalId = 'meera-leave';
@@ -86,6 +87,7 @@ function App() {
   const [loginCode, setLoginCode] = useState('sales1');
   const [passcode, setPasscode] = useState('1234');
   const [reportPeriod, setReportPeriod] = useState<ReportPeriod>('week');
+  const [reportKind, setReportKind] = useState<AgentReportKind>('combined');
   const [reportFromDate, setReportFromDate] = useState('2026-06-01');
   const [reportToDate, setReportToDate] = useState('2026-06-08');
   const [adminPeriod, setAdminPeriod] = useState<ReportPeriod>('today');
@@ -1156,11 +1158,6 @@ function App() {
           <label>GPS capture</label>
           <p>{isBackendConfigured ? 'The app saves the phone location during check-in and check-out.' : 'The app saves phone location during check-in and check-out.'}</p>
         </div>
-        <div className="form-card leave-status-card">
-          <label>Leave status</label>
-          <strong>{leaveRequest ? leaveRequest.status : 'No active request'}</strong>
-          <span>{leaveRequest ? `${leaveRequest.fromDate} to ${leaveRequest.toDate} • ${leaveRequest.reason}` : 'No leave requests submitted.'}</span>
-        </div>
         <button type="button" className="primary-action attendance-main-action" disabled={!session || isAttendanceBusy} onClick={() => isCheckedIn ? void handleAttendanceAction() : goToScreen('checkin')}>{isAttendanceBusy ? 'Saving…' : attendanceAction}</button>
         <div className="section-label">Recent attendance</div>
         {attendanceLogs.map((log) => (
@@ -1169,6 +1166,12 @@ function App() {
             <span className="chip chip-soft">{log.status}</span>
           </div>
         ))}
+        <div className="section-label leave-section-label">Leave requests</div>
+        <div className="form-card leave-status-card">
+          <label>Leave status</label>
+          <strong>{leaveRequest ? leaveRequest.status : 'No active request'}</strong>
+          <span>{leaveRequest ? `${leaveRequest.fromDate} to ${leaveRequest.toDate} • ${leaveRequest.reason}` : 'No leave requests submitted.'}</span>
+        </div>
         <button type="button" className="secondary-action" onClick={() => goToScreen('leave')}>Request leave</button>
       </ScreenPanel>
     );
@@ -1224,75 +1227,93 @@ function App() {
   const renderReports = () => {
     const leaveStatus = leaveRequest?.status ?? 'No leave pending';
     const attendanceLabel = attendance?.status === 'checked_in' ? 'Checked in today' : attendance?.status === 'checked_out' ? 'Checked out today' : 'Not checked in';
-    const reportCopy: Record<ReportPeriod, { eyebrow: string; title: string; range: string; visits: string; sales: string; service: string; attendance: string; followUps: string; note: string }> = {
-      today: { eyebrow: 'Today', title: 'Today’s summary', range: '08 Jun', visits: '4', sales: '2', service: '2', attendance: attendanceLabel, followUps: '1', note: '2 sales • 2 service • 1 follow-up pending' },
-      week: { eyebrow: 'Current week', title: 'Weekly summary', range: '09 Jun – 15 Jun', visits: '8', sales: '5', service: '3', attendance: '5 / 6 days', followUps: '3', note: '5 sales • 3 service • 5/6 attendance' },
-      month: { eyebrow: 'Current month', title: 'Monthly summary', range: 'June 2026', visits: '31', sales: '18', service: '13', attendance: '21 / 24 days', followUps: '7', note: '18 sales • 13 service • 7 follow-ups pending' },
-      custom: { eyebrow: 'Selected dates', title: 'Selected date summary', range: `${reportFromDate} to ${reportToDate}`, visits: '12', sales: '7', service: '5', attendance: 'Selected range', followUps: '2', note: 'Saved activity for selected dates' },
+    const reportCopy: Record<ReportPeriod, { title: string; range: string; visits: string; sales: string; service: string; attendance: string; followUps: string; leave: string }> = {
+      today: { title: 'Daily report', range: '08 Jun', visits: '4', sales: '2', service: '2', attendance: attendanceLabel, followUps: '1', leave: leaveStatus },
+      week: { title: 'Weekly report', range: '09 Jun – 15 Jun', visits: '8', sales: '5', service: '3', attendance: '5 / 6 days present', followUps: '3', leave: leaveStatus },
+      month: { title: 'Monthly report', range: 'June 2026', visits: '31', sales: '18', service: '13', attendance: '21 / 24 days present', followUps: '7', leave: leaveStatus },
+      custom: { title: 'Custom date report', range: `${reportFromDate} to ${reportToDate}`, visits: '12', sales: '7', service: '5', attendance: 'Selected range attendance', followUps: '2', leave: leaveStatus },
     };
     const activeReport = reportCopy[reportPeriod];
+    const kindLabels: Record<AgentReportKind, { title: string; helper: string }> = {
+      attendance: { title: 'Attendance report', helper: 'Check-in, check-out, working days, leave' },
+      visits: { title: 'Visit report', helper: 'Sales visits, service visits, follow-ups' },
+      combined: { title: 'Combined work report', helper: 'Attendance + visits + leave in one report' },
+    };
     const generateReport = (period: ReportPeriod) => {
       setReportPeriod(period);
       setScreenNotice({
         title: `${reportCopy[period].title} ready`,
-        message: `${reportCopy[period].range} generated from saved field activity.`,
+        message: `${kindLabels[reportKind].title} for ${reportCopy[period].range}.`,
         tone: 'success',
       });
     };
 
     return (
-      <ScreenPanel title="My reports" subtitle="Automatic summaries from attendance, sales visits, service visits, and leave.">
-        <section className="report-hero-card">
-          <div>
-            <p>{activeReport.eyebrow}</p>
-            <strong>{session?.agentName ?? 'Agent'} {activeReport.title.toLowerCase()}</strong>
-            <span>{activeReport.attendance} • {activeReport.visits} visits • {activeReport.followUps} follow-ups pending</span>
+      <ScreenPanel title="My reports" subtitle="Choose one report type, choose dates, then generate.">
+        <section className="report-choice-card" aria-label="Choose report type">
+          <label>1. What do you want to see?</label>
+          <div className="report-kind-list">
+            {(Object.keys(kindLabels) as AgentReportKind[]).map((kind) => (
+              <button key={kind} type="button" className={kind === reportKind ? 'report-kind-row report-kind-active' : 'report-kind-row'} onClick={() => setReportKind(kind)}>
+                <span>{kindLabels[kind].title}</span>
+                <small>{kindLabels[kind].helper}</small>
+              </button>
+            ))}
           </div>
-          <span className="report-hero-icon"><BarChart3 size={21} /></span>
         </section>
 
-        <section className="date-filter-card compact-date-filter-card" aria-label="My report period">
+        <section className={reportPeriod === 'custom' ? 'date-filter-card date-filter-card-expanded' : 'date-filter-card compact-date-filter-card'} aria-label="My report period">
           <div className="date-filter-head compact-date-filter-head">
-            <div><label>Report period</label><strong>{activeReport.range}</strong></div>
+            <div><label>2. Report dates</label><strong>{activeReport.range}</strong></div>
             <select aria-label="My report preset" value={reportPeriod} onChange={(event) => setReportPeriod(event.target.value as ReportPeriod)}>
               <option value="today">Daily</option>
               <option value="week">Weekly</option>
               <option value="month">Monthly</option>
+              <option value="custom">Custom dates</option>
             </select>
           </div>
+          {reportPeriod === 'custom' && (
+            <div className="date-range-fields compact-date-range-fields">
+              <label><span>From</span><input aria-label="My report from date" type="date" value={reportFromDate} onChange={(event) => setReportFromDate(event.target.value)} /></label>
+              <label><span>To</span><input aria-label="My report to date" type="date" value={reportToDate} onChange={(event) => setReportToDate(event.target.value)} /></label>
+            </div>
+          )}
         </section>
 
-        <div className="report-metric-grid">
-          <div className="metric-card report-metric-card"><strong>{activeReport.visits}</strong><span>Total visits</span><small>{activeReport.range}</small></div>
-          <div className="metric-card report-metric-card"><strong>{activeReport.sales}</strong><span>Sales</span><small>Saved entries</small></div>
-          <div className="metric-card report-metric-card"><strong>{activeReport.service}</strong><span>Service</span><small>Saved entries</small></div>
-          <div className="metric-card report-metric-card"><strong>{leaveRequest ? '1' : '0'}</strong><span>Leave</span><small>{leaveStatus}</small></div>
-        </div>
-
         <section className="form-card report-generate-card">
-          <label>Generate my report</label>
-          <p>Choose the report the agent actually needs. Daily, weekly, and monthly summaries are generated from saved attendance and visits.</p>
-          <div className="report-generate-actions three-report-actions">
+          <label>3. Generate report</label>
+          <p>{kindLabels[reportKind].title} • {activeReport.range}</p>
+          <div className="report-generate-actions four-report-actions">
             <button type="button" onClick={() => generateReport('today')}>Daily</button>
             <button type="button" onClick={() => generateReport('week')}>Weekly</button>
             <button type="button" onClick={() => generateReport('month')}>Monthly</button>
+            <button type="button" onClick={() => generateReport('custom')}>Custom dates</button>
           </div>
         </section>
 
-        <section className="report-preview-card compact-report-preview-card">
+        <section className="report-preview-card simple-report-preview-card">
           <div className="report-preview-heading">
             <div>
-              <label>Report summary</label>
-              <strong>{activeReport.title}</strong>
-              <span>{activeReport.range} • {activeReport.note}</span>
+              <label>Preview</label>
+              <strong>{kindLabels[reportKind].title}</strong>
+              <span>{activeReport.title} • {activeReport.range}</span>
             </div>
-            <span className="chip chip-soft">Current data</span>
+            <span className="chip chip-soft">Visual only</span>
           </div>
+          {(reportKind === 'attendance' || reportKind === 'combined') && (
+            <div className="report-line"><span>Attendance</span><strong>{activeReport.attendance}</strong></div>
+          )}
+          {(reportKind === 'visits' || reportKind === 'combined') && (
+            <>
+              <div className="report-line"><span>Sales visits</span><strong>{activeReport.sales}</strong></div>
+              <div className="report-line"><span>Service visits</span><strong>{activeReport.service}</strong></div>
+              <div className="report-line"><span>Follow-ups pending</span><strong>{activeReport.followUps}</strong></div>
+            </>
+          )}
+          {(reportKind === 'attendance' || reportKind === 'combined') && (
+            <div className="report-line"><span>Leave</span><strong>{activeReport.leave}</strong></div>
+          )}
         </section>
-
-        <div className="section-label">Recent report items</div>
-        <div className="entry-row"><div><strong>Apollo Diagnostics</strong><p>Sales visit • Quote to be shared</p></div><span className="chip chip-warning">follow-up</span></div>
-        <div className="entry-row"><div><strong>Metro Lab</strong><p>Service visit • Parts required</p></div><span className="chip chip-info">service</span></div>
       </ScreenPanel>
     );
   };

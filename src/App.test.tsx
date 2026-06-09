@@ -149,17 +149,22 @@ describe('Crystal Bio agent view shell', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /^reports$/i }));
     expect(screen.getByText('My reports')).toBeInTheDocument();
-    expect(screen.getByText('Weekly summary')).toBeInTheDocument();
-    expect(screen.getByText('Current data')).toBeInTheDocument();
-    expect(screen.getByText('Report summary')).toBeInTheDocument();
+    expect(screen.getByText(/Weekly report/)).toBeInTheDocument();
+    expect(screen.getByText('Visual only')).toBeInTheDocument();
+    expect(screen.getByText('Preview')).toBeInTheDocument();
+    expect(screen.getByText('Attendance report')).toBeInTheDocument();
+    expect(screen.getAllByText('Custom dates').length).toBeGreaterThan(0);
+    fireEvent.change(screen.getByLabelText('My report preset'), { target: { value: 'custom' } });
+    expect(screen.getByLabelText('My report from date')).toBeInTheDocument();
+    expect(screen.getByLabelText('My report to date')).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('My report preset'), { target: { value: 'month' } });
-    expect(screen.getByText('Monthly summary')).toBeInTheDocument();
+    expect(screen.getByText(/Monthly report/)).toBeInTheDocument();
     expect(screen.getAllByText(/June 2026/).length).toBeGreaterThan(0);
     fireEvent.change(screen.getByLabelText('My report preset'), { target: { value: 'week' } });
-    expect(screen.getByText('Weekly summary')).toBeInTheDocument();
+    expect(screen.getByText(/Weekly report/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /^monthly$/i }));
-    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Monthly summary ready'));
-    expect(screen.getByText('Monthly summary')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Monthly report ready'));
+    expect(screen.getAllByText(/Monthly report/).length).toBeGreaterThan(0);
     expect(screen.queryByText(/fixed demo values/i)).not.toBeInTheDocument();
   });
 
