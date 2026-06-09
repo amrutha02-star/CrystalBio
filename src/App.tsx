@@ -1438,12 +1438,13 @@ function App() {
       setScreenNotice(null);
     };
     const activeApproval = selectedAdminApproval ? adminApprovals[selectedAdminApproval] : null;
-    const visibleAgentActivityRows = adminReportRows[adminPeriod].filter((row) => {
+    const visibleAgentActivityRows = adminReportRows.today.filter((row) => {
       if (adminAgentFilter === 'all') return true;
       return row.role.toLowerCase().startsWith(adminAgentFilter);
     });
     const selectedSeat = adminSeats.find((seat) => seat.id === selectedAdminSeatId) ?? adminSeats[0];
     const period = adminPeriodData[adminPeriod];
+    const overviewPeriod = adminPeriodData.today;
     const generateAdminReport = () => {
       const rangeLabel = adminPeriod === 'custom' ? `${adminReportFromDate} to ${adminReportToDate}` : period.label.toLowerCase();
       setScreenNotice({
@@ -1486,26 +1487,25 @@ function App() {
         {(showOverview || showReports) && (
           <>
             {showOverview && (
-              <section className="admin-hero-card">
-                <div>
-                  <p>{period.label} field status</p>
-                  <strong>{period.active}</strong>
-                  <span>{period.summary}</span>
+              <>
+                <section className="admin-hero-card">
+                  <div>
+                    <p>Today field status</p>
+                    <strong>{overviewPeriod.active}</strong>
+                    <span>{overviewPeriod.summary}</span>
+                  </div>
+                  <span className="admin-hero-icon"><UsersRound size={22} /></span>
+                </section>
+                <div className="admin-metric-grid">
+                  <div className="metric-card admin-metric-card"><strong>{overviewPeriod.visits}</strong><span>Total visits</span><small>Today</small></div>
+                  <div className="metric-card admin-metric-card"><strong>{overviewPeriod.checkedIn}</strong><span>Checked in</span><small>Agents active</small></div>
+                  <div className="metric-card admin-metric-card"><strong>{overviewPeriod.leave}</strong><span>Leave</span><small>Needs review</small></div>
+                  <div className="metric-card admin-metric-card"><strong>{overviewPeriod.followUps}</strong><span>Follow-ups</span><small>Need action</small></div>
                 </div>
-                <span className="admin-hero-icon"><UsersRound size={22} /></span>
-              </section>
+              </>
             )}
 
-            {renderAdminDateFilter(showReports ? 'Report date range' : 'Overview date range')}
-
-            {showOverview && (
-              <div className="admin-metric-grid">
-                <div className="metric-card admin-metric-card"><strong>{period.visits}</strong><span>Total visits</span><small>{period.label}</small></div>
-                <div className="metric-card admin-metric-card"><strong>{period.checkedIn}</strong><span>Checked in</span><small>Agents active</small></div>
-                <div className="metric-card admin-metric-card"><strong>{period.leave}</strong><span>Leave</span><small>Needs review</small></div>
-                <div className="metric-card admin-metric-card"><strong>{period.followUps}</strong><span>Follow-ups</span><small>Need action</small></div>
-              </div>
-            )}
+            {showReports && renderAdminDateFilter('Report date range')}
           </>
         )}
 
@@ -1548,11 +1548,10 @@ function App() {
               <>
                 <section className="admin-agents-compact-head">
                   <div>
-                    <p>Agent activity</p>
-                    <span>Shows who checked in, who updated visits, and who is missing data.</span>
+                    <p>Live agent status</p>
+                    <span>Quick check of who is working today, who updated visits, and who needs follow-up. Reports stay separate.</span>
                   </div>
                 </section>
-                {renderAdminDateFilter('Activity date range')}
                 <div className="admin-filter-row admin-agent-filter-row" aria-label="Agent type filters">
                   {(['all', 'sales', 'service'] as AdminAgentFilter[]).map((filter) => (
                     <button key={filter} type="button" className={adminAgentFilter === filter ? 'admin-filter-active' : ''} onClick={() => setAdminAgentFilter(filter)}>
@@ -1562,7 +1561,7 @@ function App() {
                 </div>
                 <section className="admin-report-list-card admin-agent-activity-list">
                   <div className="admin-report-heading">
-                    <label>{period.label} activity</label>
+                    <label>Today activity</label>
                     <span>{visibleAgentActivityRows.length} shown</span>
                   </div>
                   {visibleAgentActivityRows.map((row) => (

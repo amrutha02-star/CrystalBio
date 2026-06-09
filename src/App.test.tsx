@@ -257,22 +257,23 @@ describe('Crystal Bio agent view shell', () => {
     expect(screen.getByText('Note: Family appointment')).toBeInTheDocument();
   }, 10000);
 
-  it('opens the admin overview route with interactive filters, attention, agent filter, and nav', async () => {
+  it('opens the admin overview route with daily status, attention, agent filter, and nav', async () => {
     window.history.pushState({}, '', '/?screen=admin');
     render(<App />);
 
     expect(screen.getByText('Admin overview screen')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Admin overview' })).toBeInTheDocument();
+    expect(screen.getByText('Today field status')).toBeInTheDocument();
     expect(screen.getByText('3 agents active')).toBeInTheDocument();
     expect(screen.getByText('Leave approvals')).toBeInTheDocument();
     expect(screen.queryByText('Apollo Diagnostics')).not.toBeInTheDocument();
-
-    fireEvent.change(screen.getByLabelText('Overview date range preset'), { target: { value: 'week' } });
-    expect(screen.getByText('8 agents active')).toBeInTheDocument();
-    expect(screen.getByText('23')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Overview date range preset')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Agents' }));
     expect(screen.getByRole('heading', { name: 'Agents' })).toBeInTheDocument();
+    expect(screen.getByText('Live agent status')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Activity date range preset')).not.toBeInTheDocument();
+    expect(screen.getByText('Today activity')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Sales agents' }));
     expect(screen.getByText('Rahul Sales')).toBeInTheDocument();
     expect(screen.getByText('Anil Sales')).toBeInTheDocument();
