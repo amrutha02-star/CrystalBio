@@ -14,11 +14,11 @@ const main = async () => {
   const app = createCrystalBioPersistentHttpApp(store);
 
   if (seedDemoUsers && app.backend.exportState().agents.length === 0) {
-    app.backend.createAgent({ name: 'Admin User', role: 'admin' });
-    app.backend.createAgent({ name: 'Rahul Sales', role: 'sales' });
-    app.backend.createAgent({ name: 'Meera Service', role: 'service' });
+    app.backend.createAgent({ name: 'Admin User', role: 'admin', loginCode: 'admin', passcode: 'admin1234' });
+    app.backend.createAgent({ name: 'Rahul Sales', role: 'sales', loginCode: 'sales1', passcode: '1234' });
+    app.backend.createAgent({ name: 'Meera Service', role: 'service', loginCode: 'service1', passcode: '1234' });
     app.save();
-    console.log('Seeded demo users: Admin User, Rahul Sales, Meera Service');
+    console.log('Seeded demo users: admin/admin1234, sales1/1234, service1/1234');
   }
 
   await app.listen(port);

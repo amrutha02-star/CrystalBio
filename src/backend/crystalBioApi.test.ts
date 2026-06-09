@@ -26,6 +26,20 @@ describe('CrystalBio API layer', () => {
     expect(checkIn.body.attendance.agentId).toBe(agent.id);
   });
 
+  it('accepts credential login and rejects bad credential login through auth API', () => {
+    const backend = createCrystalBioBackend();
+    const agent = backend.createAgent({ name: 'Rahul', role: 'sales', loginCode: 'sales1', passcode: '1234' });
+    const api = createCrystalBioApi(backend);
+
+    const login = api.handle({ method: 'POST', path: '/auth/login', body: { loginCode: 'sales1', passcode: '1234' } });
+    const failed = api.handle({ method: 'POST', path: '/auth/login', body: { loginCode: 'sales1', passcode: '0000' } });
+
+    expect(login.status).toBe(200);
+    expect(login.body.session.agentId).toBe(agent.id);
+    expect(failed.status).toBe(400);
+    expect(failed.body.error).toBe('Invalid login code or passcode');
+  });
+
   it('blocks protected routes without a valid session token', () => {
     const api = createCrystalBioApi(createCrystalBioBackend());
 

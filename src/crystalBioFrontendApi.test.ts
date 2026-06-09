@@ -44,6 +44,56 @@ describe('CrystalBio frontend API client', () => {
     );
   });
 
+  it('sends login code and passcode credentials to configured backend URL', async () => {
+    const fetcher = vi.fn(async () => new Response(JSON.stringify({
+      session: { token: 'token-1', agentId: 'agent_2', agentName: 'Rahul Sales', role: 'sales' },
+    }), { status: 200, headers: { 'content-type': 'application/json' } })) as unknown as typeof fetch;
+    const api = createCrystalBioFrontendApi({ baseUrl: 'http://127.0.0.1:8787/', fetcher });
+
+    const session = await api.login({ loginCode: 'sales1', passcode: '1234' });
+
+    expect(session.agentName).toBe('Rahul Sales');
+    expect(fetcher).toHaveBeenCalledWith(
+      'http://127.0.0.1:8787/auth/login',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ loginCode: 'sales1', passcode: '1234' }),
+      }),
+    );
+  });
+
+  it('fetches admin reports through configured backend with session authorization', async () => {
+    const fetcher = vi.fn(async (url: RequestInfo | URL) => {
+      if (String(url).endsWith('/auth/login')) {
+        return new Response(JSON.stringify({
+          session: { token: 'admin-token', agentId: 'agent_1', agentName: 'Admin User', role: 'admin' },
+        }), { status: 200, headers: { 'content-type': 'application/json' } });
+      }
+      return new Response(JSON.stringify({
+        report: {
+          fromDate: '2026-06-01',
+          toDate: '2026-06-30',
+          totals: { checkedInAgents: 2, checkedOutAgents: 1, salesVisits: 3, serviceVisits: 4, pendingLeaveRequests: 1 },
+          agentSummaries: [],
+          followUpsDue: ['Sales follow-up: Apollo Diagnostics on 2026-06-10'],
+        },
+      }), { status: 200, headers: { 'content-type': 'application/json' } });
+    }) as unknown as typeof fetch;
+    const api = createCrystalBioFrontendApi({ baseUrl: 'http://127.0.0.1:8787', fetcher });
+    const session = await api.login({ loginCode: 'admin', passcode: 'admin1234' });
+
+    const report = await api.getAdminReport(session, { fromDate: '2026-06-01', toDate: '2026-06-30' });
+
+    expect(report.totals.salesVisits).toBe(3);
+    expect(fetcher).toHaveBeenCalledWith(
+      'http://127.0.0.1:8787/admin/reports?fromDate=2026-06-01&toDate=2026-06-30',
+      expect.objectContaining({
+        method: 'GET',
+        headers: expect.objectContaining({ authorization: 'Bearer admin-token' }),
+      }),
+    );
+  });
+
   it('checks out against configured backend URL and normalizes backend timestamp fields', async () => {
     const fetcher = vi.fn(async (url: RequestInfo | URL) => {
       if (String(url).endsWith('/auth/login')) {

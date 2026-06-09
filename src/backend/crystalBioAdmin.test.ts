@@ -16,6 +16,17 @@ describe('CrystalBio backend auth leave and admin reports', () => {
     expect(backend.getSession(session.token)).toEqual(session);
   });
 
+  it('logs in with login code and passcode while rejecting wrong passcodes', () => {
+    const backend = createCrystalBioBackend();
+    const agent = backend.createAgent({ name: 'Rahul', role: 'sales', loginCode: 'sales1', passcode: '1234' });
+
+    const session = backend.login({ loginCode: 'sales1', passcode: '1234' });
+
+    expect(session.agentId).toBe(agent.id);
+    expect(session.agentName).toBe('Rahul');
+    expect(() => backend.login({ loginCode: 'sales1', passcode: '0000' })).toThrow(/Invalid login code or passcode/);
+  });
+
   it('lets logged-in agents submit leave requests and lets admin approve them', () => {
     const backend = createCrystalBioBackend();
     const agent = backend.createAgent({ name: 'Meera', role: 'service' });

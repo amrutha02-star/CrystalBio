@@ -1,4 +1,4 @@
-import { ValidationError, type createCrystalBioBackend } from './crystalBioBackend';
+import { ValidationError, type LoginInput, type createCrystalBioBackend } from './crystalBioBackend';
 
 type Backend = ReturnType<typeof createCrystalBioBackend>;
 
@@ -69,7 +69,10 @@ export function createCrystalBioApi(backend: Backend) {
 
         if (request.method === 'POST' && pathname === '/auth/login') {
           const body = requireBody(request.body);
-          const session = backend.login(String(body.agentId ?? ''));
+          const loginInput: LoginInput = body.loginCode || body.passcode
+            ? { loginCode: String(body.loginCode ?? ''), passcode: String(body.passcode ?? '') }
+            : String(body.agentId ?? '');
+          const session = backend.login(loginInput);
           return ok({ session });
         }
 

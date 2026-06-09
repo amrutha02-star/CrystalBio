@@ -16,6 +16,8 @@ export type Agent = {
   name: string;
   role: AgentRole;
   active: boolean;
+  loginCode?: string;
+  passcode?: string;
 };
 
 export type AttendanceRecord = {
@@ -210,6 +212,8 @@ type ServiceRecordInput = Omit<Partial<ServiceRecord>, 'id' | 'ownerAgentId' | '
   customerName: string;
 };
 
+export type LoginInput = string | { agentId?: string; loginCode?: string; passcode?: string };
+
 const dateFromTimestamp = (timestamp: string) => timestamp.slice(0, 10);
 
 const requireText = (value: string | undefined, message: string) => {
@@ -272,15 +276,34 @@ export function createCrystalBioBackend(initialState?: CrystalBioBackendState) {
       };
     },
 
-    createAgent(input: { name: string; role: AgentRole }): Agent {
+    createAgent(input: { name: string; role: AgentRole; loginCode?: string; passcode?: string }): Agent {
       requireText(input.name, 'Agent name is required');
-      const agent: Agent = { id: nextId('agent'), name: input.name, role: input.role, active: true };
+      const id = nextId('agent');
+      const agent: Agent = {
+        id,
+        name: input.name,
+        role: input.role,
+        active: true,
+        loginCode: input.loginCode ?? id,
+        passcode: input.passcode ?? '1234',
+      };
       agents.set(agent.id, agent);
       return agent;
     },
 
-    login(agentId: string): LoginSession {
-      const agent = getAgent(agentId);
+    login(input: LoginInput): LoginSession {
+      const credentials = typeof input === 'string' ? { agentId: input } : input;
+      let agent: Agent | undefined;
+      if (credentials.agentId) {
+        agent = getAgent(credentials.agentId);
+      } else {
+        requireText(credentials.loginCode, 'Login code is required');
+        requireText(credentials.passcode, 'Passcode is required');
+        agent = [...agents.values()].find(
+          (candidate) => candidate.active && candidate.loginCode === credentials.loginCode && candidate.passcode === credentials.passcode,
+        );
+        if (!agent) throw new ValidationError('Invalid login code or passcode');
+      }
       const session: LoginSession = {
         token: nextId('session'),
         agentId: agent.id,

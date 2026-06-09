@@ -5,6 +5,8 @@ export type FrontendSession = {
   role: 'sales' | 'service' | 'both' | 'admin';
 };
 
+export type FrontendLoginInput = string | { loginCode: string; passcode: string };
+
 export type FrontendGps = {
   latitude: number;
   longitude: number;
@@ -39,6 +41,28 @@ export type FrontendLeaveRequestInput = {
   toDate: string;
   reason: string;
   note?: string;
+};
+
+export type FrontendAdminReport = {
+  fromDate: string;
+  toDate: string;
+  totals: {
+    checkedInAgents: number;
+    checkedOutAgents: number;
+    salesVisits: number;
+    serviceVisits: number;
+    pendingLeaveRequests: number;
+  };
+  agentSummaries: Array<{
+    agentId: string;
+    agentName: string;
+    date: string;
+    attendanceStatus: 'not_checked_in' | 'checked_in' | 'checked_out';
+    salesVisitCount: number;
+    serviceVisitCount: number;
+    followUpsDue: string[];
+  }>;
+  followUpsDue: string[];
 };
 
 export type FrontendSalesNextAction = 'follow_up_needed' | 'no_follow_up' | 'closed';
@@ -285,19 +309,47 @@ export function createCrystalBioFrontendApi(options: ApiClientOptions = {}) {
     return parseJson<T>(response);
   };
 
+  const get = async <T>(path: string, token?: string) => {
+    if (!baseUrl) throw new Error('Backend URL is not configured');
+    const response = await fetcher(`${baseUrl}${path}`, {
+      method: 'GET',
+      headers: {
+        ...(token ? { authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    return parseJson<T>(response);
+  };
+
   return {
     isBackendConfigured() {
       return Boolean(baseUrl);
     },
 
-    async login(agentId = 'agent_2'): Promise<FrontendSession> {
+    async login(input: FrontendLoginInput = 'agent_2'): Promise<FrontendSession> {
+      const agentId = typeof input === 'string' ? input : 'agent_2';
       if (!baseUrl) {
         return agentId === 'agent_3'
           ? { token: 'demo-token-service', agentId, agentName: 'Meera Service', role: 'service' }
           : { token: 'demo-token', agentId, agentName: 'Rahul Sales', role: 'sales' };
       }
-      const result = await post<{ session: FrontendSession }>('/auth/login', { agentId });
+      const body = typeof input === 'string' ? { agentId: input } : input;
+      const result = await post<{ session: FrontendSession }>('/auth/login', body);
       return result.session;
+    },
+
+    async getAdminReport(session: FrontendSession, input: { fromDate: string; toDate: string }): Promise<FrontendAdminReport> {
+      if (!baseUrl) {
+        return {
+          fromDate: input.fromDate,
+          toDate: input.toDate,
+          totals: { checkedInAgents: 0, checkedOutAgents: 0, salesVisits: 0, serviceVisits: 0, pendingLeaveRequests: 0 },
+          agentSummaries: [],
+          followUpsDue: [],
+        };
+      }
+      const query = new URLSearchParams({ fromDate: input.fromDate, toDate: input.toDate }).toString();
+      const result = await get<{ report: FrontendAdminReport }>(`/admin/reports?${query}`, session.token);
+      return result.report;
     },
 
     async checkIn(session: FrontendSession): Promise<FrontendAttendance> {

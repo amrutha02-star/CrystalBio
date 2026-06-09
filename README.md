@@ -6,17 +6,18 @@
 
 A first mobile-first React/Vite prototype has been started in this repository.
 
-Current prototype includes:
+Current app includes:
 
-- Agent home preview
-- Daily Check-in action
-- Sales Visit action
-- Service Visit action
-- Leave Request action
-- My Entries preview
-- Admin command/app-mode view
-- Automatic report cards
-- Internal Issue Command Center preview for project team only
+- Mobile-first agent home
+- Real login-code/PIN backend support for pilot users
+- Daily check-in/check-out action with GPS requirement
+- Sales Visit action with saved visit updates
+- Service Visit action with saved service updates
+- Leave Request action with admin-review status
+- My Entries / recent visits preview
+- Admin overview, approvals, agents, and reports screens
+- Backend admin report API generated from saved field activity
+- JSON-file backend persistence with backup recovery for pilot use
 - Bottom navigation with icons and selected state
 - Phased build plan
 
@@ -27,7 +28,42 @@ npm install
 npm test
 npm run build
 npm run dev
+npm run backend:dev
 ```
+
+Backend pilot accounts seeded by `npm run backend:dev` when the database is empty:
+
+- Admin: login code `admin`, PIN `admin1234`
+- Sales agent: login code `sales1`, PIN `1234`
+- Service agent: login code `service1`, PIN `1234`
+
+To connect the web app to the backend, build/run it with `VITE_CRYSTALBIO_API_URL` pointing to the backend URL.
+
+---
+
+## Backend in Plain Language
+
+Think of the app as two parts:
+
+1. **Frontend / mobile screen** — what the agent sees on the phone.
+2. **Backend / storage room** — the private place where submitted data is kept.
+
+When an agent logs in and saves a visit, the phone screen sends that entry to the backend. The backend writes it into a database/file, then the admin screen reads from the same saved data to show reports.
+
+For a pilot, this repository now supports a simple open-source/self-hostable backend:
+
+- A Node.js backend server receives login, attendance, visit, leave, and report requests.
+- Data is saved into a JSON database file on the server.
+- A backup file is kept so the previous good data can be recovered if the main file is damaged.
+- This avoids Supabase lock-in for the first pilot.
+
+For production, we have three practical options:
+
+- **Option A: Current self-hosted Node backend + JSON file** — fastest pilot, low cost, okay for controlled testing with 12–13 users.
+- **Option B: Self-hosted open-source database** such as PostgreSQL or PocketBase — better once real daily usage starts.
+- **Option C: Managed backend** such as Supabase — less server maintenance, but uses a third-party hosted service.
+
+My recommendation: use the current self-hosted backend for the controlled pilot, then move the same data model to PostgreSQL/PocketBase if the client starts using it daily.
 
 ---
 

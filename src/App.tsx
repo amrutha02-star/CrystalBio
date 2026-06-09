@@ -1,7 +1,7 @@
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { BarChart3, CalendarCheck, CheckCircle2, ChevronLeft, ClipboardList, Clock3, FileText, Home, MapPin, Plus, Search, UserRound, UsersRound, X } from 'lucide-react';
 import { sampleEntries } from './appData';
-import { crystalBioFrontendApi, type FrontendAttendance, type FrontendLeaveRequest, type FrontendSalesSaveResult, type FrontendSalesNextAction, type FrontendServiceSaveResult, type FrontendServiceNextAction, type FrontendServiceType, type FrontendSession } from './crystalBioFrontendApi';
+import { crystalBioFrontendApi, type FrontendAttendance, type FrontendLeaveRequest, type FrontendLoginInput, type FrontendSalesSaveResult, type FrontendSalesNextAction, type FrontendServiceSaveResult, type FrontendServiceNextAction, type FrontendServiceType, type FrontendSession } from './crystalBioFrontendApi';
 
 type AppScreen = 'login' | 'home' | 'visits' | 'sales' | 'service' | 'checkin' | 'attendance' | 'leave' | 'reports' | 'admin';
 type ReportPeriod = 'today' | 'week' | 'month';
@@ -31,6 +31,11 @@ const sampleAttendanceLogs = [
 const screenOptions: AppScreen[] = ['login', 'home', 'visits', 'sales', 'service', 'checkin', 'attendance', 'leave', 'reports', 'admin'];
 
 const agentIdForScreen = (nextScreen: AppScreen) => (nextScreen === 'service' ? 'agent_3' : 'agent_2');
+const loginInputForScreen = (nextScreen: AppScreen): FrontendLoginInput => {
+  if (nextScreen === 'admin') return { loginCode: 'admin', passcode: 'admin1234' };
+  if (nextScreen === 'service') return { loginCode: 'service1', passcode: '1234' };
+  return { loginCode: 'sales1', passcode: '1234' };
+};
 
 const getInitialScreen = (): AppScreen => {
   if (typeof window === 'undefined') return 'login';
@@ -58,6 +63,8 @@ function App() {
   const [isAttendanceBusy, setIsAttendanceBusy] = useState(false);
   const [statusMessage, setStatusMessage] = useState('Loading logged-in agent…');
   const [screenNotice, setScreenNotice] = useState<ToastNotice | string | null>(null);
+  const [loginCode, setLoginCode] = useState('sales1');
+  const [passcode, setPasscode] = useState('1234');
   const [reportPeriod, setReportPeriod] = useState<ReportPeriod>('week');
   const [adminPeriod, setAdminPeriod] = useState<ReportPeriod>('today');
   const [adminAgentFilter, setAdminAgentFilter] = useState<AdminAgentFilter>('all');
@@ -135,9 +142,13 @@ function App() {
   const isBackendConfigured = crystalBioFrontendApi.isBackendConfigured();
 
   useEffect(() => {
+    if (isBackendConfigured && screen === 'login') {
+      setStatusMessage('Enter login code and passcode.');
+      return undefined;
+    }
     let isMounted = true;
     crystalBioFrontendApi
-      .login(agentIdForScreen(screen))
+      .login(isBackendConfigured ? loginInputForScreen(screen) : agentIdForScreen(screen))
       .then((nextSession) => {
         if (!isMounted) return;
         setSession(nextSession);
@@ -292,7 +303,7 @@ function App() {
     if (options?.newServiceVisit) resetServiceFormForNewVisit();
     if (nextScreen === 'sales' || nextScreen === 'service') {
       setStatusMessage('Loading logged-in agent…');
-      crystalBioFrontendApi.login(agentIdForScreen(nextScreen)).then((nextSession) => {
+      crystalBioFrontendApi.login(isBackendConfigured ? loginInputForScreen(nextScreen) : agentIdForScreen(nextScreen)).then((nextSession) => {
         setSession(nextSession);
         setStatusMessage('Logged in. Check in to start field work.');
       }).catch((error: Error) => {
@@ -308,18 +319,52 @@ function App() {
     setScreenNotice(null);
   };
 
-  const handleAgentLogin = () => {
+  const handleAgentLogin = async () => {
     setIsAdminSignedIn(false);
     setScreenNotice(null);
-    goToScreen('home');
+    setStatusMessage('Checking login…');
+    try {
+      const nextSession = await crystalBioFrontendApi.login(
+        isBackendConfigured ? { loginCode: loginCode.trim(), passcode } : 'agent_2',
+      );
+      setSession(nextSession);
+      if (nextSession.role === 'admin') {
+        setIsAdminSignedIn(true);
+        setAdminTab('overview');
+        setSelectedAdminApproval(null);
+        setStatusMessage('Admin logged in.');
+        setScreen('admin');
+        return;
+      }
+      setStatusMessage('Logged in. Check in to start field work.');
+      setScreen('home');
+    } catch (error) {
+      setStatusMessage(error instanceof Error ? error.message : 'Login failed');
+      setScreenNotice(error instanceof Error ? error.message : 'Login failed');
+    }
   };
 
-  const handleAdminLogin = () => {
-    setIsAdminSignedIn(true);
+  const handleAdminLogin = async () => {
     setAdminTab('overview');
     setSelectedAdminApproval(null);
     setScreenNotice(null);
-    goToScreen('admin');
+    setStatusMessage('Checking admin login…');
+    try {
+      const nextSession = await crystalBioFrontendApi.login(
+        isBackendConfigured ? { loginCode: loginCode.trim(), passcode } : 'agent_2',
+      );
+      if (isBackendConfigured && nextSession.role !== 'admin') {
+        throw new Error('Use an admin login code to open admin access.');
+      }
+      setIsAdminSignedIn(true);
+      setSession(nextSession);
+      setStatusMessage('Admin logged in.');
+      setScreen('admin');
+    } catch (error) {
+      setIsAdminSignedIn(false);
+      setStatusMessage(error instanceof Error ? error.message : 'Admin login failed');
+      setScreenNotice(error instanceof Error ? error.message : 'Admin login failed');
+    }
   };
 
 
@@ -511,7 +556,9 @@ function App() {
     setIsServiceSubmitting(true);
     setScreenNotice(serviceSaveResult ? 'Updating Service Step 1 details…' : 'Saving service visit with location…');
     try {
-      const serviceSession = session.agentId === 'agent_3' ? session : await crystalBioFrontendApi.login('agent_3');
+      const serviceSession = session.agentId === 'agent_3' ? session : await crystalBioFrontendApi.login(
+        isBackendConfigured ? { loginCode: 'service1', passcode: '1234' } : 'agent_3',
+      );
       if (serviceSession !== session) setSession(serviceSession);
 
       if (serviceSaveResult) {
@@ -668,11 +715,11 @@ function App() {
       </section>
       <label className="field-card login-field-card">
         <span>Mobile number / Employee ID</span>
-        <input aria-label="Mobile number or employee ID" defaultValue="rahul.sales" inputMode="text" />
+        <input aria-label="Mobile number or employee ID" value={loginCode} inputMode="text" onChange={(event) => setLoginCode(event.target.value)} />
       </label>
       <label className="field-card login-field-card">
         <span>Password / PIN</span>
-        <input aria-label="Password or PIN" defaultValue="1234" type="password" />
+        <input aria-label="Password or PIN" value={passcode} type="password" onChange={(event) => setPasscode(event.target.value)} />
       </label>
       <button type="button" className="primary-action login-main-button" onClick={handleAgentLogin}>Login</button>
       <button type="button" className="secondary-action login-admin-button" onClick={handleAdminLogin}>Admin access</button>
