@@ -583,7 +583,7 @@ p { color: var(--muted); line-height: 1.5; }
 .report-hero-icon svg { display: block; }
 .report-period-switch {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 7px;
   padding: 5px;
   margin-bottom: 10px;
@@ -633,9 +633,31 @@ p { color: var(--muted); line-height: 1.5; }
 .report-generate-card p { margin: 3px 0 9px; font-size: 11.5px; line-height: 1.35; }
 .report-generate-actions {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 8px;
 }
+.custom-date-card {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  margin-bottom: 10px;
+  border-radius: 22px;
+  border: 1px solid rgba(123, 139, 111, 0.22);
+  background: #fffef8;
+  box-shadow: 0 10px 22px rgba(47, 61, 40, 0.045);
+}
+.custom-date-card > label {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.custom-date-card .field-card {
+  margin-bottom: 0;
+  padding: 9px 10px;
+}
+.custom-date-card .primary-action { margin-top: 0; }
 .report-generate-actions button {
   min-height: 38px;
   border-radius: 15px;
@@ -747,7 +769,7 @@ p { color: var(--muted); line-height: 1.5; }
 .admin-hero-icon svg { stroke-width: 2.35; opacity: 1; }
 .admin-filter-row {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 7px;
   padding: 5px;
   margin-bottom: 10px;
@@ -769,6 +791,7 @@ p { color: var(--muted); line-height: 1.5; }
   color: var(--sage-deep);
   box-shadow: 0 8px 16px rgba(47, 61, 40, 0.06);
 }
+.admin-custom-date-card { margin-bottom: 12px; }
 .admin-metric-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

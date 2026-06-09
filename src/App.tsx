@@ -4,9 +4,9 @@ import { sampleEntries } from './appData';
 import { crystalBioFrontendApi, type FrontendAttendance, type FrontendLeaveRequest, type FrontendLoginInput, type FrontendSalesSaveResult, type FrontendSalesNextAction, type FrontendServiceSaveResult, type FrontendServiceNextAction, type FrontendServiceType, type FrontendSession } from './crystalBioFrontendApi';
 
 type AppScreen = 'login' | 'home' | 'visits' | 'sales' | 'service' | 'checkin' | 'attendance' | 'leave' | 'reports' | 'profile' | 'admin';
-type ReportPeriod = 'today' | 'week' | 'month';
+type ReportPeriod = 'today' | 'week' | 'month' | 'custom';
 type AdminAgentFilter = 'all' | 'sales' | 'service';
-type AdminTab = 'overview' | 'agents' | 'approvals' | 'adminReports' | 'settings';
+type AdminTab = 'overview' | 'agents' | 'approvals' | 'adminReports' | 'profiles';
 type AdminApprovalId = 'meera-leave';
 type AdminAgentsView = 'list' | 'add' | 'profile' | 'invite';
 type AdminSeatStatus = 'invited' | 'active' | 'inactive' | 'expired';
@@ -66,7 +66,7 @@ const getInitialScreen = (): AppScreen => {
 const getInitialAdminTab = (): AdminTab => {
   if (typeof window === 'undefined') return 'overview';
   const requestedTab = new URLSearchParams(window.location.search).get('adminTab') as AdminTab | null;
-  return requestedTab && ['overview', 'agents', 'approvals', 'adminReports', 'settings'].includes(requestedTab) ? requestedTab : 'overview';
+  return requestedTab && ['overview', 'agents', 'approvals', 'adminReports', 'profiles'].includes(requestedTab) ? requestedTab : 'overview';
 };
 
 const getInitialAdminApproval = (): AdminApprovalId | null => {
@@ -86,7 +86,11 @@ function App() {
   const [loginCode, setLoginCode] = useState('sales1');
   const [passcode, setPasscode] = useState('1234');
   const [reportPeriod, setReportPeriod] = useState<ReportPeriod>('week');
+  const [reportFromDate, setReportFromDate] = useState('2026-06-01');
+  const [reportToDate, setReportToDate] = useState('2026-06-08');
   const [adminPeriod, setAdminPeriod] = useState<ReportPeriod>('today');
+  const [adminReportFromDate, setAdminReportFromDate] = useState('2026-06-01');
+  const [adminReportToDate, setAdminReportToDate] = useState('2026-06-08');
   const [adminAgentFilter, setAdminAgentFilter] = useState<AdminAgentFilter>('all');
   const [adminTab, setAdminTab] = useState<AdminTab>(getInitialAdminTab);
   const [selectedAdminApproval, setSelectedAdminApproval] = useState<AdminApprovalId | null>(getInitialAdminApproval);
@@ -345,7 +349,7 @@ function App() {
   const openAdminTab = (nextTab: AdminTab) => {
     setAdminTab(nextTab);
     if (nextTab !== 'approvals') setSelectedAdminApproval(null);
-    if (nextTab !== 'agents') setAdminAgentsView('list');
+    if (nextTab !== 'agents' && nextTab !== 'profiles') setAdminAgentsView('list');
     setScreenNotice(null);
   };
 
@@ -1224,12 +1228,14 @@ function App() {
       today: { eyebrow: 'Today', title: 'Today’s summary', range: '08 Jun', visits: '4', sales: '2', service: '2', attendance: attendanceLabel, followUps: '1', note: '2 sales • 2 service • 1 follow-up pending' },
       week: { eyebrow: 'Current week', title: 'Weekly summary', range: '09 Jun – 15 Jun', visits: '8', sales: '5', service: '3', attendance: '5 / 6 days', followUps: '3', note: '5 sales • 3 service • 5/6 attendance' },
       month: { eyebrow: 'Current month', title: 'Monthly summary', range: 'June 2026', visits: '31', sales: '18', service: '13', attendance: '21 / 24 days', followUps: '7', note: '18 sales • 13 service • 7 follow-ups pending' },
+      custom: { eyebrow: 'Custom dates', title: 'Custom date summary', range: `${reportFromDate} to ${reportToDate}`, visits: '12', sales: '7', service: '5', attendance: 'Selected range', followUps: '2', note: 'Custom date report from saved activity' },
     };
     const activeReport = reportCopy[reportPeriod];
     const periodOptions: Array<{ key: ReportPeriod; label: string }> = [
       { key: 'today', label: 'Today' },
       { key: 'week', label: 'Week' },
       { key: 'month', label: 'Month' },
+      { key: 'custom', label: 'Custom' },
     ];
     const generateReport = (period: ReportPeriod) => {
       setReportPeriod(period);
@@ -1264,6 +1270,17 @@ function App() {
           ))}
         </div>
 
+        {reportPeriod === 'custom' && (
+          <section className="custom-date-card" aria-label="Custom report date range">
+            <label>Custom date range</label>
+            <div className="inline-field-grid">
+              <label className="field-card"><span>From</span><input aria-label="Report from date" type="date" value={reportFromDate} onChange={(event) => setReportFromDate(event.target.value)} /></label>
+              <label className="field-card"><span>To</span><input aria-label="Report to date" type="date" value={reportToDate} onChange={(event) => setReportToDate(event.target.value)} /></label>
+            </div>
+            <button type="button" className="primary-action" onClick={() => generateReport('custom')}>Download custom date report</button>
+          </section>
+        )}
+
         <div className="report-metric-grid">
           <div className="metric-card report-metric-card"><strong>{activeReport.visits}</strong><span>Total visits</span><small>{activeReport.range}</small></div>
           <div className="metric-card report-metric-card"><strong>{activeReport.sales}</strong><span>Sales</span><small>Saved entries</small></div>
@@ -1278,6 +1295,7 @@ function App() {
             <button type="button" onClick={() => generateReport('today')}>Daily</button>
             <button type="button" onClick={() => generateReport('week')}>Weekly</button>
             <button type="button" onClick={() => generateReport('month')}>Monthly</button>
+            <button type="button" onClick={() => generateReport('custom')}>Custom dates</button>
           </div>
         </section>
 
@@ -1372,6 +1390,7 @@ function App() {
       today: { label: 'Today', active: '3 agents active', summary: '1 service visit • 2 sales visits • 1 leave request pending', visits: '5', checkedIn: '3', leave: '1', followUps: '4' },
       week: { label: 'This week', active: '8 agents active', summary: '9 service visits • 14 sales visits • 3 leave requests', visits: '23', checkedIn: '8', leave: '3', followUps: '11' },
       month: { label: 'This month', active: '11 agents tracked', summary: '38 service visits • 61 sales visits • 7 leave requests', visits: '99', checkedIn: '11', leave: '7', followUps: '26' },
+      custom: { label: 'Custom range', active: '6 agents tracked', summary: `${adminReportFromDate} to ${adminReportToDate} • 12 service visits • 18 sales visits • 2 leave requests`, visits: '30', checkedIn: '6', leave: '2', followUps: '8' },
     };
     const adminReportRows: Record<ReportPeriod, Array<{ name: string; role: string; attendance: string; visits: string; status: string; chipClass: string }>> = {
       today: [
@@ -1388,6 +1407,11 @@ function App() {
         { name: 'Rahul Sales', role: 'Sales agent', attendance: '21 / 24 days', visits: '31 sales visits • 9 follow-ups', status: 'Ready', chipClass: 'chip chip-soft' },
         { name: 'Meera Service', role: 'Service agent', attendance: '22 / 24 days', visits: '24 service visits • 5 open parts', status: 'Ready', chipClass: 'chip chip-info' },
         { name: 'Anil Sales', role: 'Sales agent', attendance: '18 / 24 days', visits: '30 sales visits • 3 missing updates', status: 'Review', chipClass: 'chip chip-warning' },
+      ],
+      custom: [
+        { name: 'Rahul Sales', role: 'Sales agent', attendance: 'Selected range', visits: '10 sales visits • 4 follow-ups', status: 'Ready', chipClass: 'chip chip-soft' },
+        { name: 'Meera Service', role: 'Service agent', attendance: 'Selected range', visits: '8 service visits • 2 open parts', status: 'Ready', chipClass: 'chip chip-info' },
+        { name: 'Anil Sales', role: 'Sales agent', attendance: 'Selected range', visits: '8 sales visits • 2 missing updates', status: 'Review', chipClass: 'chip chip-warning' },
       ],
     };
     const adminApprovals: Record<AdminApprovalId, { label: string; chipClass: string; agent: string; title: string; summary: string; detail: string; meta: string; actionNote: string }> = {
@@ -1422,10 +1446,10 @@ function App() {
     const showAgents = adminTab === 'agents';
     const showApprovals = adminTab === 'overview' || adminTab === 'approvals';
     const showReports = adminTab === 'adminReports';
-    const showSettings = adminTab === 'settings';
+    const showProfiles = adminTab === 'profiles';
 
     return (
-      <ScreenPanel title={adminTab === 'overview' ? 'Admin overview' : adminTab === 'agents' ? 'Agents' : adminTab === 'approvals' ? 'Approvals' : adminTab === 'settings' ? 'Settings' : 'Admin reports'} subtitle="Simple owner view for attendance, leave, and field work across agents.">
+      <ScreenPanel title={adminTab === 'overview' ? 'Admin overview' : adminTab === 'agents' ? 'Agents' : adminTab === 'approvals' ? 'Approvals' : adminTab === 'profiles' ? 'Profiles' : 'Admin reports'} subtitle="Simple owner view for attendance, leave, and field work across agents.">
         {(showOverview || showReports) && (
           <>
             <section className="admin-hero-card">
@@ -1438,12 +1462,23 @@ function App() {
             </section>
 
             <div className="admin-filter-row" aria-label="Admin report filters">
-              {(['today', 'week', 'month'] as ReportPeriod[]).map((periodOption) => (
+              {(['today', 'week', 'month', 'custom'] as ReportPeriod[]).map((periodOption) => (
                 <button key={periodOption} type="button" className={adminPeriod === periodOption ? 'admin-filter-active' : ''} onClick={() => changePeriod(periodOption)}>
-                  {periodOption === 'today' ? 'Today' : periodOption === 'week' ? 'Week' : 'Month'}
+                  {periodOption === 'today' ? 'Today' : periodOption === 'week' ? 'Week' : periodOption === 'month' ? 'Month' : 'Custom'}
                 </button>
               ))}
             </div>
+
+            {adminPeriod === 'custom' && (
+              <section className="custom-date-card admin-custom-date-card" aria-label="Admin custom report date range">
+                <label>Custom date range</label>
+                <div className="inline-field-grid">
+                  <label className="field-card"><span>From</span><input aria-label="Admin report from date" type="date" value={adminReportFromDate} onChange={(event) => setAdminReportFromDate(event.target.value)} /></label>
+                  <label className="field-card"><span>To</span><input aria-label="Admin report to date" type="date" value={adminReportToDate} onChange={(event) => setAdminReportToDate(event.target.value)} /></label>
+                </div>
+                <button type="button" className="primary-action" onClick={() => setScreenNotice({ title: 'Custom admin report ready', message: `${adminReportFromDate} to ${adminReportToDate} report download prepared.`, tone: 'success' })}>Download custom report</button>
+              </section>
+            )}
 
             {showOverview && (
               <div className="admin-metric-grid">
@@ -1501,9 +1536,9 @@ function App() {
                   <button type="button" className="admin-icon-add-button" aria-label="Add agent profile" title="Add agent profile" onClick={() => setAdminAgentsView('add')}><Plus size={19} /></button>
                 </section>
                 <div className="admin-filter-row" aria-label="Agent activity period filters">
-                  {(['today', 'week', 'month'] as ReportPeriod[]).map((periodOption) => (
+                  {(['today', 'week', 'month', 'custom'] as ReportPeriod[]).map((periodOption) => (
                     <button key={periodOption} type="button" className={adminPeriod === periodOption ? 'admin-filter-active' : ''} onClick={() => changePeriod(periodOption)}>
-                      {periodOption === 'today' ? 'Today' : periodOption === 'week' ? 'Week' : 'Month'}
+                      {periodOption === 'today' ? 'Today' : periodOption === 'week' ? 'Week' : periodOption === 'month' ? 'Month' : 'Custom'}
                     </button>
                   ))}
                 </div>
@@ -1586,11 +1621,30 @@ function App() {
           </>
         )}
 
-        {showSettings && (
-          <section className="admin-action-card">
-            <label>Access rules</label>
-            <div className="admin-settings-list"><span>Public signup: Off</span><span>Email invite required</span><span>Email OTP backup: On</span><span>Mobile OTP: Not enabled</span></div>
-          </section>
+        {showProfiles && (
+          <>
+            <section className="profile-hero-card admin-profile-hero-card">
+              <span className="profile-avatar"><UserRound size={25} /></span>
+              <div>
+                <p>Admin profile</p>
+                <strong>{session?.agentName ?? 'Admin User'}</strong>
+                <span>{session?.email ?? 'admin@crystalbio.in'} • Owner access</span>
+              </div>
+            </section>
+            <section className="admin-action-card">
+              <label>Profile access rules</label>
+              <div className="admin-settings-list"><span>Public signup: Off</span><span>Admin creates agent profiles</span><span>Email invite required</span><span>Email OTP backup: On</span></div>
+            </section>
+            <section className="admin-report-list-card admin-agent-activity-list">
+              <div className="admin-report-heading"><label>Team profiles</label><span>{adminSeats.length} seats</span></div>
+              {adminSeats.map((seat) => (
+                <button key={seat.id} type="button" className="admin-report-row admin-click-row" onClick={() => { setSelectedAdminSeatId(seat.id); setAdminTab('agents'); setAdminAgentsView('profile'); }}>
+                  <div className="admin-report-row-main"><strong>{seat.name}</strong><p>{roleTextForAdminSeat(seat.role)} • {seat.employeeId}</p><small>{seat.email}</small></div>
+                  <span className={seat.status === 'active' ? 'chip chip-soft' : seat.status === 'invited' ? 'chip chip-info' : 'chip chip-warning'}>{statusTextForSeat(seat.status)}</span>
+                </button>
+              ))}
+            </section>
+          </>
         )}
 
         {showReports && (
@@ -1613,7 +1667,7 @@ function App() {
                 ))}
               </section>
             )}
-            <button type="button" className="primary-action" onClick={() => setScreenNotice({ title: `${adminPeriod === 'today' ? "Today’s" : period.label} admin report ready`, message: 'Admin report generated from saved field activity.', tone: 'success' })}>Generate {adminPeriod === 'today' ? "today’s" : period.label.toLowerCase()} admin report</button>
+            <button type="button" className="primary-action" onClick={() => setScreenNotice({ title: `${adminPeriod === 'today' ? "Today’s" : period.label} admin report ready`, message: adminPeriod === 'custom' ? `${adminReportFromDate} to ${adminReportToDate} admin report download prepared.` : 'Admin report generated from saved field activity.', tone: 'success' })}>{adminPeriod === 'custom' ? 'Download custom date admin report' : `Generate ${adminPeriod === 'today' ? "today’s" : period.label.toLowerCase()} admin report`}</button>
           </>
         )}
       </ScreenPanel>
@@ -1644,7 +1698,7 @@ function App() {
     <main className="app-shell agent-only-shell">
       <section className="preview-note">
         <p className="eyebrow">CrystalBio Field Hub</p>
-        <h1>{screen === 'login' ? 'Login screen' : screen === 'admin' ? (adminTab === 'adminReports' ? 'Admin reports screen' : adminTab === 'approvals' ? 'Admin approvals screen' : adminTab === 'agents' ? 'Admin agents screen' : adminTab === 'settings' ? 'Admin settings screen' : 'Admin overview screen') : screen === 'profile' ? 'Agent profile screen' : 'Agent home screen'}</h1>
+        <h1>{screen === 'login' ? 'Login screen' : screen === 'admin' ? (adminTab === 'adminReports' ? 'Admin reports screen' : adminTab === 'approvals' ? 'Admin approvals screen' : adminTab === 'agents' ? 'Admin agents screen' : adminTab === 'profiles' ? 'Admin profiles screen' : 'Admin overview screen') : screen === 'profile' ? 'Agent profile screen' : 'Agent home screen'}</h1>
         <p>{screen === 'login' ? 'Role-based entry for field agents and admin users.' : screen === 'admin' ? 'Owner view for team attendance, leave, and field reports.' : 'Mobile workspace for field attendance, visits, leave, and reports.'}</p>
       </section>
 
@@ -1658,7 +1712,7 @@ function App() {
               <p className="muted">{screen === 'login' ? 'Welcome' : screen === 'admin' ? 'Owner access' : 'Good morning'}</p>
               <h2>{screen === 'login' ? 'CrystalBio' : screen === 'admin' ? 'Admin' : session?.agentName ?? (screen === 'service' ? 'Meera Service' : 'Rahul Sales')}</h2>
             </div>
-            <button type="button" className="avatar avatar-button" aria-label={screen === 'profile' ? 'Profile selected' : 'Open profile'} disabled={screen === 'login' || screen === 'admin'} onClick={() => goToScreen('profile')}>{screen === 'admin' ? <UsersRound size={21} /> : <UserRound size={21} />}</button>
+            <button type="button" className="avatar avatar-button" aria-label={screen === 'admin' && adminTab === 'profiles' ? 'Admin profile selected' : screen === 'profile' ? 'Profile selected' : 'Open profile'} disabled={screen === 'login'} onClick={() => screen === 'admin' ? openAdminTab('profiles') : goToScreen('profile')}>{screen === 'admin' ? <UsersRound size={21} /> : <UserRound size={21} />}</button>
           </header>
 
           {renderScreen()}
@@ -1676,16 +1730,15 @@ function App() {
             {screen === 'admin' ? (
               [
                 { label: 'Overview', tab: 'overview' as AdminTab, icon: Home },
-                { label: 'My form', tab: 'overview' as AdminTab, screen: 'home' as AppScreen, icon: ClipboardList },
                 { label: 'Agents', tab: 'agents' as AdminTab, icon: UsersRound },
                 { label: 'Approvals', tab: 'approvals' as AdminTab, icon: CalendarCheck },
                 { label: 'Reports', tab: 'adminReports' as AdminTab, icon: FileText },
+                { label: 'Profile', tab: 'profiles' as AdminTab, icon: UserRound },
               ].map((item) => {
                 const Icon = item.icon;
-                const isSubmitItem = item.label === 'My form';
-                const selected = !isSubmitItem && adminTab === (item.tab as AdminTab);
+                const selected = adminTab === (item.tab as AdminTab);
                 return (
-                  <button key={item.label} type="button" className={selected ? 'nav-item nav-item-selected' : 'nav-item'} aria-label={selected ? `${item.label} selected` : item.label} onClick={() => isSubmitItem ? goToScreen('home') : openAdminTab(item.tab as AdminTab)}>
+                  <button key={item.label} type="button" className={selected ? 'nav-item nav-item-selected' : 'nav-item'} aria-label={selected ? `${item.label} selected` : item.label} onClick={() => openAdminTab(item.tab as AdminTab)}>
                     <Icon size={17} />
                     {item.label}
                   </button>

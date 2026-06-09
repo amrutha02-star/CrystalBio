@@ -17,8 +17,8 @@ describe('Crystal Bio agent view shell', () => {
     expect(screen.getByLabelText('Password or PIN')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^login$/i })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /admin access/i }));
-    expect(await screen.findByLabelText('My form')).toBeInTheDocument();
-    fireEvent.click(screen.getByLabelText('My form'));
+    expect(await screen.findByRole('button', { name: /^home$/i })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /^home$/i }));
     expect(await screen.findByText('Quick actions')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /back to admin dashboard/i })).toBeInTheDocument();
   });
