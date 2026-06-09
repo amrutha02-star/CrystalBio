@@ -6,8 +6,21 @@ import { crystalBioFrontendApi, type FrontendAttendance, type FrontendLeaveReque
 type AppScreen = 'login' | 'home' | 'visits' | 'sales' | 'service' | 'checkin' | 'attendance' | 'leave' | 'reports' | 'profile' | 'admin';
 type ReportPeriod = 'today' | 'week' | 'month';
 type AdminAgentFilter = 'all' | 'sales' | 'service';
-type AdminTab = 'overview' | 'agents' | 'approvals' | 'adminReports';
+type AdminTab = 'overview' | 'agents' | 'approvals' | 'adminReports' | 'settings';
 type AdminApprovalId = 'meera-leave';
+type AdminAgentsView = 'list' | 'add' | 'profile' | 'invite';
+type AdminSeatStatus = 'invited' | 'active' | 'inactive' | 'expired';
+type AdminSeat = {
+  id: string;
+  name: string;
+  employeeId: string;
+  email: string;
+  mobile: string;
+  role: 'sales' | 'service' | 'admin';
+  territory: string;
+  status: AdminSeatStatus;
+  lastActive: string;
+};
 type ToastNotice = { title: string; message: string; tone?: 'success' | 'info' | 'warning' | 'error' };
 
 const toneClass: Record<string, string> = {
@@ -21,6 +34,13 @@ const navItems: Array<{ screen: AppScreen; label: string; icon: typeof Home }> =
   { screen: 'visits', label: 'Visits', icon: ClipboardList },
   { screen: 'attendance', label: 'Attendance', icon: CalendarCheck },
   { screen: 'reports', label: 'Reports', icon: FileText },
+];
+
+
+const initialAdminSeats: AdminSeat[] = [
+  { id: 'seat_rahul', name: 'Rahul Sales', employeeId: 'CB-S-014', email: 'rahul.sales@crystalbio.in', mobile: '+91 98765 43210', role: 'sales', territory: 'Kochi', status: 'active', lastActive: 'Today, 10:42 AM' },
+  { id: 'seat_meera', name: 'Meera Service', employeeId: 'CB-SE-008', email: 'meera.service@crystalbio.in', mobile: '+91 98765 43111', role: 'service', territory: 'Ernakulam', status: 'active', lastActive: 'Today, 9:58 AM' },
+  { id: 'seat_anil', name: 'Anil Sales', employeeId: 'CB-S-021', email: 'anil.sales@crystalbio.in', mobile: '+91 98765 43009', role: 'sales', territory: 'Thrissur', status: 'invited', lastActive: 'Invite sent today' },
 ];
 
 const sampleAttendanceLogs = [
@@ -46,7 +66,7 @@ const getInitialScreen = (): AppScreen => {
 const getInitialAdminTab = (): AdminTab => {
   if (typeof window === 'undefined') return 'overview';
   const requestedTab = new URLSearchParams(window.location.search).get('adminTab') as AdminTab | null;
-  return requestedTab && ['overview', 'agents', 'approvals', 'adminReports'].includes(requestedTab) ? requestedTab : 'overview';
+  return requestedTab && ['overview', 'agents', 'approvals', 'adminReports', 'settings'].includes(requestedTab) ? requestedTab : 'overview';
 };
 
 const getInitialAdminApproval = (): AdminApprovalId | null => {
@@ -70,6 +90,15 @@ function App() {
   const [adminAgentFilter, setAdminAgentFilter] = useState<AdminAgentFilter>('all');
   const [adminTab, setAdminTab] = useState<AdminTab>(getInitialAdminTab);
   const [selectedAdminApproval, setSelectedAdminApproval] = useState<AdminApprovalId | null>(getInitialAdminApproval);
+  const [adminAgentsView, setAdminAgentsView] = useState<AdminAgentsView>('list');
+  const [selectedAdminSeatId, setSelectedAdminSeatId] = useState(initialAdminSeats[0].id);
+  const [adminSeats, setAdminSeats] = useState<AdminSeat[]>(initialAdminSeats);
+  const [newSeatName, setNewSeatName] = useState('Priya Service');
+  const [newSeatEmployeeId, setNewSeatEmployeeId] = useState('CB-SE-022');
+  const [newSeatEmail, setNewSeatEmail] = useState('priya.service@crystalbio.in');
+  const [newSeatMobile, setNewSeatMobile] = useState('+91 98765 43022');
+  const [newSeatRole, setNewSeatRole] = useState<AdminSeat['role']>('service');
+  const [newSeatTerritory, setNewSeatTerritory] = useState('Kozhikode');
   const [leaveFromDate, setLeaveFromDate] = useState('2026-06-12');
   const [leaveToDate, setLeaveToDate] = useState('2026-06-12');
   const [leaveReason, setLeaveReason] = useState('Sick leave');
@@ -316,6 +345,7 @@ function App() {
   const openAdminTab = (nextTab: AdminTab) => {
     setAdminTab(nextTab);
     if (nextTab !== 'approvals') setSelectedAdminApproval(null);
+    if (nextTab !== 'agents') setAdminAgentsView('list');
     setScreenNotice(null);
   };
 
@@ -1298,17 +1328,63 @@ function App() {
     );
   };
 
+
+  const roleTextForAdminSeat = (role: AdminSeat['role']) => {
+    if (role === 'admin') return 'Admin';
+    if (role === 'service') return 'Service agent';
+    return 'Sales agent';
+  };
+
+  const statusTextForSeat = (status: AdminSeatStatus) => {
+    if (status === 'active') return 'Active';
+    if (status === 'inactive') return 'Inactive';
+    if (status === 'expired') return 'Invite expired';
+    return 'Invite pending';
+  };
+
+  const statusChipForSeat = (status: AdminSeatStatus) => {
+    if (status === 'active') return 'chip chip-soft';
+    if (status === 'inactive') return 'chip chip-info';
+    return 'chip chip-warning';
+  };
+
+  const handleCreateSeatInvite = () => {
+    const trimmedName = newSeatName.trim();
+    const trimmedEmail = newSeatEmail.trim();
+    const trimmedEmployeeId = newSeatEmployeeId.trim();
+    if (!trimmedName || !trimmedEmail || !trimmedEmployeeId) {
+      setScreenNotice({ title: 'Missing details', message: 'Name, employee ID, and email are needed before sending invite.', tone: 'warning' });
+      return;
+    }
+    const nextSeat: AdminSeat = {
+      id: `seat_${Date.now()}`,
+      name: trimmedName,
+      employeeId: trimmedEmployeeId,
+      email: trimmedEmail,
+      mobile: newSeatMobile.trim() || 'Not added',
+      role: newSeatRole,
+      territory: newSeatTerritory.trim() || 'Not assigned',
+      status: 'invited',
+      lastActive: 'Invite sent just now',
+    };
+    setAdminSeats((current) => [nextSeat, ...current]);
+    setSelectedAdminSeatId(nextSeat.id);
+    setAdminAgentsView('invite');
+    setScreenNotice({ title: 'Invite sent', message: `${nextSeat.name} can set password from the email invite.`, tone: 'success' });
+  };
+
   const renderAdmin = () => {
     const adminPeriodData: Record<ReportPeriod, { label: string; active: string; summary: string; visits: string; checkedIn: string; leave: string; followUps: string }> = {
       today: { label: 'Today', active: '3 agents active', summary: '1 service visit • 2 sales visits • 1 leave request pending', visits: '5', checkedIn: '3', leave: '1', followUps: '4' },
       week: { label: 'This week', active: '8 agents active', summary: '9 service visits • 14 sales visits • 3 leave requests', visits: '23', checkedIn: '8', leave: '3', followUps: '11' },
       month: { label: 'This month', active: '11 agents tracked', summary: '38 service visits • 61 sales visits • 7 leave requests', visits: '99', checkedIn: '11', leave: '7', followUps: '26' },
     };
-    const adminAgents = [
-      { name: 'Rahul Sales', role: 'sales' as const, detail: 'Checked in • 2 sales visits • 1 follow-up', status: 'View', chip: 'chip chip-soft' },
-      { name: 'Meera Service', role: 'service' as const, detail: 'Checked in • 1 service visit • parts required', status: 'View', chip: 'chip chip-info' },
-      { name: 'Anil Sales', role: 'sales' as const, detail: 'Not checked in yet • no update today', status: 'Missing', chip: 'chip chip-warning' },
-    ];
+    const adminAgents = adminSeats.map((seat) => ({
+      ...seat,
+      detail: `${roleTextForAdminSeat(seat.role)} • ${seat.employeeId} • ${seat.territory}`,
+      statusLabel: statusTextForSeat(seat.status),
+      chip: statusChipForSeat(seat.status),
+    }));
     const adminReportRows: Record<ReportPeriod, Array<{ name: string; role: string; attendance: string; visits: string; status: string; chipClass: string }>> = {
       today: [
         { name: 'Rahul Sales', role: 'Sales agent', attendance: 'Checked in', visits: '2 sales visits • 1 follow-up', status: 'Ready', chipClass: 'chip chip-soft' },
@@ -1345,6 +1421,7 @@ function App() {
     };
     const activeApproval = selectedAdminApproval ? adminApprovals[selectedAdminApproval] : null;
     const visibleAgents = adminAgents.filter((agent) => adminAgentFilter === 'all' || agent.role === adminAgentFilter);
+    const selectedSeat = adminSeats.find((seat) => seat.id === selectedAdminSeatId) ?? adminSeats[0];
     const period = adminPeriodData[adminPeriod];
     const changePeriod = (nextPeriod: ReportPeriod) => {
       setAdminPeriod(nextPeriod);
@@ -1354,9 +1431,10 @@ function App() {
     const showAgents = adminTab === 'agents';
     const showApprovals = adminTab === 'overview' || adminTab === 'approvals';
     const showReports = adminTab === 'adminReports';
+    const showSettings = adminTab === 'settings';
 
     return (
-      <ScreenPanel title={adminTab === 'overview' ? 'Admin overview' : adminTab === 'agents' ? 'Agents' : adminTab === 'approvals' ? 'Approvals' : 'Admin reports'} subtitle="Simple owner view for attendance, leave, and field work across agents.">
+      <ScreenPanel title={adminTab === 'overview' ? 'Admin overview' : adminTab === 'agents' ? 'Agents' : adminTab === 'approvals' ? 'Approvals' : adminTab === 'settings' ? 'Settings' : 'Admin reports'} subtitle="Simple owner view for attendance, leave, and field work across agents.">
         {(showOverview || showReports) && (
           <>
             <section className="admin-hero-card">
@@ -1422,21 +1500,100 @@ function App() {
 
         {showAgents && (
           <>
-            <div className="section-label">Agent activity</div>
-            <div className="admin-filter-row admin-agent-filter-row" aria-label="Agent type filters">
-              {(['all', 'sales', 'service'] as AdminAgentFilter[]).map((filter) => (
-                <button key={filter} type="button" className={adminAgentFilter === filter ? 'admin-filter-active' : ''} onClick={() => setAdminAgentFilter(filter)}>
-                  {filter === 'all' ? 'All' : filter === 'sales' ? 'Sales agents' : 'Service agents'}
-                </button>
-              ))}
-            </div>
-            {visibleAgents.map((agent) => (
-              <button key={agent.name} type="button" className="admin-agent-row admin-click-row" onClick={() => setScreenNotice({ title: `${agent.name} opened`, message: `${agent.role === 'sales' ? 'Sales' : 'Service'} activity details will open next.`, tone: 'info' })}>
-                <div className="admin-agent-main"><strong>{agent.name}</strong><p>{agent.detail}</p></div>
-                <span className={agent.chip}>{agent.status}</span>
-              </button>
-            ))}
+            {adminAgentsView === 'list' && (
+              <>
+                <section className="admin-seat-hero-card">
+                  <div>
+                    <p>Team seats</p>
+                    <strong>{adminSeats.length} profiles</strong>
+                    <span>{adminSeats.filter((seat) => seat.status === 'invited').length} invite pending • {adminSeats.filter((seat) => seat.status === 'active').length} active users</span>
+                  </div>
+                  <button type="button" className="primary-action admin-add-seat-button" onClick={() => setAdminAgentsView('add')}>Add agent</button>
+                </section>
+                <label className="search-card visit-search-card admin-seat-search-card">
+                  <Search size={17} />
+                  <input aria-label="Search agent profiles" placeholder="Search name, email, mobile, employee ID" />
+                </label>
+                <div className="admin-filter-row admin-agent-filter-row" aria-label="Agent type filters">
+                  {(['all', 'sales', 'service'] as AdminAgentFilter[]).map((filter) => (
+                    <button key={filter} type="button" className={adminAgentFilter === filter ? 'admin-filter-active' : ''} onClick={() => setAdminAgentFilter(filter)}>
+                      {filter === 'all' ? 'All' : filter === 'sales' ? 'Sales agents' : 'Service agents'}
+                    </button>
+                  ))}
+                </div>
+                {visibleAgents.map((agent) => (
+                  <button key={agent.id} type="button" className="admin-seat-card admin-click-row" onClick={() => { setSelectedAdminSeatId(agent.id); setAdminAgentsView('profile'); }}>
+                    <div className="admin-seat-card-top">
+                      <div><strong>{agent.name}</strong><p>{agent.detail}</p></div>
+                      <span className={agent.chip}>{agent.statusLabel}</span>
+                    </div>
+                    <div className="admin-seat-meta-row">
+                      <span>{agent.email}</span>
+                      <span>{agent.lastActive}</span>
+                    </div>
+                  </button>
+                ))}
+              </>
+            )}
+
+            {adminAgentsView === 'add' && (
+              <section className="admin-seat-form-card">
+                <button type="button" className="admin-detail-back" onClick={() => setAdminAgentsView('list')}><ChevronLeft size={16} /> Back to agents</button>
+                <div className="admin-seat-form-heading"><label>New profile</label><strong>Add agent seat</strong><span>Create the profile first, then send the password setup invite to the registered email.</span></div>
+                <label className="field-card"><span>Agent name</span><input aria-label="New agent name" value={newSeatName} onChange={(event) => setNewSeatName(event.target.value)} /></label>
+                <label className="field-card"><span>Employee ID</span><input aria-label="New employee ID" value={newSeatEmployeeId} onChange={(event) => setNewSeatEmployeeId(event.target.value)} /></label>
+                <label className="field-card"><span>Email ID for invite</span><input aria-label="New agent email" inputMode="email" value={newSeatEmail} onChange={(event) => setNewSeatEmail(event.target.value)} /></label>
+                <label className="field-card"><span>Mobile number</span><input aria-label="New agent mobile" inputMode="tel" value={newSeatMobile} onChange={(event) => setNewSeatMobile(event.target.value)} /></label>
+                <div className="inline-field-grid">
+                  <label className="field-card"><span>Role</span><select aria-label="New agent role" value={newSeatRole} onChange={(event) => setNewSeatRole(event.target.value as AdminSeat['role'])}><option value="sales">Sales agent</option><option value="service">Service agent</option><option value="admin">Admin</option></select></label>
+                  <label className="field-card"><span>Territory</span><input aria-label="New agent territory" value={newSeatTerritory} onChange={(event) => setNewSeatTerritory(event.target.value)} /></label>
+                </div>
+                <button type="button" className="primary-action" onClick={handleCreateSeatInvite}>Create profile + send invite</button>
+              </section>
+            )}
+
+            {adminAgentsView === 'profile' && selectedSeat && (
+              <section className="admin-seat-profile-card">
+                <button type="button" className="admin-detail-back" onClick={() => setAdminAgentsView('list')}><ChevronLeft size={16} /> Back to agents</button>
+                <div className="admin-seat-profile-head">
+                  <span className="profile-avatar"><UserRound size={22} /></span>
+                  <div><p>{roleTextForAdminSeat(selectedSeat.role)}</p><strong>{selectedSeat.name}</strong><span>{selectedSeat.employeeId} • {selectedSeat.territory}</span></div>
+                </div>
+                <div className="profile-info-card admin-seat-info-grid">
+                  <div><span>Email</span><strong>{selectedSeat.email}</strong></div>
+                  <div><span>Mobile</span><strong>{selectedSeat.mobile}</strong></div>
+                  <div><span>Status</span><strong>{statusTextForSeat(selectedSeat.status)}</strong></div>
+                  <div><span>Last active</span><strong>{selectedSeat.lastActive}</strong></div>
+                </div>
+                <div className="admin-seat-actions">
+                  <button type="button" className="secondary-action" onClick={() => { setAdminAgentsView('invite'); setScreenNotice({ title: 'Invite resent', message: `Setup link sent to ${selectedSeat.email}.`, tone: 'success' }); }}>Resend invite</button>
+                  <button type="button" className="secondary-action" onClick={() => setScreenNotice({ title: 'Password reset sent', message: `${selectedSeat.name} will receive a secure reset email.`, tone: 'success' })}>Reset password</button>
+                  <button type="button" className="secondary-action logout-action" onClick={() => setAdminSeats((current) => current.map((seat) => seat.id === selectedSeat.id ? { ...seat, status: 'inactive' } : seat))}>Deactivate</button>
+                </div>
+              </section>
+            )}
+
+            {adminAgentsView === 'invite' && selectedSeat && (
+              <section className="admin-invite-preview-card">
+                <button type="button" className="admin-detail-back" onClick={() => setAdminAgentsView('list')}><ChevronLeft size={16} /> Back to agents</button>
+                <span className="chip chip-soft">Email invite</span>
+                <div className="admin-invite-mail">
+                  <p>To: {selectedSeat.email}</p>
+                  <strong>Set up your CrystalBio Field App account</strong>
+                  <span>Hi {selectedSeat.name}, your company profile is ready. Click the secure link to create your password and activate access.</span>
+                  <button type="button" className="primary-action" onClick={() => setScreenNotice({ title: 'Password setup page', message: `${selectedSeat.name} can create password and open the app.`, tone: 'info' })}>Set up my account</button>
+                </div>
+                <div className="admin-seat-meta-row"><span>Link expires in 48 hours</span><span>No public signup</span></div>
+              </section>
+            )}
           </>
+        )}
+
+        {showSettings && (
+          <section className="admin-action-card">
+            <label>Access rules</label>
+            <div className="admin-settings-list"><span>Public signup: Off</span><span>Email invite required</span><span>Email OTP backup: On</span><span>Mobile OTP: Not enabled</span></div>
+          </section>
         )}
 
         {showReports && (
@@ -1490,7 +1647,7 @@ function App() {
     <main className="app-shell agent-only-shell">
       <section className="preview-note">
         <p className="eyebrow">CrystalBio Field Hub</p>
-        <h1>{screen === 'login' ? 'Login screen' : screen === 'admin' ? (adminTab === 'adminReports' ? 'Admin reports screen' : adminTab === 'approvals' ? 'Admin approvals screen' : adminTab === 'agents' ? 'Admin agents screen' : 'Admin overview screen') : screen === 'profile' ? 'Agent profile screen' : 'Agent home screen'}</h1>
+        <h1>{screen === 'login' ? 'Login screen' : screen === 'admin' ? (adminTab === 'adminReports' ? 'Admin reports screen' : adminTab === 'approvals' ? 'Admin approvals screen' : adminTab === 'agents' ? 'Admin agents screen' : adminTab === 'settings' ? 'Admin settings screen' : 'Admin overview screen') : screen === 'profile' ? 'Agent profile screen' : 'Agent home screen'}</h1>
         <p>{screen === 'login' ? 'Role-based entry for field agents and admin users.' : screen === 'admin' ? 'Owner view for team attendance, leave, and field reports.' : 'Mobile workspace for field attendance, visits, leave, and reports.'}</p>
       </section>
 
