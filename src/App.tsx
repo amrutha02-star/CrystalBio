@@ -7,6 +7,7 @@ type AppScreen = 'login' | 'home' | 'visits' | 'sales' | 'service' | 'checkin' |
 type ReportPeriod = 'today' | 'week' | 'month' | 'custom';
 type AgentReportKind = 'attendance' | 'visits' | 'combined';
 type AdminAgentFilter = 'all' | 'sales' | 'service';
+type AdminReportScope = 'office' | 'sales' | 'service' | 'rahul' | 'meera' | 'anil';
 type AdminTab = 'overview' | 'agents' | 'approvals' | 'adminReports' | 'profiles';
 type AdminApprovalId = 'meera-leave';
 type AdminAgentsView = 'list' | 'add' | 'profile' | 'invite';
@@ -93,6 +94,7 @@ function App() {
   const [adminPeriod, setAdminPeriod] = useState<ReportPeriod>('today');
   const [adminReportFromDate, setAdminReportFromDate] = useState('2026-06-01');
   const [adminReportToDate, setAdminReportToDate] = useState('2026-06-08');
+  const [adminReportScope, setAdminReportScope] = useState<AdminReportScope>('office');
   const [adminAgentFilter, setAdminAgentFilter] = useState<AdminAgentFilter>('all');
   const [adminTab, setAdminTab] = useState<AdminTab>(getInitialAdminTab);
   const [selectedAdminApproval, setSelectedAdminApproval] = useState<AdminApprovalId | null>(getInitialAdminApproval);
@@ -1405,6 +1407,19 @@ function App() {
         { name: 'Anil Sales', role: 'Sales agent', attendance: 'Selected range', visits: '8 sales visits • 2 missing updates', status: 'Review', chipClass: 'chip chip-warning' },
       ],
     };
+    const adminReportScopeLabels: Record<AdminReportScope, string> = {
+      office: 'Whole office report',
+      sales: 'All sales agents',
+      service: 'All service agents',
+      rahul: 'Rahul Sales',
+      meera: 'Meera Service',
+      anil: 'Anil Sales',
+    };
+    const adminReportScopeRows = adminReportRows[adminPeriod].filter((row) => {
+      if (adminReportScope === 'office') return true;
+      if (adminReportScope === 'sales' || adminReportScope === 'service') return row.role.toLowerCase().startsWith(adminReportScope);
+      return row.name.toLowerCase().startsWith(adminReportScope);
+    });
     const adminApprovals: Record<AdminApprovalId, { label: string; chipClass: string; agent: string; title: string; summary: string; detail: string; meta: string; actionNote: string }> = {
       'meera-leave': {
         label: 'Leave',
@@ -1429,6 +1444,14 @@ function App() {
     });
     const selectedSeat = adminSeats.find((seat) => seat.id === selectedAdminSeatId) ?? adminSeats[0];
     const period = adminPeriodData[adminPeriod];
+    const generateAdminReport = () => {
+      const rangeLabel = adminPeriod === 'custom' ? `${adminReportFromDate} to ${adminReportToDate}` : period.label.toLowerCase();
+      setScreenNotice({
+        title: `${adminReportScopeLabels[adminReportScope]} ready`,
+        message: `${adminReportScopeLabels[adminReportScope]} generated for ${rangeLabel}.`,
+        tone: 'success',
+      });
+    };
     const changePeriod = (nextPeriod: ReportPeriod) => {
       setAdminPeriod(nextPeriod);
       setScreenNotice(null);
@@ -1462,14 +1485,16 @@ function App() {
       <ScreenPanel title={adminTab === 'overview' ? 'Admin overview' : adminTab === 'agents' ? 'Agents' : adminTab === 'approvals' ? 'Approvals' : adminTab === 'profiles' ? 'Profiles' : 'Admin reports'} subtitle="Simple owner view for attendance, leave, and field work across agents.">
         {(showOverview || showReports) && (
           <>
-            <section className="admin-hero-card">
-              <div>
-                <p>{period.label} field status</p>
-                <strong>{period.active}</strong>
-                <span>{period.summary}</span>
-              </div>
-              <span className="admin-hero-icon"><UsersRound size={22} /></span>
-            </section>
+            {showOverview && (
+              <section className="admin-hero-card">
+                <div>
+                  <p>{period.label} field status</p>
+                  <strong>{period.active}</strong>
+                  <span>{period.summary}</span>
+                </div>
+                <span className="admin-hero-icon"><UsersRound size={22} /></span>
+              </section>
+            )}
 
             {renderAdminDateFilter(showReports ? 'Report date range' : 'Overview date range')}
 
@@ -1651,12 +1676,24 @@ function App() {
         {showReports && (
           <>
             {adminTab === 'adminReports' && (
-              <section className="admin-report-list-card">
-                <div className="admin-report-heading">
-                  <label>Person-wise reports</label>
-                  <span>{period.label}</span>
+              <section className="admin-report-list-card admin-report-setup-card">
+                <div className="admin-report-scope-row">
+                  <label>Report for</label>
+                  <select aria-label="Admin report scope" value={adminReportScope} onChange={(event) => setAdminReportScope(event.target.value as AdminReportScope)}>
+                    <option value="office">Whole office</option>
+                    <option value="sales">All sales agents</option>
+                    <option value="service">All service agents</option>
+                    <option value="rahul">Rahul Sales</option>
+                    <option value="meera">Meera Service</option>
+                    <option value="anil">Anil Sales</option>
+                  </select>
                 </div>
-                {adminReportRows[adminPeriod].map((row) => (
+                <button type="button" className="primary-action single-report-generate" onClick={generateAdminReport}>Generate report</button>
+                <div className="admin-report-heading">
+                  <label>{adminReportScope === 'office' ? 'Person-wise preview' : 'Selected report preview'}</label>
+                  <span>{adminReportScopeRows.length} shown</span>
+                </div>
+                {adminReportScopeRows.map((row) => (
                   <button key={row.name} type="button" className="admin-report-row admin-click-row" onClick={() => setScreenNotice({ title: `${row.name} report opened`, message: `${row.role} report detail will show attendance, visits, leave, and follow-ups.`, tone: 'info' })}>
                     <div className="admin-report-row-main">
                       <strong>{row.name}</strong>
@@ -1668,7 +1705,6 @@ function App() {
                 ))}
               </section>
             )}
-            <button type="button" className="primary-action" onClick={() => setScreenNotice({ title: `${adminPeriod === 'today' ? "Today’s" : period.label} admin report ready`, message: adminPeriod === 'custom' ? `${adminReportFromDate} to ${adminReportToDate} admin report download prepared.` : 'Admin report generated from saved field activity.', tone: 'success' })}>{adminPeriod === 'custom' ? 'Download custom date admin report' : `Generate ${adminPeriod === 'today' ? "today’s" : period.label.toLowerCase()} admin report`}</button>
           </>
         )}
       </ScreenPanel>

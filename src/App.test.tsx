@@ -294,15 +294,20 @@ describe('Crystal Bio agent view shell', () => {
     render(<App />);
 
     expect(screen.getByRole('heading', { name: 'Admin reports' })).toBeInTheDocument();
-    expect(screen.getByText('Person-wise reports')).toBeInTheDocument();
-    expect(screen.getByText('Rahul Sales')).toBeInTheDocument();
-    expect(screen.getByText('Meera Service')).toBeInTheDocument();
-    expect(screen.getByText('Anil Sales')).toBeInTheDocument();
+    expect(screen.getByText('Person-wise preview')).toBeInTheDocument();
+    expect(screen.getByLabelText('Admin report scope')).toBeInTheDocument();
+    expect(screen.getAllByText('Rahul Sales').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Meera Service').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Anil Sales').length).toBeGreaterThan(0);
     expect(screen.queryByText('Auto-generated from field activity')).not.toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText('Report date range preset'), { target: { value: 'week' } });
     expect(screen.getByText('8 sales visits • 3 follow-ups')).toBeInTheDocument();
-    fireEvent.click(await screen.findByRole('button', { name: /generate this week admin report/i }));
-    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('This week admin report ready'));
+    fireEvent.change(screen.getByLabelText('Admin report scope'), { target: { value: 'meera' } });
+    expect(screen.getByText('Selected report preview')).toBeInTheDocument();
+    expect(screen.getByText('6 service visits • 2 pending parts')).toBeInTheDocument();
+    expect(screen.queryByText('8 sales visits • 3 follow-ups')).not.toBeInTheDocument();
+    fireEvent.click(await screen.findByRole('button', { name: /^generate report$/i }));
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Meera Service ready'));
   });
 });

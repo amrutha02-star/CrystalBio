@@ -30,6 +30,7 @@ Current UX corrections to preserve:
 - Report date controls must be compact. Do not use a large date-range card by default. Show visible From/To fields only when a custom date selection is actually needed.
 - Agent My Reports should be a visual-first, approval-pending screen until the user approves it. For now it must show one simple report setup flow: choose report type (Attendance / Visit / Combined), choose period including Custom dates with visible From/To fields, then tap one Generate report button. Do not build/connect backend logic for this page until visual approval.
 - Agent My Reports must not use numbered 1/2/3 cards, duplicate Daily/Weekly/Monthly controls, large non-clickable stat tiles, or repeated report-summary boxes. Attendance must be a real selectable report type if the page says reports include attendance.
+- Admin Reports should follow the same one-flow rule: choose report date range, choose who the report is for, then tap one Generate report button. Admin must support Whole office, role-wise, and individual agent report generation without duplicate period/generate controls.
 - Font sizes should follow the design scale in `DESIGN.md`; avoid oversized report cards, heavy labels, and mixed typography hierarchy.
 
 Local commands:

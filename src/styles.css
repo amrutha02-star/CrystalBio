@@ -670,6 +670,7 @@ p { color: var(--muted); line-height: 1.5; }
   margin-top: 2px;
   margin-bottom: 0;
 }
+.admin-report-setup-card .single-report-generate { margin: 0 0 12px; }
 .four-report-actions { grid-template-columns: repeat(2, 1fr); }
 .simple-report-preview-card .report-preview-heading { margin-bottom: 4px; }
 .simple-report-preview-card .report-line:last-child { border-bottom: 0; }
@@ -1083,6 +1084,31 @@ p { color: var(--muted); line-height: 1.5; }
   padding: 0;
   margin-bottom: 14px;
   box-shadow: none;
+}
+.admin-report-scope-row {
+  display: grid;
+  gap: 6px;
+  padding: 10px;
+  margin-bottom: 10px;
+  border-radius: 18px;
+  border: 1px solid rgba(123, 139, 111, 0.2);
+  background: #fffef8;
+}
+.admin-report-scope-row label {
+  color: var(--muted);
+  font-size: 10.5px;
+  font-weight: 650;
+  letter-spacing: 0.025em;
+  text-transform: uppercase;
+}
+.admin-report-scope-row select {
+  min-height: 36px;
+  border-radius: 13px;
+  border: 1px solid rgba(123, 139, 111, 0.28);
+  background: #f7faf3;
+  color: var(--ink);
+  font-size: 12.5px;
+  font-weight: 540;
 }
 .admin-report-heading {
   display: flex;
