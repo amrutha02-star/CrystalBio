@@ -1724,15 +1724,15 @@ function App() {
             {screen === 'admin' ? (
               [
                 { label: 'Overview', tab: 'overview' as AdminTab, icon: Home },
+                { label: 'Field entry', tab: 'overview' as AdminTab, screen: 'home' as AppScreen, icon: ClipboardList },
                 { label: 'Agents', tab: 'agents' as AdminTab, icon: UsersRound },
                 { label: 'Approvals', tab: 'approvals' as AdminTab, icon: CalendarCheck },
                 { label: 'Reports', tab: 'adminReports' as AdminTab, icon: FileText },
-                { label: 'Profile', tab: 'profiles' as AdminTab, icon: UserRound },
               ].map((item) => {
                 const Icon = item.icon;
-                const selected = adminTab === (item.tab as AdminTab);
+                const selected = item.screen ? screen === item.screen : adminTab === (item.tab as AdminTab);
                 return (
-                  <button key={item.label} type="button" className={selected ? 'nav-item nav-item-selected' : 'nav-item'} aria-label={selected ? `${item.label} selected` : item.label} onClick={() => openAdminTab(item.tab as AdminTab)}>
+                  <button key={item.label} type="button" className={selected ? 'nav-item nav-item-selected' : 'nav-item'} aria-label={selected ? `${item.label} selected` : item.label} onClick={() => item.screen ? goToScreen(item.screen) : openAdminTab(item.tab as AdminTab)}>
                     <Icon size={17} />
                     {item.label}
                   </button>
