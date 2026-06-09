@@ -891,6 +891,18 @@ function App() {
         <span>Step 1: {salesSaveResult ? 'Saved' : 'Pending'} • Step 2: {salesStep2Saved ? 'Saved' : 'Pending'} • Step 3: {salesStep3Saved ? 'Saved' : 'Pending'}</span>
       </div>
 
+      <div className="visit-assistant-card">
+        <div>
+          <label>Field visit assistant</label>
+          <strong>{salesSaveResult ? 'Continue this sales opportunity' : 'Start with today’s update'}</strong>
+          <span>Agent, time, and visit GPS stay automatic. The agent only enters what happened.</span>
+        </div>
+        <div className="visit-assistant-actions">
+          <button type="button" className="secondary-action mini-action" onClick={resetSalesFormForNewVisit}>New visit update</button>
+          <button type="button" className="secondary-action mini-action" onClick={() => goToScreen('visits')}>Previous entries</button>
+        </div>
+      </div>
+
       <section className="step-card">
         <div className="step-heading">
           <div><span className="step-pill">Step 1</span><h3>Quick visit update</h3><p>For use at client place or immediately after coming out.</p></div>
@@ -904,8 +916,18 @@ function App() {
           <span>Customer / lab name</span>
           <input aria-label="Sales customer name" value={salesAccountName} onChange={(event) => setSalesAccountName(event.target.value)} />
         </label>
+        <div className="inline-field-grid">
+          <label className="field-card">
+            <span>Contact if available</span>
+            <input aria-label="Sales quick contact person" value={salesContactPerson} onChange={(event) => setSalesContactPerson(event.target.value)} placeholder="Name / role" />
+          </label>
+          <label className="field-card">
+            <span>Phone if available</span>
+            <input aria-label="Sales quick phone" value={salesPhone} onChange={(event) => setSalesPhone(event.target.value)} placeholder="Optional" inputMode="tel" />
+          </label>
+        </div>
         <label className="field-card">
-          <span>Rough requirement</span>
+          <span>Requirement discussed</span>
           <input aria-label="Sales requirement" value={salesRequirement} onChange={(event) => setSalesRequirement(event.target.value)} placeholder="Product need, quote, budget, status" />
         </label>
         <label className="field-card">
@@ -991,6 +1013,12 @@ function App() {
         <label className="field-card"><span>Probability</span><input aria-label="Sales probability" value={salesProbability} onChange={(event) => setSalesProbability(event.target.value)} placeholder="Example: 40%" /></label>
         <label className="field-card"><span>Closing date</span><input aria-label="Sales closing date" type="date" value={salesClosingDate} onChange={(event) => setSalesClosingDate(event.target.value)} /></label>
         <label className="field-card"><span>Support required</span><textarea aria-label="Sales support required" value={salesSupportRequired} onChange={(event) => setSalesSupportRequired(event.target.value)} placeholder="Office/product/quote support needed" rows={2} /></label>
+        <div className="office-action-strip" aria-label="Sales office action examples">
+          <span>Office action markers</span>
+          <button type="button" onClick={() => setSalesSupportRequired('Send quotation / product brochure')}>Send quote</button>
+          <button type="button" onClick={() => setSalesSupportRequired('Arrange demo support')}>Demo support</button>
+          <button type="button" onClick={() => setSalesSupportRequired('Call customer for budget confirmation')}>Call customer</button>
+        </div>
         <label className="field-card"><span>Remarks and timeline</span><textarea aria-label="Sales remarks timeline" value={salesRemarksTimeline} onChange={(event) => setSalesRemarksTimeline(event.target.value)} placeholder="Timeline, discussion points, blockers" rows={2} /></label>
         <label className="field-card"><span>Notes for office team</span><textarea aria-label="Sales office notes" value={salesOfficeNotes} onChange={(event) => setSalesOfficeNotes(event.target.value)} placeholder="Internal notes" rows={2} /></label>
         <div className="field-card photo-action-card">
@@ -1026,6 +1054,18 @@ function App() {
           <span>Step 1: {serviceSaveResult ? 'Saved' : 'Pending'} • Step 2: {serviceStep2Saved ? 'Saved' : 'Pending'} • Step 3: {serviceStep3Saved ? 'Saved' : 'Pending'}</span>
         </div>
 
+        <div className="visit-assistant-card service-assistant-card">
+          <div>
+            <label>Field visit assistant</label>
+            <strong>{serviceSaveResult ? 'Continue this service case' : 'Save the site update first'}</strong>
+            <span>Engineer identity, time, and GPS stay automatic. Parts and proof can be completed later.</span>
+          </div>
+          <div className="visit-assistant-actions">
+            <button type="button" className="secondary-action mini-action" onClick={resetServiceFormForNewVisit}>New service update</button>
+            <button type="button" className="secondary-action mini-action" onClick={() => goToScreen('visits')}>Previous entries</button>
+          </div>
+        </div>
+
         <section className="step-card">
           <div className="step-heading">
             <div><span className="step-pill">Step 1</span><h3>Quick service update</h3><p>For the engineer to save at the site.</p></div>
@@ -1036,6 +1076,10 @@ function App() {
             <p>{isBackendConfigured ? 'Location permission is requested when this update is saved.' : 'Location is captured when this update is saved.'}</p>
           </div>
           <label className="field-card"><span>Customer / lab name</span><input aria-label="Service customer name" value={serviceCustomerName} onChange={(event) => setServiceCustomerName(event.target.value)} /></label>
+          <div className="inline-field-grid">
+            <label className="field-card"><span>Equipment if known</span><input aria-label="Service quick equipment" value={serviceEquipmentName} onChange={(event) => setServiceEquipmentName(event.target.value)} placeholder="Machine / instrument" /></label>
+            <label className="field-card"><span>Contact if available</span><input aria-label="Service quick contact person" value={serviceContactPerson} onChange={(event) => setServiceContactPerson(event.target.value)} placeholder="Name / role" /></label>
+          </div>
           <label className="field-card"><span>Work done / issue checked</span><textarea aria-label="Service work done" value={serviceWorkDone} onChange={(event) => setServiceWorkDone(event.target.value)} placeholder="Issue checked, work done, customer update" rows={3} /></label>
           <div className="inline-field-grid">
             <label className="field-card"><span>Service type</span><select aria-label="Service type" value={serviceType} onChange={(event) => setServiceType(event.target.value as FrontendServiceType)}><option value="breakdown">Breakdown</option><option value="installation">Installation</option><option value="preventive_maintenance">Preventive maintenance</option><option value="repair">Repair</option><option value="calibration">Calibration</option><option value="demo">Product demonstration</option><option value="training">Training</option><option value="other">Other</option></select></label>
@@ -1074,6 +1118,12 @@ function App() {
           <label className="field-card"><span>Machine status</span><input aria-label="Service machine status" value={serviceMachineStatus} onChange={(event) => setServiceMachineStatus(event.target.value)} placeholder="Working / pending / closed" /></label>
           <label className="field-card support-card"><span>Support required?</span><select aria-label="Service support required" value={serviceSupportRequired ? 'yes' : 'no'} onChange={(event) => setServiceSupportRequired(event.target.value === 'yes')}><option value="yes">Yes, office/parts support needed</option><option value="no">No support needed</option></select></label>
           <label className="field-card"><span>Support note</span><textarea aria-label="Service support note" value={serviceSupportRequiredNote} onChange={(event) => setServiceSupportRequiredNote(event.target.value)} placeholder="Optional" rows={2} /></label>
+          <div className="office-action-strip" aria-label="Service office action examples">
+            <span>Office action markers</span>
+            <button type="button" onClick={() => { setServiceSupportRequired(true); setServiceSupportRequiredNote('Arrange required parts and update engineer'); }}>Arrange parts</button>
+            <button type="button" onClick={() => { setServiceSupportRequired(true); setServiceSupportRequiredNote('Schedule next site visit with customer'); }}>Revisit</button>
+            <button type="button" onClick={() => { setServiceSupportRequired(true); setServiceSupportRequiredNote('Escalate case to office/service lead'); }}>Escalate</button>
+          </div>
           <div className="field-card photo-action-card"><div><span>Service photos</span><small>Optional now. Use for machine, issue, part, or completed-work proof.</small></div><div className="photo-actions"><button type="button" className="secondary-action photo-button" onClick={() => setScreenNotice('Camera capture is scheduled for device testing.')}>Camera</button><button type="button" className="secondary-action photo-button" onClick={() => setScreenNotice('File upload is scheduled for device testing.')}>Upload</button></div><input aria-label="Service photo note" value={servicePhotoNote} onChange={(event) => setServicePhotoNote(event.target.value)} placeholder="Optional photo note" /></div>
           <label className="field-card"><span>Final remarks</span><textarea aria-label="Service final remarks" value={serviceFinalRemarks} onChange={(event) => setServiceFinalRemarks(event.target.value)} placeholder="Optional customer confirmation / remarks" rows={2} /></label>
           <label className="field-card"><span>Notes for office</span><textarea aria-label="Service office notes" value={serviceOfficeNotes} onChange={(event) => setServiceOfficeNotes(event.target.value)} placeholder="Optional office notes" rows={2} /></label>

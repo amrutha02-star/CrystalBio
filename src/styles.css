@@ -295,6 +295,50 @@ p { color: var(--muted); line-height: 1.5; }
 .step-card .field-card input,
 .step-card .field-card select { min-height: 26px; }
 .highlighted-card { background: #eef5e8; border-color: #c9d8bf; }
+.visit-assistant-card {
+  border: 1px solid rgba(123, 139, 111, 0.26);
+  border-radius: 22px;
+  background: linear-gradient(135deg, #f8fbf4 0%, #fffef8 100%);
+  padding: 13px;
+  margin-bottom: 10px;
+  box-shadow: 0 12px 26px rgba(55, 65, 46, 0.06);
+}
+.visit-assistant-card label,
+.office-action-strip span {
+  display: block;
+  color: var(--sage-deep);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+  margin-bottom: 5px;
+}
+.visit-assistant-card strong { display: block; color: var(--ink); font-size: 15px; line-height: 1.2; font-weight: 560; }
+.visit-assistant-card span { display: block; color: var(--muted); font-size: 12px; line-height: 1.38; margin-top: 5px; }
+.visit-assistant-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+.mini-action { min-height: 38px; margin: 0; padding: 9px 10px; border-radius: 14px; font-size: 12px; }
+.service-assistant-card { background: linear-gradient(135deg, #f1f6ee 0%, #fffef8 100%); }
+.office-action-strip {
+  border: 1px dashed rgba(83, 106, 67, 0.32);
+  border-radius: 18px;
+  background: rgba(238, 245, 232, 0.55);
+  padding: 10px;
+  margin: 0 0 8px;
+}
+.office-action-strip button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  border-radius: 999px;
+  padding: 7px 10px;
+  margin: 3px 5px 0 0;
+  background: #fffef8;
+  color: var(--sage-deep);
+  border: 1px solid rgba(76, 103, 58, 0.35);
+  font-size: 11.5px;
+  font-weight: 550;
+}
 .step-card {
   border: 1px solid rgba(123, 139, 111, 0.28);
   border-radius: 24px;
