@@ -24,7 +24,8 @@ Current app includes:
 
 Current UX corrections to preserve:
 
-- **Agents** is an operational visibility screen: who checked in, who updated visits, missing reports, and Sales/Service filtering. Do not convert it into profile creation or onboarding.
+- **Agents** is an operational visibility screen: today's live status — who checked in, who updated visits, who is missing data, and Sales/Service filtering. It must not look like report generation and should not carry report date-range/export controls.
+- **Admin overview** is a same-day owner snapshot, not a report page. Keep it focused on today's field status, quick counts, and urgent approvals; detailed date ranges belong in Reports.
 - **Field entry** is separate from Agents. It is the admin path for entering a Sales or Service report when admin/back office needs to submit one.
 - **Profile** owns controlled user/profile creation, invites, password setup, resend/reset/deactivate, and access rules.
 - Report date controls must be compact. Do not use a large date-range card by default. Show visible From/To fields only when a custom date selection is actually needed.
