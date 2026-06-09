@@ -3,7 +3,7 @@ import { BarChart3, CalendarCheck, CheckCircle2, ChevronLeft, ClipboardList, Clo
 import { sampleEntries } from './appData';
 import { crystalBioFrontendApi, type FrontendAttendance, type FrontendLeaveRequest, type FrontendLoginInput, type FrontendSalesSaveResult, type FrontendSalesNextAction, type FrontendServiceSaveResult, type FrontendServiceNextAction, type FrontendServiceType, type FrontendSession } from './crystalBioFrontendApi';
 
-type AppScreen = 'login' | 'home' | 'visits' | 'sales' | 'service' | 'checkin' | 'attendance' | 'leave' | 'reports' | 'admin';
+type AppScreen = 'login' | 'home' | 'visits' | 'sales' | 'service' | 'checkin' | 'attendance' | 'leave' | 'reports' | 'profile' | 'admin';
 type ReportPeriod = 'today' | 'week' | 'month';
 type AdminAgentFilter = 'all' | 'sales' | 'service';
 type AdminTab = 'overview' | 'agents' | 'approvals' | 'adminReports';
@@ -21,6 +21,7 @@ const navItems: Array<{ screen: AppScreen; label: string; icon: typeof Home }> =
   { screen: 'visits', label: 'Visits', icon: ClipboardList },
   { screen: 'attendance', label: 'Attendance', icon: CalendarCheck },
   { screen: 'reports', label: 'Reports', icon: FileText },
+  { screen: 'profile', label: 'Profile', icon: UserRound },
 ];
 
 const sampleAttendanceLogs = [
@@ -28,7 +29,7 @@ const sampleAttendanceLogs = [
   { date: 'Yesterday', status: 'Checked out', detail: '9:18 AM to 6:04 PM' },
 ];
 
-const screenOptions: AppScreen[] = ['login', 'home', 'visits', 'sales', 'service', 'checkin', 'attendance', 'leave', 'reports', 'admin'];
+const screenOptions: AppScreen[] = ['login', 'home', 'visits', 'sales', 'service', 'checkin', 'attendance', 'leave', 'reports', 'profile', 'admin'];
 
 const agentIdForScreen = (nextScreen: AppScreen) => (nextScreen === 'service' ? 'agent_3' : 'agent_2');
 const loginInputForScreen = (nextScreen: AppScreen): FrontendLoginInput => {
@@ -706,6 +707,22 @@ function App() {
     goToScreen(action, action === 'sales' ? { newSalesVisit: true } : action === 'service' ? { newServiceVisit: true } : undefined);
   };
 
+  const roleLabel = (role?: FrontendSession['role']) => {
+    if (role === 'admin') return 'Admin';
+    if (role === 'service') return 'Service agent';
+    if (role === 'both') return 'Sales + service agent';
+    return 'Sales agent';
+  };
+
+  const handleLogout = () => {
+    setSession(null);
+    setAttendance(null);
+    setIsAdminSignedIn(false);
+    setStatusMessage('Logged out. Enter login code and passcode.');
+    setScreenNotice({ title: 'Logged out', message: 'You are back on the login screen.', tone: 'info' });
+    setScreen('login');
+  };
+
   const renderLogin = () => (
     <ScreenPanel title="Login" subtitle="Enter your employee details to open the app.">
       <section className="login-hero-card clean-login-card">
@@ -1253,6 +1270,46 @@ function App() {
     );
   };
 
+  const renderProfile = () => {
+    const agentName = session?.agentName ?? 'Rahul Sales';
+    const agentId = session?.agentId ?? 'agent_2';
+    const attendanceText = attendance?.status === 'checked_in'
+      ? 'Checked in today'
+      : attendance?.status === 'checked_out'
+        ? 'Checked out today'
+        : 'Not checked in yet';
+    const leaveText = leaveRequest ? `${leaveRequest.fromDate} to ${leaveRequest.toDate} • ${leaveRequest.status}` : 'No leave request pending';
+
+    return (
+      <ScreenPanel title="Profile" subtitle="Simple account details for the logged-in field user.">
+        <section className="profile-hero-card">
+          <span className="profile-avatar"><UserRound size={25} /></span>
+          <div>
+            <p>Logged-in user</p>
+            <strong>{agentName}</strong>
+            <span>{roleLabel(session?.role)}</span>
+          </div>
+        </section>
+
+        <section className="profile-info-card">
+          <div><span>Employee ID</span><strong>{agentId}</strong></div>
+          <div><span>Role</span><strong>{roleLabel(session?.role)}</strong></div>
+          <div><span>Today’s status</span><strong>{attendanceText}</strong></div>
+          <div><span>Leave status</span><strong>{leaveText}</strong></div>
+        </section>
+
+        <section className="form-card profile-help-card">
+          <label>What this page is for</label>
+          <p>Agents can quickly confirm they are using the correct account before saving visits, attendance, or leave requests.</p>
+        </section>
+
+        <button type="button" className="secondary-action" onClick={() => goToScreen('attendance')}>View attendance</button>
+        <button type="button" className="secondary-action" onClick={() => goToScreen('leave')}>Request leave</button>
+        <button type="button" className="secondary-action logout-action" onClick={handleLogout}>Logout</button>
+      </ScreenPanel>
+    );
+  };
+
   const renderAdmin = () => {
     const adminPeriodData: Record<ReportPeriod, { label: string; active: string; summary: string; visits: string; checkedIn: string; leave: string; followUps: string }> = {
       today: { label: 'Today', active: '3 agents active', summary: '1 service visit • 2 sales visits • 1 leave request pending', visits: '5', checkedIn: '3', leave: '1', followUps: '4' },
@@ -1430,6 +1487,7 @@ function App() {
     if (screen === 'attendance') return renderAttendance();
     if (screen === 'leave') return renderLeave();
     if (screen === 'reports') return renderReports();
+    if (screen === 'profile') return renderProfile();
     if (screen === 'admin') return renderAdmin();
     return renderHome();
   };
@@ -1444,7 +1502,7 @@ function App() {
     <main className="app-shell agent-only-shell">
       <section className="preview-note">
         <p className="eyebrow">CrystalBio Field Hub</p>
-        <h1>{screen === 'login' ? 'Login screen' : screen === 'admin' ? (adminTab === 'adminReports' ? 'Admin reports screen' : adminTab === 'approvals' ? 'Admin approvals screen' : adminTab === 'agents' ? 'Admin agents screen' : 'Admin overview screen') : 'Agent home screen'}</h1>
+        <h1>{screen === 'login' ? 'Login screen' : screen === 'admin' ? (adminTab === 'adminReports' ? 'Admin reports screen' : adminTab === 'approvals' ? 'Admin approvals screen' : adminTab === 'agents' ? 'Admin agents screen' : 'Admin overview screen') : screen === 'profile' ? 'Agent profile screen' : 'Agent home screen'}</h1>
         <p>{screen === 'login' ? 'Role-based entry for field agents and admin users.' : screen === 'admin' ? 'Owner view for team attendance, leave, and field reports.' : 'Mobile workspace for field attendance, visits, leave, and reports.'}</p>
       </section>
 
@@ -1458,7 +1516,7 @@ function App() {
               <p className="muted">{screen === 'login' ? 'Welcome' : screen === 'admin' ? 'Owner access' : 'Good morning'}</p>
               <h2>{screen === 'login' ? 'CrystalBio' : screen === 'admin' ? 'Admin' : session?.agentName ?? (screen === 'service' ? 'Meera Service' : 'Rahul Sales')}</h2>
             </div>
-            <div className="avatar">{screen === 'admin' ? <UsersRound size={21} /> : <UserRound size={21} />}</div>
+            <button type="button" className="avatar avatar-button" aria-label={screen === 'profile' ? 'Profile selected' : 'Open profile'} disabled={screen === 'login' || screen === 'admin'} onClick={() => goToScreen('profile')}>{screen === 'admin' ? <UsersRound size={21} /> : <UserRound size={21} />}</button>
           </header>
 
           {renderScreen()}

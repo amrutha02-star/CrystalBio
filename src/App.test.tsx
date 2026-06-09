@@ -71,7 +71,7 @@ describe('Crystal Bio agent view shell', () => {
     expect(screen.getByRole('button', { name: /check in/i })).toBeInTheDocument();
   });
 
-  it('keeps agent bottom navigation clear with a selected home state', async () => {
+  it('keeps agent bottom navigation clear with selected home and profile access', async () => {
     render(<App />);
 
     await screen.findByText('Rahul Sales');
@@ -80,6 +80,24 @@ describe('Crystal Bio agent view shell', () => {
     expect(screen.getByLabelText('Visits')).toBeInTheDocument();
     expect(screen.getByLabelText('Attendance')).toBeInTheDocument();
     expect(screen.getByLabelText('Reports')).toBeInTheDocument();
+    expect(screen.getByLabelText('Profile')).toBeInTheDocument();
+  });
+
+  it('opens an agent profile page from the profile button with simple account and work details', async () => {
+    render(<App />);
+
+    await screen.findByText('Rahul Sales');
+    fireEvent.click(screen.getByLabelText('Profile'));
+
+    expect(screen.getByRole('heading', { name: 'Profile' })).toBeInTheDocument();
+    expect(screen.getAllByText('Rahul Sales').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Sales agent').length).toBeGreaterThan(0);
+    expect(screen.getByText('Employee ID')).toBeInTheDocument();
+    expect(screen.getByText('agent_2')).toBeInTheDocument();
+    expect(screen.getByText('Today’s status')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /request leave/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /logout/i })).toBeInTheDocument();
+    expect(screen.getAllByLabelText('Profile selected').length).toBeGreaterThan(0);
   });
 
   it('keeps admin and monitoring sections out of the agent review screen', async () => {
