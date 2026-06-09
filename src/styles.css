@@ -791,7 +791,82 @@ p { color: var(--muted); line-height: 1.5; }
   color: var(--sage-deep);
   box-shadow: 0 8px 16px rgba(47, 61, 40, 0.06);
 }
-.admin-custom-date-card { margin-bottom: 12px; }
+.admin-agent-filter-row { grid-template-columns: repeat(3, 1fr); }
+.date-filter-card {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  margin-bottom: 10px;
+  border-radius: 22px;
+  border: 1px solid rgba(123, 139, 111, 0.22);
+  background: #fffef8;
+  box-shadow: 0 10px 22px rgba(47, 61, 40, 0.045);
+}
+.date-filter-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.date-filter-head label,
+.date-range-fields span {
+  display: block;
+  color: var(--muted);
+  font-size: 10.5px;
+  font-weight: 650;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+.date-filter-head strong { display: block; margin-top: 3px; color: var(--ink); font-size: 14px; font-weight: 560; }
+.date-filter-head select {
+  width: 128px;
+  min-height: 36px;
+  border-radius: 14px;
+  border: 1px solid rgba(123, 139, 111, 0.28);
+  background: #f7faf3;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 530;
+}
+.date-range-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.date-range-fields label {
+  display: grid;
+  gap: 5px;
+  padding: 9px 10px;
+  border-radius: 16px;
+  border: 1px solid rgba(123, 139, 111, 0.18);
+  background: #f8faf4;
+}
+.date-range-fields input {
+  min-height: 30px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 12.5px;
+}
+.profile-access-note {
+  display: block;
+  margin-top: 7px;
+  color: var(--sage-deep);
+  font-size: 11.5px;
+  font-weight: 520;
+  line-height: 1.35;
+}
+.profile-list-heading { align-items: center; }
+.profile-add-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 32px;
+  padding: 0 11px;
+  border-radius: 999px;
+  border: 1px solid rgba(84, 111, 70, 0.24);
+  background: #eef5e9;
+  color: var(--sage-deep);
+  font-size: 11.5px;
+  font-weight: 560;
+}
 .admin-metric-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

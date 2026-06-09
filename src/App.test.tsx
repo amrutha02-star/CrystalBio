@@ -152,10 +152,10 @@ describe('Crystal Bio agent view shell', () => {
     expect(screen.getByText('Weekly summary')).toBeInTheDocument();
     expect(screen.getByText('Current data')).toBeInTheDocument();
     expect(screen.getByText('Report summary')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /^month$/i }));
+    fireEvent.change(screen.getByLabelText('My report preset'), { target: { value: 'month' } });
     expect(screen.getByText('Monthly summary')).toBeInTheDocument();
     expect(screen.getAllByText(/June 2026/).length).toBeGreaterThan(0);
-    fireEvent.click(screen.getByRole('button', { name: /^week$/i }));
+    fireEvent.change(screen.getByLabelText('My report preset'), { target: { value: 'week' } });
     expect(screen.getByText('Weekly summary')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /^monthly$/i }));
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Monthly summary ready'));
@@ -261,7 +261,7 @@ describe('Crystal Bio agent view shell', () => {
     expect(screen.getByText('Leave approvals')).toBeInTheDocument();
     expect(screen.queryByText('Apollo Diagnostics')).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Week' }));
+    fireEvent.change(screen.getByLabelText('Overview date range preset'), { target: { value: 'week' } });
     expect(screen.getByText('8 agents active')).toBeInTheDocument();
     expect(screen.getByText('23')).toBeInTheDocument();
 
@@ -294,7 +294,7 @@ describe('Crystal Bio agent view shell', () => {
     expect(screen.getByText('Anil Sales')).toBeInTheDocument();
     expect(screen.queryByText('Auto-generated from field activity')).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Week' }));
+    fireEvent.change(screen.getByLabelText('Report date range preset'), { target: { value: 'week' } });
     expect(screen.getByText('8 sales visits • 3 follow-ups')).toBeInTheDocument();
     fireEvent.click(await screen.findByRole('button', { name: /generate this week admin report/i }));
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('This week admin report ready'));

@@ -1231,12 +1231,6 @@ function App() {
       custom: { eyebrow: 'Custom dates', title: 'Custom date summary', range: `${reportFromDate} to ${reportToDate}`, visits: '12', sales: '7', service: '5', attendance: 'Selected range', followUps: '2', note: 'Custom date report from saved activity' },
     };
     const activeReport = reportCopy[reportPeriod];
-    const periodOptions: Array<{ key: ReportPeriod; label: string }> = [
-      { key: 'today', label: 'Today' },
-      { key: 'week', label: 'Week' },
-      { key: 'month', label: 'Month' },
-      { key: 'custom', label: 'Custom' },
-    ];
     const generateReport = (period: ReportPeriod) => {
       setReportPeriod(period);
       setScreenNotice({
@@ -1257,29 +1251,21 @@ function App() {
           <span className="report-hero-icon"><BarChart3 size={21} /></span>
         </section>
 
-        <div className="report-period-switch" aria-label="Report period options">
-          {periodOptions.map((option) => (
-            <button
-              key={option.key}
-              type="button"
-              className={reportPeriod === option.key ? 'report-period-active' : ''}
-              onClick={() => setReportPeriod(option.key)}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
-
-        {reportPeriod === 'custom' && (
-          <section className="custom-date-card" aria-label="Custom report date range">
-            <label>Custom date range</label>
-            <div className="inline-field-grid">
-              <label className="field-card"><span>From</span><input aria-label="Report from date" type="date" value={reportFromDate} onChange={(event) => setReportFromDate(event.target.value)} /></label>
-              <label className="field-card"><span>To</span><input aria-label="Report to date" type="date" value={reportToDate} onChange={(event) => setReportToDate(event.target.value)} /></label>
-            </div>
-            <button type="button" className="primary-action" onClick={() => generateReport('custom')}>Download custom date report</button>
-          </section>
-        )}
+        <section className="date-filter-card" aria-label="My report date range">
+          <div className="date-filter-head">
+            <div><label>Report date range</label><strong>{activeReport.range}</strong></div>
+            <select aria-label="My report preset" value={reportPeriod} onChange={(event) => setReportPeriod(event.target.value as ReportPeriod)}>
+              <option value="today">Today</option>
+              <option value="week">This week</option>
+              <option value="month">This month</option>
+              <option value="custom">Custom range</option>
+            </select>
+          </div>
+          <div className="date-range-fields">
+            <label><span>From</span><input aria-label="Report from date" type="date" value={reportFromDate} onChange={(event) => { setReportFromDate(event.target.value); setReportPeriod('custom'); }} /></label>
+            <label><span>To</span><input aria-label="Report to date" type="date" value={reportToDate} onChange={(event) => { setReportToDate(event.target.value); setReportPeriod('custom'); }} /></label>
+          </div>
+        </section>
 
         <div className="report-metric-grid">
           <div className="metric-card report-metric-card"><strong>{activeReport.visits}</strong><span>Total visits</span><small>{activeReport.range}</small></div>
@@ -1442,6 +1428,23 @@ function App() {
       setAdminPeriod(nextPeriod);
       setScreenNotice(null);
     };
+    const renderAdminDateFilter = (label: string) => (
+      <section className="date-filter-card" aria-label={`${label} date range`}>
+        <div className="date-filter-head">
+          <div><label>{label}</label><strong>{period.label}</strong></div>
+          <select aria-label={`${label} preset`} value={adminPeriod} onChange={(event) => changePeriod(event.target.value as ReportPeriod)}>
+            <option value="today">Today</option>
+            <option value="week">This week</option>
+            <option value="month">This month</option>
+            <option value="custom">Custom range</option>
+          </select>
+        </div>
+        <div className="date-range-fields">
+          <label><span>From</span><input aria-label={`${label} from date`} type="date" value={adminReportFromDate} onChange={(event) => { setAdminReportFromDate(event.target.value); setAdminPeriod('custom'); }} /></label>
+          <label><span>To</span><input aria-label={`${label} to date`} type="date" value={adminReportToDate} onChange={(event) => { setAdminReportToDate(event.target.value); setAdminPeriod('custom'); }} /></label>
+        </div>
+      </section>
+    );
     const showOverview = adminTab === 'overview';
     const showAgents = adminTab === 'agents';
     const showApprovals = adminTab === 'overview' || adminTab === 'approvals';
@@ -1461,24 +1464,7 @@ function App() {
               <span className="admin-hero-icon"><UsersRound size={22} /></span>
             </section>
 
-            <div className="admin-filter-row" aria-label="Admin report filters">
-              {(['today', 'week', 'month', 'custom'] as ReportPeriod[]).map((periodOption) => (
-                <button key={periodOption} type="button" className={adminPeriod === periodOption ? 'admin-filter-active' : ''} onClick={() => changePeriod(periodOption)}>
-                  {periodOption === 'today' ? 'Today' : periodOption === 'week' ? 'Week' : periodOption === 'month' ? 'Month' : 'Custom'}
-                </button>
-              ))}
-            </div>
-
-            {adminPeriod === 'custom' && (
-              <section className="custom-date-card admin-custom-date-card" aria-label="Admin custom report date range">
-                <label>Custom date range</label>
-                <div className="inline-field-grid">
-                  <label className="field-card"><span>From</span><input aria-label="Admin report from date" type="date" value={adminReportFromDate} onChange={(event) => setAdminReportFromDate(event.target.value)} /></label>
-                  <label className="field-card"><span>To</span><input aria-label="Admin report to date" type="date" value={adminReportToDate} onChange={(event) => setAdminReportToDate(event.target.value)} /></label>
-                </div>
-                <button type="button" className="primary-action" onClick={() => setScreenNotice({ title: 'Custom admin report ready', message: `${adminReportFromDate} to ${adminReportToDate} report download prepared.`, tone: 'success' })}>Download custom report</button>
-              </section>
-            )}
+            {renderAdminDateFilter(showReports ? 'Report date range' : 'Overview date range')}
 
             {showOverview && (
               <div className="admin-metric-grid">
@@ -1533,15 +1519,8 @@ function App() {
                     <p>Agent activity</p>
                     <span>Shows who checked in, who updated visits, and who is missing data.</span>
                   </div>
-                  <button type="button" className="admin-icon-add-button" aria-label="Add agent profile" title="Add agent profile" onClick={() => setAdminAgentsView('add')}><Plus size={19} /></button>
                 </section>
-                <div className="admin-filter-row" aria-label="Agent activity period filters">
-                  {(['today', 'week', 'month', 'custom'] as ReportPeriod[]).map((periodOption) => (
-                    <button key={periodOption} type="button" className={adminPeriod === periodOption ? 'admin-filter-active' : ''} onClick={() => changePeriod(periodOption)}>
-                      {periodOption === 'today' ? 'Today' : periodOption === 'week' ? 'Week' : periodOption === 'month' ? 'Month' : 'Custom'}
-                    </button>
-                  ))}
-                </div>
+                {renderAdminDateFilter('Activity date range')}
                 <div className="admin-filter-row admin-agent-filter-row" aria-label="Agent type filters">
                   {(['all', 'sales', 'service'] as AdminAgentFilter[]).map((filter) => (
                     <button key={filter} type="button" className={adminAgentFilter === filter ? 'admin-filter-active' : ''} onClick={() => setAdminAgentFilter(filter)}>
@@ -1623,27 +1602,42 @@ function App() {
 
         {showProfiles && (
           <>
-            <section className="profile-hero-card admin-profile-hero-card">
-              <span className="profile-avatar"><UserRound size={25} /></span>
-              <div>
-                <p>Admin profile</p>
-                <strong>{session?.agentName ?? 'Admin User'}</strong>
-                <span>{session?.email ?? 'admin@crystalbio.in'} • Owner access</span>
-              </div>
-            </section>
-            <section className="admin-action-card">
-              <label>Profile access rules</label>
-              <div className="admin-settings-list"><span>Public signup: Off</span><span>Admin creates agent profiles</span><span>Email invite required</span><span>Email OTP backup: On</span></div>
-            </section>
-            <section className="admin-report-list-card admin-agent-activity-list">
-              <div className="admin-report-heading"><label>Team profiles</label><span>{adminSeats.length} seats</span></div>
-              {adminSeats.map((seat) => (
-                <button key={seat.id} type="button" className="admin-report-row admin-click-row" onClick={() => { setSelectedAdminSeatId(seat.id); setAdminTab('agents'); setAdminAgentsView('profile'); }}>
-                  <div className="admin-report-row-main"><strong>{seat.name}</strong><p>{roleTextForAdminSeat(seat.role)} • {seat.employeeId}</p><small>{seat.email}</small></div>
-                  <span className={seat.status === 'active' ? 'chip chip-soft' : seat.status === 'invited' ? 'chip chip-info' : 'chip chip-warning'}>{statusTextForSeat(seat.status)}</span>
-                </button>
-              ))}
-            </section>
+            {adminAgentsView === 'add' ? (
+              <section className="admin-seat-form-card">
+                <button type="button" className="admin-detail-back" onClick={() => setAdminAgentsView('list')}><ChevronLeft size={16} /> Back to profiles</button>
+                <div className="admin-seat-form-heading"><label>New profile</label><strong>Add agent seat</strong><span>Create the profile first, then send the password setup invite to the registered email.</span></div>
+                <label className="field-card"><span>Agent name</span><input aria-label="New agent name" value={newSeatName} onChange={(event) => setNewSeatName(event.target.value)} /></label>
+                <label className="field-card"><span>Employee ID</span><input aria-label="New employee ID" value={newSeatEmployeeId} onChange={(event) => setNewSeatEmployeeId(event.target.value)} /></label>
+                <label className="field-card"><span>Email ID for invite</span><input aria-label="New agent email" inputMode="email" value={newSeatEmail} onChange={(event) => setNewSeatEmail(event.target.value)} /></label>
+                <label className="field-card"><span>Mobile number</span><input aria-label="New agent mobile" inputMode="tel" value={newSeatMobile} onChange={(event) => setNewSeatMobile(event.target.value)} /></label>
+                <div className="inline-field-grid">
+                  <label className="field-card"><span>Role</span><select aria-label="New agent role" value={newSeatRole} onChange={(event) => setNewSeatRole(event.target.value as AdminSeat['role'])}><option value="sales">Sales agent</option><option value="service">Service agent</option><option value="admin">Admin</option></select></label>
+                  <label className="field-card"><span>Territory</span><input aria-label="New agent territory" value={newSeatTerritory} onChange={(event) => setNewSeatTerritory(event.target.value)} /></label>
+                </div>
+                <button type="button" className="primary-action" onClick={handleCreateSeatInvite}>Create profile + send invite</button>
+              </section>
+            ) : (
+              <>
+                <section className="profile-hero-card admin-profile-hero-card">
+                  <span className="profile-avatar"><UserRound size={25} /></span>
+                  <div>
+                    <p>Admin profile</p>
+                    <strong>{session?.agentName ?? 'Admin User'}</strong>
+                    <span>{session?.email ?? 'admin@crystalbio.in'} • Owner access</span>
+                    <small className="profile-access-note">Invite only • Public signup off • Email OTP backup on</small>
+                  </div>
+                </section>
+                <section className="admin-report-list-card admin-agent-activity-list">
+                  <div className="admin-report-heading profile-list-heading"><label>Team profiles</label><button type="button" className="profile-add-button" onClick={() => setAdminAgentsView('add')}><Plus size={16} /> Add profile</button></div>
+                  {adminSeats.map((seat) => (
+                    <button key={seat.id} type="button" className="admin-report-row admin-click-row" onClick={() => { setSelectedAdminSeatId(seat.id); setAdminTab('agents'); setAdminAgentsView('profile'); }}>
+                      <div className="admin-report-row-main"><strong>{seat.name}</strong><p>{roleTextForAdminSeat(seat.role)} • {seat.employeeId}</p><small>{seat.email}</small></div>
+                      <span className={seat.status === 'active' ? 'chip chip-soft' : seat.status === 'invited' ? 'chip chip-info' : 'chip chip-warning'}>{statusTextForSeat(seat.status)}</span>
+                    </button>
+                  ))}
+                </section>
+              </>
+            )}
           </>
         )}
 
