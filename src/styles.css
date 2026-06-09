@@ -619,7 +619,8 @@ p { color: var(--muted); line-height: 1.5; }
 .report-metric-card strong { font-size: 18px; font-weight: 560; }
 .report-metric-card span { display: block; color: var(--ink); font-size: 11.5px; font-weight: 540; line-height: 1.22; }
 .report-metric-card small { display: block; margin-top: 2px; color: var(--muted); font-size: 10.5px; line-height: 1.22; }
-.report-choice-card {
+.report-choice-card,
+.report-setup-card {
   padding: 10px;
   margin-bottom: 8px;
   border-radius: 22px;
@@ -627,7 +628,8 @@ p { color: var(--muted); line-height: 1.5; }
   border: 1px solid rgba(123, 139, 111, 0.22);
   box-shadow: 0 10px 22px rgba(47, 61, 40, 0.045);
 }
-.report-choice-card > label {
+.report-choice-card > label,
+.report-setup-card > label {
   display: block;
   margin-bottom: 8px;
   color: var(--muted);
@@ -656,6 +658,17 @@ p { color: var(--muted); line-height: 1.5; }
   background: #eef5e8;
   border-color: rgba(76, 103, 58, 0.46);
   box-shadow: 0 7px 14px rgba(47, 61, 40, 0.05);
+}
+.inline-date-filter-card {
+  margin-top: 9px;
+  margin-bottom: 9px;
+  background: #f8faf4;
+  box-shadow: none;
+}
+.single-report-generate {
+  min-height: 40px;
+  margin-top: 2px;
+  margin-bottom: 0;
 }
 .four-report-actions { grid-template-columns: repeat(2, 1fr); }
 .simple-report-preview-card .report-preview-heading { margin-bottom: 4px; }

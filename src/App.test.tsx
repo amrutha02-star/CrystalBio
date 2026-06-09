@@ -162,9 +162,10 @@ describe('Crystal Bio agent view shell', () => {
     expect(screen.getAllByText(/June 2026/).length).toBeGreaterThan(0);
     fireEvent.change(screen.getByLabelText('My report preset'), { target: { value: 'week' } });
     expect(screen.getByText(/Weekly report/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /^monthly$/i }));
-    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Monthly report ready'));
-    expect(screen.getAllByText(/Monthly report/).length).toBeGreaterThan(0);
+    expect(screen.queryByRole('button', { name: /^monthly$/i })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /^generate report$/i }));
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Weekly report ready'));
+    expect(screen.getAllByText(/Weekly report/).length).toBeGreaterThan(0);
     expect(screen.queryByText(/fixed demo values/i)).not.toBeInTheDocument();
   });
 

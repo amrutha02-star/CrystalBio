@@ -1239,19 +1239,18 @@ function App() {
       visits: { title: 'Visit report', helper: 'Sales visits, service visits, follow-ups' },
       combined: { title: 'Combined work report', helper: 'Attendance + visits + leave in one report' },
     };
-    const generateReport = (period: ReportPeriod) => {
-      setReportPeriod(period);
+    const generateReport = () => {
       setScreenNotice({
-        title: `${reportCopy[period].title} ready`,
-        message: `${kindLabels[reportKind].title} for ${reportCopy[period].range}.`,
+        title: `${activeReport.title} ready`,
+        message: `${kindLabels[reportKind].title} for ${activeReport.range}.`,
         tone: 'success',
       });
     };
 
     return (
       <ScreenPanel title="My reports" subtitle="Choose one report type, choose dates, then generate.">
-        <section className="report-choice-card" aria-label="Choose report type">
-          <label>1. What do you want to see?</label>
+        <section className="report-setup-card" aria-label="Report setup">
+          <label>Report type</label>
           <div className="report-kind-list">
             {(Object.keys(kindLabels) as AgentReportKind[]).map((kind) => (
               <button key={kind} type="button" className={kind === reportKind ? 'report-kind-row report-kind-active' : 'report-kind-row'} onClick={() => setReportKind(kind)}>
@@ -1260,11 +1259,10 @@ function App() {
               </button>
             ))}
           </div>
-        </section>
 
-        <section className={reportPeriod === 'custom' ? 'date-filter-card date-filter-card-expanded' : 'date-filter-card compact-date-filter-card'} aria-label="My report period">
+          <div className={reportPeriod === 'custom' ? 'date-filter-card inline-date-filter-card date-filter-card-expanded' : 'date-filter-card inline-date-filter-card compact-date-filter-card'} aria-label="My report period">
           <div className="date-filter-head compact-date-filter-head">
-            <div><label>2. Report dates</label><strong>{activeReport.range}</strong></div>
+            <div><label>Report dates</label><strong>{activeReport.range}</strong></div>
             <select aria-label="My report preset" value={reportPeriod} onChange={(event) => setReportPeriod(event.target.value as ReportPeriod)}>
               <option value="today">Daily</option>
               <option value="week">Weekly</option>
@@ -1278,17 +1276,9 @@ function App() {
               <label><span>To</span><input aria-label="My report to date" type="date" value={reportToDate} onChange={(event) => setReportToDate(event.target.value)} /></label>
             </div>
           )}
-        </section>
-
-        <section className="form-card report-generate-card">
-          <label>3. Generate report</label>
-          <p>{kindLabels[reportKind].title} • {activeReport.range}</p>
-          <div className="report-generate-actions four-report-actions">
-            <button type="button" onClick={() => generateReport('today')}>Daily</button>
-            <button type="button" onClick={() => generateReport('week')}>Weekly</button>
-            <button type="button" onClick={() => generateReport('month')}>Monthly</button>
-            <button type="button" onClick={() => generateReport('custom')}>Custom dates</button>
           </div>
+
+          <button type="button" className="primary-action single-report-generate" onClick={generateReport}>Generate report</button>
         </section>
 
         <section className="report-preview-card simple-report-preview-card">
