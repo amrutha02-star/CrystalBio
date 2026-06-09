@@ -1342,12 +1342,6 @@ function App() {
     return 'Invite pending';
   };
 
-  const statusChipForSeat = (status: AdminSeatStatus) => {
-    if (status === 'active') return 'chip chip-soft';
-    if (status === 'inactive') return 'chip chip-info';
-    return 'chip chip-warning';
-  };
-
   const handleCreateSeatInvite = () => {
     const trimmedName = newSeatName.trim();
     const trimmedEmail = newSeatEmail.trim();
@@ -1379,12 +1373,6 @@ function App() {
       week: { label: 'This week', active: '8 agents active', summary: '9 service visits • 14 sales visits • 3 leave requests', visits: '23', checkedIn: '8', leave: '3', followUps: '11' },
       month: { label: 'This month', active: '11 agents tracked', summary: '38 service visits • 61 sales visits • 7 leave requests', visits: '99', checkedIn: '11', leave: '7', followUps: '26' },
     };
-    const adminAgents = adminSeats.map((seat) => ({
-      ...seat,
-      detail: `${roleTextForAdminSeat(seat.role)} • ${seat.employeeId} • ${seat.territory}`,
-      statusLabel: statusTextForSeat(seat.status),
-      chip: statusChipForSeat(seat.status),
-    }));
     const adminReportRows: Record<ReportPeriod, Array<{ name: string; role: string; attendance: string; visits: string; status: string; chipClass: string }>> = {
       today: [
         { name: 'Rahul Sales', role: 'Sales agent', attendance: 'Checked in', visits: '2 sales visits • 1 follow-up', status: 'Ready', chipClass: 'chip chip-soft' },
@@ -1420,7 +1408,10 @@ function App() {
       setScreenNotice(null);
     };
     const activeApproval = selectedAdminApproval ? adminApprovals[selectedAdminApproval] : null;
-    const visibleAgents = adminAgents.filter((agent) => adminAgentFilter === 'all' || agent.role === adminAgentFilter);
+    const visibleAgentActivityRows = adminReportRows[adminPeriod].filter((row) => {
+      if (adminAgentFilter === 'all') return true;
+      return row.role.toLowerCase().startsWith(adminAgentFilter);
+    });
     const selectedSeat = adminSeats.find((seat) => seat.id === selectedAdminSeatId) ?? adminSeats[0];
     const period = adminPeriodData[adminPeriod];
     const changePeriod = (nextPeriod: ReportPeriod) => {
@@ -1505,14 +1496,17 @@ function App() {
                 <section className="admin-agents-compact-head">
                   <div>
                     <p>Agent activity</p>
-                    <span>{adminSeats.length} profiles • {adminSeats.filter((seat) => seat.status === 'invited').length} invite pending • {adminSeats.filter((seat) => seat.status === 'active').length} active</span>
+                    <span>Shows who checked in, who updated visits, and who is missing data.</span>
                   </div>
-                  <button type="button" className="admin-icon-add-button" aria-label="Add agent" title="Add agent" onClick={() => setAdminAgentsView('add')}><Plus size={19} /></button>
+                  <button type="button" className="admin-icon-add-button" aria-label="Add agent profile" title="Add agent profile" onClick={() => setAdminAgentsView('add')}><Plus size={19} /></button>
                 </section>
-                <label className="search-card visit-search-card admin-seat-search-card">
-                  <Search size={17} />
-                  <input aria-label="Search agent profiles" placeholder="Search name, email, mobile, employee ID" />
-                </label>
+                <div className="admin-filter-row" aria-label="Agent activity period filters">
+                  {(['today', 'week', 'month'] as ReportPeriod[]).map((periodOption) => (
+                    <button key={periodOption} type="button" className={adminPeriod === periodOption ? 'admin-filter-active' : ''} onClick={() => changePeriod(periodOption)}>
+                      {periodOption === 'today' ? 'Today' : periodOption === 'week' ? 'Week' : 'Month'}
+                    </button>
+                  ))}
+                </div>
                 <div className="admin-filter-row admin-agent-filter-row" aria-label="Agent type filters">
                   {(['all', 'sales', 'service'] as AdminAgentFilter[]).map((filter) => (
                     <button key={filter} type="button" className={adminAgentFilter === filter ? 'admin-filter-active' : ''} onClick={() => setAdminAgentFilter(filter)}>
@@ -1520,18 +1514,22 @@ function App() {
                     </button>
                   ))}
                 </div>
-                {visibleAgents.map((agent) => (
-                  <button key={agent.id} type="button" className="admin-seat-card admin-click-row" onClick={() => { setSelectedAdminSeatId(agent.id); setAdminAgentsView('profile'); }}>
-                    <div className="admin-seat-card-top">
-                      <div><strong>{agent.name}</strong><p>{agent.detail}</p></div>
-                      <span className={agent.chip}>{agent.statusLabel}</span>
-                    </div>
-                    <div className="admin-seat-meta-row">
-                      <span>{agent.email}</span>
-                      <span>{agent.lastActive}</span>
-                    </div>
-                  </button>
-                ))}
+                <section className="admin-report-list-card admin-agent-activity-list">
+                  <div className="admin-report-heading">
+                    <label>{period.label} activity</label>
+                    <span>{visibleAgentActivityRows.length} shown</span>
+                  </div>
+                  {visibleAgentActivityRows.map((row) => (
+                    <button key={`${adminPeriod}-${row.name}`} type="button" className="admin-report-row admin-click-row" onClick={() => setScreenNotice({ title: `${row.name} activity opened`, message: `${row.role}: ${row.attendance}. ${row.visits}.`, tone: 'info' })}>
+                      <div className="admin-report-row-main">
+                        <strong>{row.name}</strong>
+                        <p>{row.role} • {row.attendance}</p>
+                        <small>{row.visits}</small>
+                      </div>
+                      <span className={row.chipClass}>{row.status}</span>
+                    </button>
+                  ))}
+                </section>
               </>
             )}
 
