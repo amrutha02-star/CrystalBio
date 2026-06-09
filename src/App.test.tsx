@@ -295,7 +295,9 @@ describe('Crystal Bio agent view shell', () => {
     render(<App />);
 
     expect(screen.getByRole('heading', { name: 'Admin reports' })).toBeInTheDocument();
-    expect(screen.getByText('Person-wise preview')).toBeInTheDocument();
+    expect(screen.getByText('Report summary')).toBeInTheDocument();
+    expect(screen.getByText('Needs office action')).toBeInTheDocument();
+    expect(screen.getByText('Person-wise report')).toBeInTheDocument();
     expect(screen.getByLabelText('Admin report scope')).toBeInTheDocument();
     expect(screen.getAllByText('Rahul Sales').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Meera Service').length).toBeGreaterThan(0);
@@ -304,8 +306,15 @@ describe('Crystal Bio agent view shell', () => {
 
     fireEvent.change(screen.getByLabelText('Report date range preset'), { target: { value: 'week' } });
     expect(screen.getByText('8 sales visits • 3 follow-ups')).toBeInTheDocument();
+    expect(screen.getByText('Attendance details')).toBeInTheDocument();
+    expect(screen.getByText('Sales visit details')).toBeInTheDocument();
+    expect(screen.getByText('Missing information')).toBeInTheDocument();
+    expect(screen.getByText('Send quote to Apollo Diagnostics')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Meera Service.*6 service visits/i }));
+    expect(screen.getByText('Service visit details')).toBeInTheDocument();
+    expect(screen.getByText('Arrange bearing kit and update Meera')).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('Admin report scope'), { target: { value: 'meera' } });
-    expect(screen.getByText('Selected report preview')).toBeInTheDocument();
+    expect(screen.getByText('Selected report')).toBeInTheDocument();
     expect(screen.getByText('6 service visits • 2 pending parts')).toBeInTheDocument();
     expect(screen.queryByText('8 sales visits • 3 follow-ups')).not.toBeInTheDocument();
     fireEvent.click(await screen.findByRole('button', { name: /^generate report$/i }));

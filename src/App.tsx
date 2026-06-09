@@ -95,6 +95,7 @@ function App() {
   const [adminReportFromDate, setAdminReportFromDate] = useState('2026-06-01');
   const [adminReportToDate, setAdminReportToDate] = useState('2026-06-08');
   const [adminReportScope, setAdminReportScope] = useState<AdminReportScope>('office');
+  const [expandedAdminReportId, setExpandedAdminReportId] = useState<string | null>('Rahul Sales');
   const [adminAgentFilter, setAdminAgentFilter] = useState<AdminAgentFilter>('all');
   const [adminTab, setAdminTab] = useState<AdminTab>(getInitialAdminTab);
   const [selectedAdminApproval, setSelectedAdminApproval] = useState<AdminApprovalId | null>(getInitialAdminApproval);
@@ -1407,6 +1408,34 @@ function App() {
         { name: 'Anil Sales', role: 'Sales agent', attendance: 'Selected range', visits: '8 sales visits • 2 missing updates', status: 'Review', chipClass: 'chip chip-warning' },
       ],
     };
+    const adminReportDetails: Record<string, { attendance: string[]; visits: string[]; missing: string[]; leave: string; officeAction: string }> = {
+      'Rahul Sales': {
+        attendance: ['Present 5/6 days', 'Check-in average 9:18 AM', 'All check-outs captured with GPS'],
+        visits: ['Apollo Diagnostics: biochemistry analyzer requirement confirmed', 'Quote submitted: No', 'Follow-up date: 17 Jun', 'Office note: share quotation and brochure'],
+        missing: ['Quote value not added yet'],
+        leave: 'No leave pending in this range',
+        officeAction: 'Send quote to Apollo Diagnostics',
+      },
+      'Meera Service': {
+        attendance: ['Present 5/6 days', 'One service day ended late', 'GPS captured for all visits'],
+        visits: ['Metro Lab: centrifuge noise checked', 'Parts required: bearing kit', 'Machine status: working with observation', 'Next visit needed after parts arrive'],
+        missing: ['Part availability confirmation pending'],
+        leave: 'Leave request: 12 Jun to 13 Jun • waiting approval',
+        officeAction: 'Arrange bearing kit and update Meera',
+      },
+      'Anil Sales': {
+        attendance: ['Present 4/6 days', 'One missed check-in', 'One visit saved without checkout'],
+        visits: ['6 sales visits logged', '2 follow-ups overdue', 'One Wednesday visit has only Step 1 saved'],
+        missing: ['Requirement details missing', 'Follow-up date missing', 'Customer contact not added'],
+        leave: 'No leave request submitted',
+        officeAction: 'Ask Anil to complete missing Wednesday visit update',
+      },
+    };
+    const adminOfficeActions = [
+      { title: 'Send quote', detail: 'Apollo Diagnostics • biochemistry analyzer', tone: 'warning' },
+      { title: 'Arrange parts', detail: 'Metro Lab • bearing kit required', tone: 'info' },
+      { title: 'Complete missing update', detail: 'Anil Sales • Wednesday visit fields missing', tone: 'warning' },
+    ];
     const adminReportScopeLabels: Record<AdminReportScope, string> = {
       office: 'Whole office report',
       sales: 'All sales agents',
@@ -1678,7 +1707,7 @@ function App() {
               <section className="admin-report-list-card admin-report-setup-card">
                 <div className="admin-report-scope-row">
                   <label>Report for</label>
-                  <select aria-label="Admin report scope" value={adminReportScope} onChange={(event) => setAdminReportScope(event.target.value as AdminReportScope)}>
+                  <select aria-label="Admin report scope" value={adminReportScope} onChange={(event) => { setAdminReportScope(event.target.value as AdminReportScope); setExpandedAdminReportId(null); }}>
                     <option value="office">Whole office</option>
                     <option value="sales">All sales agents</option>
                     <option value="service">All service agents</option>
@@ -1688,20 +1717,74 @@ function App() {
                   </select>
                 </div>
                 <button type="button" className="primary-action single-report-generate" onClick={generateAdminReport}>Generate report</button>
+
+                <section className="admin-report-summary-card">
+                  <div className="admin-report-heading"><label>Report summary</label><span>{period.label}</span></div>
+                  <div className="admin-report-mini-metrics">
+                    <div><strong>{adminReportScopeRows.length}</strong><span>People</span></div>
+                    <div><strong>{period.visits}</strong><span>Visits</span></div>
+                    <div><strong>{period.followUps}</strong><span>Follow-ups</span></div>
+                    <div><strong>{adminReportScopeRows.filter((row) => row.status !== 'Ready').length}</strong><span>Review</span></div>
+                  </div>
+                  <div className="admin-report-chart-block" aria-label="Simple report charts">
+                    <div className="admin-chart-row"><span>Sales</span><div><i style={{ width: '61%' }} /></div><strong>14</strong></div>
+                    <div className="admin-chart-row"><span>Service</span><div><i className="service-bar" style={{ width: '39%' }} /></div><strong>9</strong></div>
+                    <div className="admin-chart-row"><span>Ready</span><div><i style={{ width: '62%' }} /></div><strong>5</strong></div>
+                    <div className="admin-chart-row"><span>Review</span><div><i className="warning-bar" style={{ width: '38%' }} /></div><strong>3</strong></div>
+                  </div>
+                </section>
+
+                <section className="admin-office-actions-card">
+                  <div className="admin-report-heading"><label>Needs office action</label><span>{adminOfficeActions.length}</span></div>
+                  {adminOfficeActions.map((action) => (
+                    <div key={action.title} className="admin-office-action-row">
+                      <span className={action.tone === 'info' ? 'chip chip-info' : 'chip chip-warning'}>{action.tone === 'info' ? 'Service' : 'Action'}</span>
+                      <div><strong>{action.title}</strong><small>{action.detail}</small></div>
+                    </div>
+                  ))}
+                </section>
+
                 <div className="admin-report-heading">
-                  <label>{adminReportScope === 'office' ? 'Person-wise preview' : 'Selected report preview'}</label>
+                  <label>{adminReportScope === 'office' ? 'Person-wise report' : 'Selected report'}</label>
                   <span>{adminReportScopeRows.length} shown</span>
                 </div>
-                {adminReportScopeRows.map((row) => (
-                  <button key={row.name} type="button" className="admin-report-row admin-click-row" onClick={() => setScreenNotice({ title: `${row.name} report opened`, message: `${row.role} report detail will show attendance, visits, leave, and follow-ups.`, tone: 'info' })}>
-                    <div className="admin-report-row-main">
-                      <strong>{row.name}</strong>
-                      <p>{row.role} • {row.attendance}</p>
-                      <small>{row.visits}</small>
-                    </div>
-                    <span className={row.chipClass}>{row.status}</span>
-                  </button>
-                ))}
+                {adminReportScopeRows.map((row) => {
+                  const detail = adminReportDetails[row.name];
+                  const isExpanded = expandedAdminReportId === row.name;
+                  return (
+                    <article key={row.name} className={isExpanded ? 'admin-report-row-card admin-report-row-expanded' : 'admin-report-row-card'}>
+                      <button type="button" className="admin-report-row admin-click-row" aria-expanded={isExpanded} onClick={() => setExpandedAdminReportId(isExpanded ? null : row.name)}>
+                        <div className="admin-report-row-main">
+                          <strong>{row.name}</strong>
+                          <p>{row.role} • {row.attendance}</p>
+                          <small>{row.visits}</small>
+                        </div>
+                        <span className={row.chipClass}>{row.status}</span>
+                      </button>
+                      {isExpanded && detail && (
+                        <div className="admin-report-expanded-panel">
+                          <details open>
+                            <summary>Attendance details</summary>
+                            {detail.attendance.map((item) => <p key={item}>{item}</p>)}
+                          </details>
+                          <details open>
+                            <summary>{row.role.startsWith('Sales') ? 'Sales visit details' : 'Service visit details'}</summary>
+                            {detail.visits.map((item) => <p key={item}>{item}</p>)}
+                          </details>
+                          <details>
+                            <summary>Leave details</summary>
+                            <p>{detail.leave}</p>
+                          </details>
+                          <details open>
+                            <summary>Missing information</summary>
+                            {detail.missing.map((item) => <p key={item}>{item}</p>)}
+                          </details>
+                          <div className="admin-expanded-action"><span>Office action</span><strong>{detail.officeAction}</strong></div>
+                        </div>
+                      )}
+                    </article>
+                  );
+                })}
               </section>
             )}
           </>

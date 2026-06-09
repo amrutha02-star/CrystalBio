@@ -1130,17 +1130,83 @@ p { color: var(--muted); line-height: 1.5; }
   font-size: 12px;
   font-weight: 560;
 }
+.admin-report-summary-card,
+.admin-office-actions-card {
+  border: 1px solid rgba(123, 139, 111, 0.16);
+  border-radius: 20px;
+  background: rgba(255, 254, 248, 0.92);
+  padding: 12px;
+  margin-bottom: 12px;
+  box-shadow: 0 8px 18px rgba(47, 61, 40, 0.035);
+}
+.admin-report-mini-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 7px;
+  margin-bottom: 10px;
+}
+.admin-report-mini-metrics div {
+  border: 1px solid rgba(123, 139, 111, 0.14);
+  border-radius: 14px;
+  background: rgba(238, 244, 232, 0.62);
+  padding: 8px 4px;
+  text-align: center;
+}
+.admin-report-mini-metrics strong,
+.admin-report-mini-metrics span { display: block; }
+.admin-report-mini-metrics strong { color: var(--ink); font-size: 16px; font-weight: 650; }
+.admin-report-mini-metrics span { margin-top: 2px; color: var(--muted); font-size: 9.8px; line-height: 1.1; }
+.admin-report-chart-block { display: grid; gap: 6px; }
+.admin-chart-row {
+  display: grid;
+  grid-template-columns: 48px 1fr 24px;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.admin-chart-row div {
+  height: 9px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(222, 230, 214, 0.85);
+}
+.admin-chart-row i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--sage-deep);
+}
+.admin-chart-row .service-bar { background: #7d9da1; }
+.admin-chart-row .warning-bar { background: #d9b452; }
+.admin-chart-row strong { color: var(--ink); font-size: 11px; text-align: right; }
+.admin-office-action-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 9px;
+  align-items: start;
+  padding: 9px 0;
+  border-top: 1px solid rgba(227, 232, 220, 0.8);
+}
+.admin-office-action-row:first-of-type { border-top: 0; padding-top: 0; }
+.admin-office-action-row strong,
+.admin-office-action-row small { display: block; margin: 0; }
+.admin-office-action-row strong { color: var(--ink); font-size: 12.8px; font-weight: 590; }
+.admin-office-action-row small { margin-top: 3px; color: var(--muted); font-size: 11.2px; line-height: 1.35; }
+.admin-report-row-card { margin-bottom: 9px; }
 .admin-report-row {
+  width: 100%;
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 12px;
   align-items: center;
   padding: 12px 13px;
-  margin-bottom: 8px;
+  margin-bottom: 0;
   border: 1px solid rgba(123, 139, 111, 0.14);
   border-radius: 18px;
   background: rgba(255, 254, 248, 0.92);
   box-shadow: 0 8px 18px rgba(47, 61, 40, 0.035);
+  text-align: left;
 }
 .admin-report-row:first-of-type { padding-top: 12px; }
 .admin-report-row-main { min-width: 0; }
@@ -1152,6 +1218,50 @@ p { color: var(--muted); line-height: 1.5; }
 .admin-report-row strong { color: var(--ink); font-size: 14px; font-weight: 570; line-height: 1.25; }
 .admin-report-row p { margin-top: 4px; color: var(--muted); font-size: 12px; line-height: 1.35; }
 .admin-report-row small { margin-top: 5px; color: var(--sage-deep); font-size: 11.6px; line-height: 1.35; font-weight: 500; }
+.admin-report-row-expanded .admin-report-row {
+  border-bottom-left-radius: 12px;
+  border-bottom-right-radius: 12px;
+  border-color: rgba(74, 101, 62, 0.24);
+}
+.admin-report-expanded-panel {
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px 12px;
+  margin-top: -2px;
+  border: 1px solid rgba(74, 101, 62, 0.18);
+  border-top: 0;
+  border-radius: 0 0 18px 18px;
+  background: rgba(255, 254, 248, 0.78);
+}
+.admin-report-expanded-panel details {
+  border: 1px solid rgba(123, 139, 111, 0.13);
+  border-radius: 14px;
+  background: rgba(247, 250, 243, 0.88);
+  padding: 8px 10px;
+}
+.admin-report-expanded-panel summary {
+  color: var(--sage-deep);
+  font-size: 11.4px;
+  font-weight: 680;
+  letter-spacing: 0.015em;
+  cursor: pointer;
+}
+.admin-report-expanded-panel p {
+  margin: 7px 0 0;
+  color: var(--muted);
+  font-size: 11.5px;
+  line-height: 1.35;
+}
+.admin-expanded-action {
+  border-left: 3px solid #d9b452;
+  border-radius: 12px;
+  background: #fff8df;
+  padding: 9px 10px;
+}
+.admin-expanded-action span,
+.admin-expanded-action strong { display: block; margin: 0; }
+.admin-expanded-action span { color: #7a5c11; font-size: 10.5px; font-weight: 680; text-transform: uppercase; letter-spacing: 0.03em; }
+.admin-expanded-action strong { margin-top: 3px; color: var(--ink); font-size: 12px; font-weight: 600; }
 .admin-seat-form-card,
 .admin-seat-profile-card,
 .admin-invite-preview-card {
