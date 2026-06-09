@@ -916,6 +916,14 @@ function App() {
           <span>Customer / lab name</span>
           <input aria-label="Sales customer name" value={salesAccountName} onChange={(event) => setSalesAccountName(event.target.value)} />
         </label>
+        <label className="field-card">
+          <span>Today’s visit note</span>
+          <textarea aria-label="Sales visit note" value={salesVisitNote} onChange={(event) => setSalesVisitNote(event.target.value)} placeholder="What happened in this visit?" rows={2} />
+        </label>
+        <label className="field-card">
+          <span>Requirement discussed</span>
+          <input aria-label="Sales requirement" value={salesRequirement} onChange={(event) => setSalesRequirement(event.target.value)} placeholder="Product need, quote, budget, status" />
+        </label>
         <div className="inline-field-grid">
           <label className="field-card">
             <span>Contact if available</span>
@@ -926,14 +934,6 @@ function App() {
             <input aria-label="Sales quick phone" value={salesPhone} onChange={(event) => setSalesPhone(event.target.value)} placeholder="Optional" inputMode="tel" />
           </label>
         </div>
-        <label className="field-card">
-          <span>Requirement discussed</span>
-          <input aria-label="Sales requirement" value={salesRequirement} onChange={(event) => setSalesRequirement(event.target.value)} placeholder="Product need, quote, budget, status" />
-        </label>
-        <label className="field-card">
-          <span>Today’s visit note</span>
-          <textarea aria-label="Sales visit note" value={salesVisitNote} onChange={(event) => setSalesVisitNote(event.target.value)} placeholder="What happened in this visit?" rows={2} />
-        </label>
         <div className="inline-field-grid">
           <label className="field-card">
             <span>Next action</span>
@@ -1076,11 +1076,11 @@ function App() {
             <p>{isBackendConfigured ? 'Location permission is requested when this update is saved.' : 'Location is captured when this update is saved.'}</p>
           </div>
           <label className="field-card"><span>Customer / lab name</span><input aria-label="Service customer name" value={serviceCustomerName} onChange={(event) => setServiceCustomerName(event.target.value)} /></label>
+          <label className="field-card"><span>Work done / issue checked</span><textarea aria-label="Service work done" value={serviceWorkDone} onChange={(event) => setServiceWorkDone(event.target.value)} placeholder="Issue checked, work done, customer update" rows={3} /></label>
           <div className="inline-field-grid">
             <label className="field-card"><span>Equipment if known</span><input aria-label="Service quick equipment" value={serviceEquipmentName} onChange={(event) => setServiceEquipmentName(event.target.value)} placeholder="Machine / instrument" /></label>
             <label className="field-card"><span>Contact if available</span><input aria-label="Service quick contact person" value={serviceContactPerson} onChange={(event) => setServiceContactPerson(event.target.value)} placeholder="Name / role" /></label>
           </div>
-          <label className="field-card"><span>Work done / issue checked</span><textarea aria-label="Service work done" value={serviceWorkDone} onChange={(event) => setServiceWorkDone(event.target.value)} placeholder="Issue checked, work done, customer update" rows={3} /></label>
           <div className="inline-field-grid">
             <label className="field-card"><span>Service type</span><select aria-label="Service type" value={serviceType} onChange={(event) => setServiceType(event.target.value as FrontendServiceType)}><option value="breakdown">Breakdown</option><option value="installation">Installation</option><option value="preventive_maintenance">Preventive maintenance</option><option value="repair">Repair</option><option value="calibration">Calibration</option><option value="demo">Product demonstration</option><option value="training">Training</option><option value="other">Other</option></select></label>
             <label className="field-card"><span>Next action</span><select aria-label="Service next action" value={serviceNextAction} onChange={(event) => setServiceNextAction(event.target.value as FrontendServiceNextAction)}><option value="parts_required">Parts required</option><option value="next_visit_needed">Next visit needed</option><option value="no_follow_up">No follow-up</option><option value="closed">Closed</option></select></label>
