@@ -60,6 +60,8 @@ Production/pilot backend settings:
 - `CRYSTALBIO_ALLOWED_ORIGIN=https://your-frontend-domain` restricts browser access to the approved app URL instead of wildcard demo CORS.
 - `HOST=0.0.0.0` can be used for container/hosting deployments; local development can stay on `127.0.0.1`.
 - `/health` is available for uptime monitoring.
+- Initial launch monitoring must cover both uptime and real user-action failures: failed saves, form errors, crashes, sync/network problems, login issues, and report-generation failures.
+- Serious or repeated failures should alert admin/us in plain English during the first production days, so issues are caught before agents become frustrated.
 - Sales/service records are protected by logged-in identity: only the owning agent or admin can update details or add visits.
 
 ---
@@ -757,13 +759,19 @@ The system should not wait for users to complain. It should detect issues early.
 
 ### Monitoring Agent
 
-A monitoring layer should watch:
+A monitoring layer should watch both system health and real agent actions. It should not only ask, “Is the app online?” It should also ask, “Can agents complete their work without losing data?”
 
-- App errors
-- Failed form submissions
+It should watch:
+
+- Frontend app availability
+- Backend `/health` status
+- Login failures
+- Save failures for sales visits, service visits, attendance, leave requests, and admin entries
+- Form validation errors that repeatedly block agents
+- App crashes or blank screens on agent phones
+- Network/sync failures during field use
 - Drafts not submitted
 - Agents stuck on a screen
-- Login failures
 - Slow loading screens
 - Failed photo uploads
 - Failed Telegram alerts
@@ -771,6 +779,17 @@ A monitoring layer should watch:
 - Scheduled report failures
 - Missing daily submissions
 - Overdue follow-ups
+
+For each serious user-action failure, the system should record:
+
+- Which agent was affected
+- Which screen/action failed
+- When it happened
+- Whether the data was saved, saved as draft, or lost
+- Basic device/browser/network context
+- Clear next action for admin/support
+
+Critical or repeated issues should trigger a plain-English alert, for example: `Sales visit save failed for 2 agents in the last 10 minutes. Draft safety should be checked.`
 
 ### Report Agent
 
