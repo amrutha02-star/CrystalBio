@@ -765,28 +765,46 @@ It should watch:
 
 - Frontend app availability
 - Backend `/health` status
+- Backend response time and repeated slow API calls
+- Database/storage read-write health
+- Backup creation and backup recovery health
 - Login failures
+- Session expiry/logout problems
+- Password reset/invite-link failures
 - Save failures for sales visits, service visits, attendance, leave requests, and admin entries
+- Partial saves where only some fields/files are stored
+- Duplicate submissions caused by retry/tapping twice
 - Form validation errors that repeatedly block agents
 - App crashes or blank screens on agent phones
 - Network/sync failures during field use
+- Offline drafts waiting too long to sync
 - Drafts not submitted
 - Agents stuck on a screen
 - Slow loading screens
 - Failed photo uploads
+- Camera/photo permission failures
+- GPS/location permission or accuracy failures for attendance/visits
 - Failed Telegram alerts
 - Failed emails
 - Scheduled report failures
+- Report numbers not matching saved entries
+- Admin dashboard loading/report-filter failures
 - Missing daily submissions
 - Overdue follow-ups
+- Unusual usage patterns, such as one agent failing repeatedly while others are fine
+- Browser/device-specific issues on Android/iPhone/older phones
+- Server disk/storage space getting low
+- High error rate after a new deployment
 
 For each serious user-action failure, the system should record:
 
 - Which agent was affected
 - Which screen/action failed
 - When it happened
-- Whether the data was saved, saved as draft, or lost
+- Whether the data was saved, saved as draft, partially saved, duplicated, or lost
 - Basic device/browser/network context
+- Backend/API error category, without exposing sensitive technical details to the user
+- Whether this is a one-time issue or repeated pattern
 - Clear next action for admin/support
 
 Critical or repeated issues should trigger a plain-English alert, for example: `Sales visit save failed for 2 agents in the last 10 minutes. Draft safety should be checked.`
