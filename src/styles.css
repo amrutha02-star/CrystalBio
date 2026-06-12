@@ -340,6 +340,20 @@ p { color: var(--muted); line-height: 1.5; }
   align-items: start;
   margin-bottom: 9px;
 }
+.step-toggle {
+  width: 100%;
+  background: transparent;
+  padding: 0;
+  text-align: left;
+  border-radius: 18px;
+}
+.step-toggle:focus-visible { outline: 3px solid rgba(21, 18, 23, 0.24); outline-offset: 3px; }
+.step-card-collapsed {
+  padding: 12px;
+  background: rgba(255, 255, 250, 0.9);
+}
+.step-card-collapsed .step-heading { margin-bottom: 0; }
+.step-body { margin-top: 9px; }
 .step-heading h3,
 .step-heading p { margin: 0; }
 .step-heading h3 {

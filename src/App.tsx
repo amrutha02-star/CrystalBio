@@ -86,7 +86,7 @@ function App() {
   const [isAttendanceBusy, setIsAttendanceBusy] = useState(false);
   const [statusMessage, setStatusMessage] = useState('Loading logged-in agent…');
   const [screenNotice, setScreenNotice] = useState<ToastNotice | string | null>(null);
-  const [loginEmail, setLoginEmail] = useState('rahul.sales@crystalbio.in');
+  const [loginEmail, setLoginEmail] = useState('');
   const [password, setPassword] = useState('');
   const [reportPeriod, setReportPeriod] = useState<ReportPeriod>('week');
   const [reportKind, setReportKind] = useState<AgentReportKind>('combined');
@@ -96,7 +96,7 @@ function App() {
   const [adminReportFromDate, setAdminReportFromDate] = useState('2026-06-01');
   const [adminReportToDate, setAdminReportToDate] = useState('2026-06-08');
   const [adminReportScope, setAdminReportScope] = useState<AdminReportScope>('office');
-  const [expandedAdminReportId, setExpandedAdminReportId] = useState<string | null>('Rahul Sales');
+  const [expandedAdminReportId, setExpandedAdminReportId] = useState<string | null>(null);
   const [adminAgentFilter, setAdminAgentFilter] = useState<AdminAgentFilter>('all');
   const [adminTab, setAdminTab] = useState<AdminTab>(getInitialAdminTab);
   const [selectedAdminApproval, setSelectedAdminApproval] = useState<AdminApprovalId | null>(getInitialAdminApproval);
@@ -144,6 +144,8 @@ function App() {
   const [salesPhotoNote, setSalesPhotoNote] = useState('');
   const [salesStep2Saved, setSalesStep2Saved] = useState(false);
   const [salesStep3Saved, setSalesStep3Saved] = useState(false);
+  const [isSalesStep2Open, setIsSalesStep2Open] = useState(false);
+  const [isSalesStep3Open, setIsSalesStep3Open] = useState(false);
   const [salesSaveResult, setSalesSaveResult] = useState<FrontendSalesSaveResult | null>(null);
   const [isSalesSubmitting, setIsSalesSubmitting] = useState(false);
   const [isSalesStep2Submitting, setIsSalesStep2Submitting] = useState(false);
@@ -174,6 +176,8 @@ function App() {
   const [serviceOfficeNotes, setServiceOfficeNotes] = useState('Share parts availability with office.');
   const [serviceStep2Saved, setServiceStep2Saved] = useState(false);
   const [serviceStep3Saved, setServiceStep3Saved] = useState(false);
+  const [isServiceStep2Open, setIsServiceStep2Open] = useState(false);
+  const [isServiceStep3Open, setIsServiceStep3Open] = useState(false);
   const [serviceSaveResult, setServiceSaveResult] = useState<FrontendServiceSaveResult | null>(null);
   const [isServiceSubmitting, setIsServiceSubmitting] = useState(false);
   const [isServiceStep2Submitting, setIsServiceStep2Submitting] = useState(false);
@@ -311,6 +315,8 @@ function App() {
     setSalesPhotoNote('');
     setSalesStep2Saved(false);
     setSalesStep3Saved(false);
+    setIsSalesStep2Open(false);
+    setIsSalesStep3Open(false);
     setSalesSaveResult(null);
   };
 
@@ -341,6 +347,8 @@ function App() {
     setServiceOfficeNotes('Share parts availability with office.');
     setServiceStep2Saved(false);
     setServiceStep3Saved(false);
+    setIsServiceStep2Open(false);
+    setIsServiceStep3Open(false);
     setServiceSaveResult(null);
   };
 
@@ -492,7 +500,7 @@ function App() {
         });
         setScreenNotice({
           title: 'Sales Step 1 updated',
-          message: 'Changes are saved. Step 2 and Step 3 remain available.',
+          message: 'Changes are saved. Open Step 2 or Step 3 when more details are ready.',
           tone: 'success',
         });
         return;
@@ -512,8 +520,8 @@ function App() {
       setSalesStep3Saved(false);
       setScreenNotice(
         isBackendConfigured
-          ? 'Sales Step 1 saved. Agent can complete Step 2 and Step 3 later.'
-          : 'Sales Step 1 saved. Step 2 and Step 3 can now be saved.',
+          ? 'Sales Step 1 saved. Open Step 2 or Step 3 when more details are ready.'
+          : 'Sales Step 1 saved. Step 2 and Step 3 can now be opened.',
       );
     } catch (error) {
       setScreenNotice(error instanceof Error ? error.message : 'Sales Step 1 save failed');
@@ -549,6 +557,7 @@ function App() {
       });
       setSalesSaveResult({ ...salesSaveResult, opportunity: { ...salesSaveResult.opportunity, ...opportunity } });
       setSalesStep2Saved(true);
+      setIsSalesStep2Open(false);
       setScreenNotice({
         title: 'Sales Step 2 saved',
         message: 'Customer and requirement details can still be updated later.',
@@ -583,6 +592,7 @@ function App() {
       });
       setSalesSaveResult({ ...salesSaveResult, opportunity: { ...salesSaveResult.opportunity, ...opportunity } });
       setSalesStep3Saved(true);
+      setIsSalesStep3Open(false);
       setScreenNotice('Sales Step 3 saved. Admin can see quote/proof completion later.');
     } catch (error) {
       setScreenNotice(error instanceof Error ? error.message : 'Sales Step 3 save failed');
@@ -639,7 +649,7 @@ function App() {
         });
         setScreenNotice({
           title: 'Service Step 1 updated',
-          message: 'Changes are saved. Step 2 and Step 3 remain available.',
+          message: 'Changes are saved. Open Step 2 or Step 3 when more details are ready.',
           tone: 'success',
         });
         return;
@@ -704,6 +714,7 @@ function App() {
       });
       setServiceSaveResult({ ...serviceSaveResult, serviceRecord: { ...serviceSaveResult.serviceRecord, ...serviceRecord } });
       setServiceStep2Saved(true);
+      setIsServiceStep2Open(false);
       setScreenNotice({
         title: 'Service Step 2 saved',
         message: 'Equipment and issue details are updated.',
@@ -735,6 +746,7 @@ function App() {
       });
       setServiceSaveResult({ ...serviceSaveResult, serviceRecord: { ...serviceSaveResult.serviceRecord, ...serviceRecord } });
       setServiceStep3Saved(true);
+      setIsServiceStep3Open(false);
       setScreenNotice('Service Step 3 saved. Admin can see parts/proof completion later.');
     } catch (error) {
       setScreenNotice(error instanceof Error ? error.message : 'Service Step 3 save failed');
@@ -952,11 +964,12 @@ function App() {
         <button type="button" className="primary-action" disabled={salesAnySubmitting || !session} onClick={handleSalesSubmit}>{isSalesSubmitting ? 'Saving…' : salesSaveResult ? 'Save Step 1 changes' : 'Save Step 1'}</button>
       </section>
 
-      <section className="step-card">
-        <div className="step-heading">
+      <section className={isSalesStep2Open ? 'step-card step-card-open' : 'step-card step-card-collapsed'}>
+        <button type="button" className="step-heading step-toggle" aria-expanded={isSalesStep2Open} onClick={() => setIsSalesStep2Open((open) => !open)}>
           <div><span className="step-pill">Step 2</span><h3>Customer & requirement details</h3><p>Add contact and product details when available.</p></div>
-          <span className={salesStep2Saved ? 'chip chip-soft' : 'chip chip-info'}>{salesStep2Saved ? 'Saved' : 'Later'}</span>
-        </div>
+          <span className={salesStep2Saved ? 'chip chip-soft' : 'chip chip-info'}>{salesStep2Saved ? 'Saved' : isSalesStep2Open ? 'Open' : 'Tap to open'}</span>
+        </button>
+        {isSalesStep2Open && <div className="step-body">
         <label className="field-card">
           <span>Contact person</span>
           <input aria-label="Sales contact person" value={salesContactPerson} onChange={(event) => setSalesContactPerson(event.target.value)} placeholder="Optional" />
@@ -998,13 +1011,15 @@ function App() {
           <input aria-label="Sales equipment model" value={salesEquipmentModel} onChange={(event) => setSalesEquipmentModel(event.target.value)} placeholder="Optional" />
         </label>
         <button type="button" aria-label="Save Step 2" className={salesSaveResult ? 'secondary-action step-save-action' : 'secondary-action step-save-action locked-step-action'} disabled={salesAnySubmitting || !salesSaveResult} onClick={handleSalesStep2Submit}>{isSalesStep2Submitting ? 'Saving…' : salesSaveResult ? 'Save Step 2' : 'Complete Step 1 first'}</button>
+        </div>}
       </section>
 
-      <section className="step-card">
-        <div className="step-heading">
+      <section className={isSalesStep3Open ? 'step-card step-card-open' : 'step-card step-card-collapsed'}>
+        <button type="button" className="step-heading step-toggle" aria-expanded={isSalesStep3Open} onClick={() => setIsSalesStep3Open((open) => !open)}>
           <div><span className="step-pill">Step 3</span><h3>Quote, proof & office details</h3><p>Useful for follow-up, admin reports, and office team work.</p></div>
-          <span className={salesStep3Saved ? 'chip chip-soft' : 'chip chip-info'}>{salesStep3Saved ? 'Saved' : 'Later'}</span>
-        </div>
+          <span className={salesStep3Saved ? 'chip chip-soft' : 'chip chip-info'}>{salesStep3Saved ? 'Saved' : isSalesStep3Open ? 'Open' : 'Tap to open'}</span>
+        </button>
+        {isSalesStep3Open && <div className="step-body">
         <label className="field-card"><span>Quote submitted?</span><select aria-label="Sales quote submitted" value={salesQuoteSubmitted} onChange={(event) => setSalesQuoteSubmitted(event.target.value as 'yes' | 'no' | '')}><option value="">Not updated</option><option value="yes">Yes</option><option value="no">No</option></select></label>
         <label className="field-card"><span>Budgetary proposal</span><input aria-label="Sales budgetary proposal" value={salesBudgetaryProposal} onChange={(event) => setSalesBudgetaryProposal(event.target.value)} placeholder="Optional" /></label>
         <label className="field-card"><span>Quote / deal status</span><select aria-label="Sales quote status" value={salesQuoteStatus} onChange={(event) => setSalesQuoteStatus(event.target.value)}><option>New inquiry</option><option>Quote pending</option><option>Budgetary quote</option><option>Negotiation</option><option>Closed won</option><option>Closed lost</option><option>Follow up later</option></select></label>
@@ -1015,7 +1030,7 @@ function App() {
         <div className="office-action-strip" aria-label="Sales office action examples">
           <span>Office action markers</span>
           <button type="button" onClick={() => setSalesSupportRequired('Send quotation / product brochure')}>Send quote</button>
-          <button type="button" onClick={() => setSalesSupportRequired('Arrange demo support')}>Demo support</button>
+          <button type="button" onClick={() => setSalesSupportRequired('Arrange product demonstration')}>Product demo</button>
           <button type="button" onClick={() => setSalesSupportRequired('Call customer for budget confirmation')}>Call customer</button>
         </div>
         <label className="field-card"><span>Remarks and timeline</span><textarea aria-label="Sales remarks timeline" value={salesRemarksTimeline} onChange={(event) => setSalesRemarksTimeline(event.target.value)} placeholder="Timeline, discussion points, blockers" rows={2} /></label>
@@ -1032,6 +1047,7 @@ function App() {
           <textarea aria-label="Sales photo note" value={salesPhotoNote} onChange={(event) => setSalesPhotoNote(event.target.value)} placeholder="Optional note, e.g. visiting card photo added" rows={2} />
         </div>
         <button type="button" aria-label="Save Step 3" className={salesSaveResult ? 'secondary-action step-save-action' : 'secondary-action step-save-action locked-step-action'} disabled={salesAnySubmitting || !salesSaveResult} onClick={handleSalesStep3Submit}>{isSalesStep3Submitting ? 'Saving…' : salesSaveResult ? 'Save Step 3' : 'Complete Step 1 first'}</button>
+        </div>}
       </section>
 
       {salesSaveResult && (
@@ -1077,11 +1093,12 @@ function App() {
           <button type="button" className="primary-action" disabled={serviceAnySubmitting || !session} onClick={handleServiceSubmit}>{isServiceSubmitting ? 'Saving…' : serviceSaveResult ? 'Save Step 1 changes' : 'Save Step 1'}</button>
         </section>
 
-        <section className="step-card">
-          <div className="step-heading">
+        <section className={isServiceStep2Open ? 'step-card step-card-open' : 'step-card step-card-collapsed'}>
+          <button type="button" className="step-heading step-toggle" aria-expanded={isServiceStep2Open} onClick={() => setIsServiceStep2Open((open) => !open)}>
             <div><span className="step-pill">Step 2</span><h3>Customer, equipment, issue</h3><p>Add instrument and issue details when available.</p></div>
-            <span className={serviceStep2Saved ? 'chip chip-soft' : 'chip chip-info'}>{serviceStep2Saved ? 'Saved' : 'Later'}</span>
-          </div>
+            <span className={serviceStep2Saved ? 'chip chip-soft' : 'chip chip-info'}>{serviceStep2Saved ? 'Saved' : isServiceStep2Open ? 'Open' : 'Tap to open'}</span>
+          </button>
+          {isServiceStep2Open && <div className="step-body">
           <label className="field-card"><span>Contact person</span><input aria-label="Service contact person" value={serviceContactPerson} onChange={(event) => setServiceContactPerson(event.target.value)} placeholder="Optional" /></label>
           <label className="field-card"><span>Phone</span><input aria-label="Service phone" value={servicePhone} onChange={(event) => setServicePhone(event.target.value)} placeholder="Optional" inputMode="tel" /></label>
           <label className="field-card"><span>Email</span><input aria-label="Service email" value={serviceEmail} onChange={(event) => setServiceEmail(event.target.value)} placeholder="Optional" inputMode="email" /></label>
@@ -1094,13 +1111,15 @@ function App() {
           <label className="field-card"><span>Detailed issue</span><textarea aria-label="Service issue description" value={serviceIssueDescription} onChange={(event) => setServiceIssueDescription(event.target.value)} placeholder="Optional detailed issue" rows={2} /></label>
           <label className="field-card"><span>Warranty / AMC</span><input aria-label="Service warranty AMC" value={serviceWarrantyAmc} onChange={(event) => setServiceWarrantyAmc(event.target.value)} placeholder="Optional" /></label>
           <button type="button" aria-label="Save Step 2" className={serviceSaveResult ? 'secondary-action step-save-action' : 'secondary-action step-save-action locked-step-action'} disabled={serviceAnySubmitting || !serviceSaveResult} onClick={handleServiceStep2Submit}>{isServiceStep2Submitting ? 'Saving…' : serviceSaveResult ? 'Save Step 2' : 'Complete Step 1 first'}</button>
+          </div>}
         </section>
 
-        <section className="step-card">
-          <div className="step-heading">
+        <section className={isServiceStep3Open ? 'step-card step-card-open' : 'step-card step-card-collapsed'}>
+          <button type="button" className="step-heading step-toggle" aria-expanded={isServiceStep3Open} onClick={() => setIsServiceStep3Open((open) => !open)}>
             <div><span className="step-pill">Step 3</span><h3>Parts, proof, office details</h3><p>For service closure and admin reporting.</p></div>
-            <span className={serviceStep3Saved ? 'chip chip-soft' : 'chip chip-info'}>{serviceStep3Saved ? 'Saved' : 'Later'}</span>
-          </div>
+            <span className={serviceStep3Saved ? 'chip chip-soft' : 'chip chip-info'}>{serviceStep3Saved ? 'Saved' : isServiceStep3Open ? 'Open' : 'Tap to open'}</span>
+          </button>
+          {isServiceStep3Open && <div className="step-body">
           <label className="field-card"><span>Parts required</span><input aria-label="Service parts required" value={servicePartsRequired} onChange={(event) => setServicePartsRequired(event.target.value)} placeholder="Optional" /></label>
           <label className="field-card"><span>Parts used</span><input aria-label="Service parts used" value={servicePartsUsed} onChange={(event) => setServicePartsUsed(event.target.value)} placeholder="Optional" /></label>
           <label className="field-card"><span>Machine status</span><input aria-label="Service machine status" value={serviceMachineStatus} onChange={(event) => setServiceMachineStatus(event.target.value)} placeholder="Working / pending / closed" /></label>
@@ -1116,6 +1135,7 @@ function App() {
           <label className="field-card"><span>Final remarks</span><textarea aria-label="Service final remarks" value={serviceFinalRemarks} onChange={(event) => setServiceFinalRemarks(event.target.value)} placeholder="Optional customer confirmation / remarks" rows={2} /></label>
           <label className="field-card"><span>Notes for office</span><textarea aria-label="Service office notes" value={serviceOfficeNotes} onChange={(event) => setServiceOfficeNotes(event.target.value)} placeholder="Optional office notes" rows={2} /></label>
           <button type="button" aria-label="Save Step 3" className={serviceSaveResult ? 'secondary-action step-save-action' : 'secondary-action step-save-action locked-step-action'} disabled={serviceAnySubmitting || !serviceSaveResult} onClick={handleServiceStep3Submit}>{isServiceStep3Submitting ? 'Saving…' : serviceSaveResult ? 'Save Step 3' : 'Complete Step 1 first'}</button>
+          </div>}
         </section>
 
         {serviceSaveResult && <div className="form-card highlighted-card"><label>Latest saved service visit</label><span>{serviceSaveResult.serviceRecord.customerName} • Visit {serviceSaveResult.visit.visitNumber} • {serviceSaveResult.visit.nextAction.split('_').join(' ')}</span><span>Step 2: {serviceStep2Saved ? 'saved' : 'pending'} • Step 3: {serviceStep3Saved ? 'saved' : 'pending'}</span></div>}
@@ -1329,7 +1349,7 @@ function App() {
               <strong>{kindLabels[reportKind].title}</strong>
               <span>{activeReport.title} • {activeReport.range}</span>
             </div>
-            <span className="chip chip-soft">Visual only</span>
+            <span className="chip chip-soft">Ready</span>
           </div>
           {(reportKind === 'attendance' || reportKind === 'combined') && (
             <div className="report-line"><span>Attendance</span><strong>{activeReport.attendance}</strong></div>
@@ -1605,7 +1625,7 @@ function App() {
           <section className="admin-action-card admin-field-entry-card">
             <label>Back-office field entry</label>
             <strong>Submit a sales or service update for an agent</strong>
-            <p>This is separate from Agents. Use it only when office staff need to enter a field report on behalf of the team.</p>
+            <p>Choose Sales or Service when the office team needs to submit a field report for an agent.</p>
             <div className="visit-action-grid">
               <button type="button" className="visit-action-card" onClick={() => goToScreen('sales', { newSalesVisit: true })}><span className="visit-action-icon"><Plus size={19} /></span><strong>Sales entry</strong><small>Office-assisted sales report</small></button>
               <button type="button" className="visit-action-card" onClick={() => goToScreen('service', { newServiceVisit: true })}><span className="visit-action-icon service-icon"><ClipboardList size={18} /></span><strong>Service entry</strong><small>Office-assisted service report</small></button>
@@ -1685,7 +1705,7 @@ function App() {
 
             {adminAgentsView === 'profile' && selectedSeat && (
               <section className="admin-seat-profile-card">
-                <button type="button" className="admin-detail-back" onClick={() => setAdminAgentsView('list')}><ChevronLeft size={16} /> Back to agents</button>
+                <button type="button" className="admin-detail-back" onClick={() => setAdminAgentsView('list')}><ChevronLeft size={16} /> Back to profiles</button>
                 <div className="admin-seat-profile-head">
                   <span className="profile-avatar"><UserRound size={22} /></span>
                   <div><p>{roleTextForAdminSeat(selectedSeat.role)}</p><strong>{selectedSeat.name}</strong><span>{selectedSeat.employeeId} • {selectedSeat.territory}</span></div>
@@ -1706,7 +1726,7 @@ function App() {
 
             {adminAgentsView === 'invite' && selectedSeat && (
               <section className="admin-invite-preview-card">
-                <button type="button" className="admin-detail-back" onClick={() => setAdminAgentsView('list')}><ChevronLeft size={16} /> Back to agents</button>
+                <button type="button" className="admin-detail-back" onClick={() => setAdminAgentsView('list')}><ChevronLeft size={16} /> Back to profiles</button>
                 <span className="chip chip-soft">Email invite</span>
                 <div className="admin-invite-mail">
                   <p>To: {selectedSeat.email}</p>
@@ -1742,15 +1762,15 @@ function App() {
                   <span className="profile-avatar"><UserRound size={25} /></span>
                   <div>
                     <p>Admin profile</p>
-                    <strong>{session?.agentName ?? 'Admin User'}</strong>
-                    <span>{session?.email ?? 'admin@crystalbio.in'} • Owner access</span>
+                    <strong>{session?.role === 'admin' ? session.agentName : 'CrystalBio Admin'}</strong>
+                    <span>{session?.role === 'admin' ? session.email : 'admin@crystalbio.in'} • Owner access</span>
                     <small className="profile-access-note">Invite only • Public signup off • Email OTP backup on</small>
                   </div>
                 </section>
                 <section className="admin-report-list-card admin-agent-activity-list">
                   <div className="admin-report-heading profile-list-heading"><label>Team profiles</label><button type="button" className="profile-add-button" onClick={() => setAdminAgentsView('add')}><Plus size={16} /> Add profile</button></div>
                   {adminSeats.map((seat) => (
-                    <button key={seat.id} type="button" className="admin-report-row admin-click-row" onClick={() => { setSelectedAdminSeatId(seat.id); setAdminTab('agents'); setAdminAgentsView('profile'); }}>
+                    <button key={seat.id} type="button" className="admin-report-row admin-click-row" onClick={() => { setSelectedAdminSeatId(seat.id); setAdminAgentsView('profile'); }}>
                       <div className="admin-report-row-main"><strong>{seat.name}</strong><p>{roleTextForAdminSeat(seat.role)} • {seat.employeeId}</p><small>{seat.email}</small></div>
                       <span className={seat.status === 'active' ? 'chip chip-soft' : seat.status === 'invited' ? 'chip chip-info' : 'chip chip-warning'}>{statusTextForSeat(seat.status)}</span>
                     </button>

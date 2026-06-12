@@ -130,7 +130,9 @@ describe('Crystal Bio agent view shell', () => {
     expect(screen.queryByRole('button', { name: /previous entries/i })).not.toBeInTheDocument();
     expect(screen.getByLabelText('Sales quick contact person')).toBeInTheDocument();
     expect(screen.getByLabelText('Sales quick phone')).toBeInTheDocument();
-    expect(screen.getByText('Office action markers')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /customer & requirement details.*tap to open/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /quote, proof & office details.*tap to open/i })).toBeInTheDocument();
+    expect(screen.queryByText('Office action markers')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /save step 1/i })).toBeInTheDocument();
 
     act(() => { fireEvent.click(screen.getByLabelText('Home')); });
@@ -139,7 +141,9 @@ describe('Crystal Bio agent view shell', () => {
     expect(screen.queryByText('Save the site update first')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Service quick equipment')).toBeInTheDocument();
     expect(screen.getByLabelText('Service quick contact person')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /arrange parts/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /customer, equipment, issue.*tap to open/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /parts, proof, office details.*tap to open/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /arrange parts/i })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /save step 1/i })).toBeInTheDocument();
 
     act(() => { fireEvent.click(screen.getByLabelText('Home')); });
@@ -160,7 +164,7 @@ describe('Crystal Bio agent view shell', () => {
     fireEvent.click(screen.getByRole('button', { name: /^reports$/i }));
     expect(screen.getByText('My reports')).toBeInTheDocument();
     expect(screen.getByText(/Weekly report/)).toBeInTheDocument();
-    expect(screen.getByText('Visual only')).toBeInTheDocument();
+    expect(screen.getByText('Ready')).toBeInTheDocument();
     expect(screen.getByText('Preview')).toBeInTheDocument();
     expect(screen.getByText('Attendance report')).toBeInTheDocument();
     expect(screen.getAllByText('Custom dates').length).toBeGreaterThan(0);
@@ -219,11 +223,13 @@ describe('Crystal Bio agent view shell', () => {
     fireEvent.click(screen.getByRole('button', { name: /save step 1 changes/i }));
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Sales Step 1 updated'));
 
+    fireEvent.click(screen.getByRole('button', { name: /customer & requirement details.*tap to open/i }));
     fireEvent.change(screen.getByLabelText('Sales email'), { target: { value: 'lab@example.com' } });
     fireEvent.click(screen.getByRole('button', { name: /save step 2/i }));
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Sales Step 2 saved'));
     expect(screen.getAllByText(/Step 2: saved • Step 3: pending/i).length).toBeGreaterThan(0);
 
+    fireEvent.click(screen.getByRole('button', { name: /quote, proof & office details.*tap to open/i }));
     fireEvent.change(screen.getByLabelText('Sales quote submitted'), { target: { value: 'yes' } });
     fireEvent.change(screen.getByLabelText('Sales office notes'), { target: { value: 'Prepare quote follow-up' } });
     fireEvent.click(screen.getByRole('button', { name: /save step 3/i }));
@@ -233,6 +239,7 @@ describe('Crystal Bio agent view shell', () => {
     fireEvent.click(screen.getByLabelText('Home'));
     fireEvent.click(screen.getByRole('button', { name: /sales new visit/i }));
     expect(screen.getByRole('button', { name: /save step 1/i })).toBeEnabled();
+    fireEvent.click(screen.getByRole('button', { name: /customer & requirement details.*tap to open/i }));
     expect(screen.getByRole('button', { name: /save step 2/i })).toBeDisabled();
 
     fireEvent.click(screen.getByLabelText('Home'));
@@ -246,9 +253,11 @@ describe('Crystal Bio agent view shell', () => {
     fireEvent.change(screen.getByLabelText('Service work done'), { target: { value: 'Updated after first save.' } });
     fireEvent.click(screen.getByRole('button', { name: /save step 1 changes/i }));
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Service Step 1 updated'));
+    fireEvent.click(screen.getByRole('button', { name: /customer, equipment, issue.*tap to open/i }));
     fireEvent.change(screen.getByLabelText('Service issue description'), { target: { value: 'Noise during spin cycle' } });
     fireEvent.click(screen.getByRole('button', { name: /save step 2/i }));
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Service Step 2 saved'));
+    fireEvent.click(screen.getByRole('button', { name: /parts, proof, office details.*tap to open/i }));
     fireEvent.change(screen.getByLabelText('Service final remarks'), { target: { value: 'Customer informed about parts timeline' } });
     fireEvent.click(screen.getByRole('button', { name: /save step 3/i }));
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Service Step 3 saved'));
@@ -316,6 +325,7 @@ describe('Crystal Bio agent view shell', () => {
 
     fireEvent.change(screen.getByLabelText('Report date range preset'), { target: { value: 'week' } });
     expect(screen.getByText('8 sales visits • 3 follow-ups')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Rahul Sales.*8 sales visits/i }));
     expect(screen.getByText('Attendance details')).toBeInTheDocument();
     expect(screen.getByText('Sales visit details')).toBeInTheDocument();
     expect(screen.getByText('Missing information')).toBeInTheDocument();
