@@ -18,6 +18,7 @@ Current app includes:
 - Agent My Reports page with compact Daily / Weekly / Monthly report generation
 - Admin overview, approvals, agents, field entry, profiles, and reports screens
 - Backend admin report API generated from saved field activity
+- Real PDF admin report download from saved field data via `/admin/reports.pdf`
 - JSON-file backend persistence with backup recovery for pilot use
 - Bottom navigation with icons and selected state
 - Phased build plan
@@ -60,6 +61,7 @@ Production/pilot backend settings:
 - `CRYSTALBIO_ALLOWED_ORIGIN=https://your-frontend-domain` restricts browser access to the approved app URL instead of wildcard demo CORS.
 - `HOST=0.0.0.0` can be used for container/hosting deployments; local development can stay on `127.0.0.1`.
 - `/health` is available for uptime monitoring.
+- `/admin/reports.pdf?fromDate=YYYY-MM-DD&toDate=YYYY-MM-DD` downloads a real PDF admin report and requires an admin bearer session.
 - Initial launch monitoring must cover both uptime and real user-action failures: failed saves, form errors, crashes, sync/network problems, login issues, and report-generation failures.
 - Serious or repeated failures should alert admin/us in plain English during the first production days, so issues are caught before agents become frustrated.
 - Sales/service records are protected by logged-in identity: only the owning agent or admin can update details or add visits.

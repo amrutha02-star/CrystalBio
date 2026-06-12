@@ -111,4 +111,29 @@ describe('CrystalBio HTTP server adapter', () => {
     expect(response.status).toBe(200);
     expect(body.status).toBe('ok');
   });
+
+  it('downloads a real PDF admin report from saved field data', async () => {
+    const backend = createCrystalBioBackend();
+    const admin = backend.createAgent({ name: 'Admin User', role: 'admin' });
+    const agent = backend.createAgent({ name: 'Rahul', role: 'sales' });
+    backend.checkIn(agent.id, { timestamp: '2026-06-07T09:00:00.000Z', gps });
+    backend.submitLeaveRequest(agent.id, { fromDate: '2026-06-08', toDate: '2026-06-08', reason: 'Personal' });
+    const server = createCrystalBioHttpServer(createCrystalBioApi(backend));
+    servers.push(server);
+    await server.listen(0);
+    const address = server.address() as AddressInfo;
+    const baseUrl = `http://127.0.0.1:${address.port}`;
+    const login = backend.login(admin.id);
+
+    const response = await fetch(`${baseUrl}/admin/reports.pdf?fromDate=2026-06-07&toDate=2026-06-08`, {
+      headers: { authorization: `Bearer ${login.token}` },
+    });
+    const bytes = Buffer.from(await response.arrayBuffer());
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-type')).toContain('application/pdf');
+    expect(response.headers.get('content-disposition')).toContain('crystalbio-report-2026-06-07-to-2026-06-08.pdf');
+    expect(bytes.subarray(0, 4).toString('utf8')).toBe('%PDF');
+    expect(bytes.length).toBeGreaterThan(1000);
+  });
 });

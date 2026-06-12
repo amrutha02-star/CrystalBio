@@ -1,6 +1,7 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import type { ApiRequest, ApiResponse } from './crystalBioApi';
+import { renderAdminReportPdf } from './crystalBioReportPdf';
 
 export type CrystalBioApiHandler = {
   handle(request: ApiRequest): ApiResponse;
@@ -36,6 +37,14 @@ const writeJson = (response: ServerResponse, status: number, body: Record<string
   response.end(JSON.stringify(body));
 };
 
+const writePdf = (response: ServerResponse, fileName: string, body: Buffer, allowedOrigin: string) => {
+  response.statusCode = 200;
+  writeCorsHeaders(response, allowedOrigin);
+  response.setHeader('content-type', 'application/pdf');
+  response.setHeader('content-disposition', `attachment; filename="${fileName}"`);
+  response.end(body);
+};
+
 const writeCorsPreflight = (response: ServerResponse, allowedOrigin: string) => {
   response.statusCode = 204;
   writeCorsHeaders(response, allowedOrigin);
@@ -53,6 +62,23 @@ export function createCrystalBioHttpServer(api: CrystalBioApiHandler, options: C
       }
       if (request.method === 'GET' && request.url === '/health') {
         writeJson(response, 200, { status: 'ok' }, allowedOrigin);
+        return;
+      }
+      if (request.method === 'GET' && (request.url ?? '').startsWith('/admin/reports.pdf')) {
+        const apiResponse = api.handle({
+          method: 'GET',
+          path: (request.url ?? '').replace('/admin/reports.pdf', '/admin/reports'),
+          headers: {
+            authorization: request.headers.authorization ?? '',
+          },
+        });
+        if (apiResponse.status !== 200) {
+          writeJson(response, apiResponse.status, apiResponse.body, allowedOrigin);
+          return;
+        }
+        const report = apiResponse.body.report;
+        const pdf = await renderAdminReportPdf(report);
+        writePdf(response, `crystalbio-report-${report.fromDate}-to-${report.toDate}.pdf`, pdf, allowedOrigin);
         return;
       }
       const body = await readJsonBody(request);
