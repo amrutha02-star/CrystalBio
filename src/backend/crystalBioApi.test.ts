@@ -28,16 +28,16 @@ describe('CrystalBio API layer', () => {
 
   it('accepts credential login and rejects bad credential login through auth API', () => {
     const backend = createCrystalBioBackend();
-    const agent = backend.createAgent({ name: 'Rahul', role: 'sales', loginCode: 'sales1', passcode: '1234' });
+    const agent = backend.createAgent({ name: 'Rahul', role: 'sales', employeeId: 'CB-S-014', email: 'rahul.sales@crystalbio.in', password: 'pilot-test-password' });
     const api = createCrystalBioApi(backend);
 
-    const login = api.handle({ method: 'POST', path: '/auth/login', body: { loginCode: 'sales1', passcode: '1234' } });
-    const failed = api.handle({ method: 'POST', path: '/auth/login', body: { loginCode: 'sales1', passcode: '0000' } });
+    const login = api.handle({ method: 'POST', path: '/auth/login', body: { email: 'rahul.sales@crystalbio.in', password: 'pilot-test-password' } });
+    const failed = api.handle({ method: 'POST', path: '/auth/login', body: { email: 'rahul.sales@crystalbio.in', password: 'wrong-password' } });
 
     expect(login.status).toBe(200);
     expect(login.body.session.agentId).toBe(agent.id);
     expect(failed.status).toBe(400);
-    expect(failed.body.error).toBe('Invalid login code or passcode');
+    expect(failed.body.error).toBe('Invalid email or password');
   });
 
   it('blocks protected routes without a valid session token', () => {

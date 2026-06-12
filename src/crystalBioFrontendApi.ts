@@ -7,7 +7,7 @@ export type FrontendSession = {
   email?: string;
 };
 
-export type FrontendLoginInput = string | { loginCode: string; passcode: string };
+export type FrontendLoginInput = string | { email?: string; password?: string; loginCode?: string; passcode?: string };
 
 export type FrontendGps = {
   latitude: number;
@@ -337,6 +337,21 @@ export function createCrystalBioFrontendApi(options: ApiClientOptions = {}) {
       const body = typeof input === 'string' ? { agentId: input } : input;
       const result = await post<{ session: FrontendSession }>('/auth/login', body);
       return result.session;
+    },
+
+    async downloadAdminReportPdf(session: FrontendSession, input: { fromDate: string; toDate: string }): Promise<string> {
+      if (!baseUrl) return '#demo-pdf-preview';
+      const query = new URLSearchParams({ fromDate: input.fromDate, toDate: input.toDate }).toString();
+      const response = await fetcher(`${baseUrl}/admin/reports.pdf?${query}`, {
+        method: 'GET',
+        headers: { authorization: `Bearer ${session.token}` },
+      });
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(text || 'PDF download failed');
+      }
+      const blob = await response.blob();
+      return URL.createObjectURL(blob);
     },
 
     async getAdminReport(session: FrontendSession, input: { fromDate: string; toDate: string }): Promise<FrontendAdminReport> {

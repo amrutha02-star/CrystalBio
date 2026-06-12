@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: crystalbio-backend
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: node --import tsx src/backend/server.ts
+    envVars:
+      - key: HOST
+        value: 0.0.0.0
+      - key: CRYSTALBIO_DB_PATH
+        value: /opt/render/project/src/data/crystalbio-db.json
+      - key: CRYSTALBIO_ALLOWED_ORIGIN
+        sync: false
+      - key: CRYSTALBIO_SEED_DEMO
+        value: "false"
+      - key: CRYSTALBIO_DEMO_PASSWORD
+        sync: false

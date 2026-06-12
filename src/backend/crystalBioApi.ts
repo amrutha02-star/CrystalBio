@@ -69,9 +69,11 @@ export function createCrystalBioApi(backend: Backend) {
 
         if (request.method === 'POST' && pathname === '/auth/login') {
           const body = requireBody(request.body);
-          const loginInput: LoginInput = body.loginCode || body.passcode
-            ? { loginCode: String(body.loginCode ?? ''), passcode: String(body.passcode ?? '') }
-            : String(body.agentId ?? '');
+          const loginInput: LoginInput = body.email || body.password
+            ? { email: String(body.email ?? ''), password: String(body.password ?? '') }
+            : body.loginCode || body.passcode
+              ? { loginCode: String(body.loginCode ?? ''), passcode: String(body.passcode ?? '') }
+              : String(body.agentId ?? '');
           const session = backend.login(loginInput);
           return ok({ session });
         }

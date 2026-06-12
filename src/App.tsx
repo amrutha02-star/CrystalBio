@@ -8,7 +8,7 @@ type ReportPeriod = 'today' | 'week' | 'month' | 'custom';
 type AgentReportKind = 'attendance' | 'visits' | 'combined';
 type AdminAgentFilter = 'all' | 'sales' | 'service';
 type AdminReportScope = 'office' | 'sales' | 'service' | 'rahul' | 'meera' | 'anil';
-type AdminTab = 'overview' | 'agents' | 'approvals' | 'adminReports' | 'profiles';
+type AdminTab = 'overview' | 'fieldEntry' | 'agents' | 'approvals' | 'adminReports' | 'profiles';
 type AdminApprovalId = 'meera-leave';
 type AdminAgentsView = 'list' | 'add' | 'profile' | 'invite';
 type AdminSeatStatus = 'invited' | 'active' | 'inactive' | 'expired';
@@ -24,6 +24,7 @@ type AdminSeat = {
   lastActive: string;
 };
 type ToastNotice = { title: string; message: string; tone?: 'success' | 'info' | 'warning' | 'error' };
+type LaunchIssue = { area: string; message: string; when: string };
 
 const toneClass: Record<string, string> = {
   warning: 'chip chip-warning',
@@ -54,9 +55,9 @@ const screenOptions: AppScreen[] = ['login', 'home', 'visits', 'sales', 'service
 
 const agentIdForScreen = (nextScreen: AppScreen) => (nextScreen === 'service' ? 'agent_3' : 'agent_2');
 const loginInputForScreen = (nextScreen: AppScreen): FrontendLoginInput => {
-  if (nextScreen === 'admin') return { loginCode: 'admin', passcode: 'admin1234' };
-  if (nextScreen === 'service') return { loginCode: 'service1', passcode: '1234' };
-  return { loginCode: 'sales1', passcode: '1234' };
+  if (nextScreen === 'admin') return { email: 'admin@crystalbio.in', password: '' };
+  if (nextScreen === 'service') return { email: 'meera.service@crystalbio.in', password: '' };
+  return { email: 'rahul.sales@crystalbio.in', password: '' };
 };
 
 const getInitialScreen = (): AppScreen => {
@@ -68,7 +69,7 @@ const getInitialScreen = (): AppScreen => {
 const getInitialAdminTab = (): AdminTab => {
   if (typeof window === 'undefined') return 'overview';
   const requestedTab = new URLSearchParams(window.location.search).get('adminTab') as AdminTab | null;
-  return requestedTab && ['overview', 'agents', 'approvals', 'adminReports', 'profiles'].includes(requestedTab) ? requestedTab : 'overview';
+  return requestedTab && ['overview', 'fieldEntry', 'agents', 'approvals', 'adminReports', 'profiles'].includes(requestedTab) ? requestedTab : 'overview';
 };
 
 const getInitialAdminApproval = (): AdminApprovalId | null => {
@@ -85,8 +86,8 @@ function App() {
   const [isAttendanceBusy, setIsAttendanceBusy] = useState(false);
   const [statusMessage, setStatusMessage] = useState('Loading logged-in agent…');
   const [screenNotice, setScreenNotice] = useState<ToastNotice | string | null>(null);
-  const [loginCode, setLoginCode] = useState('sales1');
-  const [passcode, setPasscode] = useState('1234');
+  const [loginEmail, setLoginEmail] = useState('rahul.sales@crystalbio.in');
+  const [password, setPassword] = useState('');
   const [reportPeriod, setReportPeriod] = useState<ReportPeriod>('week');
   const [reportKind, setReportKind] = useState<AgentReportKind>('combined');
   const [reportFromDate, setReportFromDate] = useState('2026-06-01');
@@ -177,11 +178,17 @@ function App() {
   const [isServiceSubmitting, setIsServiceSubmitting] = useState(false);
   const [isServiceStep2Submitting, setIsServiceStep2Submitting] = useState(false);
   const [isServiceStep3Submitting, setIsServiceStep3Submitting] = useState(false);
+  const [launchIssues, setLaunchIssues] = useState<LaunchIssue[]>([]);
   const isBackendConfigured = crystalBioFrontendApi.isBackendConfigured();
 
+  const rememberLaunchIssue = (area: string, error: unknown) => {
+    const message = error instanceof Error ? error.message : String(error || 'Unknown issue');
+    setLaunchIssues((current) => [{ area, message, when: 'Just now' }, ...current].slice(0, 5));
+  };
+
   useEffect(() => {
-    if (isBackendConfigured && screen === 'login') {
-      setStatusMessage('Enter login code and passcode.');
+    if (isBackendConfigured) {
+      setStatusMessage('Use the registered email and password from the admin invite.');
       return undefined;
     }
     let isMounted = true;
@@ -240,6 +247,7 @@ function App() {
           : 'Checked out. End location saved.',
       );
     } catch (error) {
+      rememberLaunchIssue('Attendance save', error);
       setStatusMessage(error instanceof Error ? error.message : 'Attendance action failed');
     } finally {
       setIsAttendanceBusy(false);
@@ -268,6 +276,7 @@ function App() {
       });
       setScreen('home');
     } catch (error) {
+      rememberLaunchIssue('Check-in save', error);
       setScreenNotice(error instanceof Error ? error.message : 'Check-in failed');
       setStatusMessage(error instanceof Error ? error.message : 'Check-in failed');
     } finally {
@@ -364,7 +373,7 @@ function App() {
     setStatusMessage('Checking login…');
     try {
       const nextSession = await crystalBioFrontendApi.login(
-        isBackendConfigured ? { loginCode: loginCode.trim(), passcode } : 'agent_2',
+        isBackendConfigured ? { email: loginEmail.trim(), password } : 'agent_2',
       );
       setSession(nextSession);
       if (nextSession.role === 'admin') {
@@ -378,6 +387,7 @@ function App() {
       setStatusMessage('Logged in. Check in to start field work.');
       setScreen('home');
     } catch (error) {
+      rememberLaunchIssue('Login', error);
       setStatusMessage(error instanceof Error ? error.message : 'Login failed');
       setScreenNotice(error instanceof Error ? error.message : 'Login failed');
     }
@@ -390,7 +400,7 @@ function App() {
     setStatusMessage('Checking admin login…');
     try {
       const nextSession = await crystalBioFrontendApi.login(
-        isBackendConfigured ? { loginCode: loginCode.trim(), passcode } : 'agent_2',
+        isBackendConfigured ? { email: loginEmail.trim(), password } : 'agent_2',
       );
       if (isBackendConfigured && nextSession.role !== 'admin') {
         throw new Error('Use an admin login code to open admin access.');
@@ -400,6 +410,7 @@ function App() {
       setStatusMessage('Admin logged in.');
       setScreen('admin');
     } catch (error) {
+      rememberLaunchIssue('Admin login', error);
       setIsAdminSignedIn(false);
       setStatusMessage(error instanceof Error ? error.message : 'Admin login failed');
       setScreenNotice(error instanceof Error ? error.message : 'Admin login failed');
@@ -438,6 +449,7 @@ function App() {
         tone: 'success',
       });
     } catch (error) {
+      rememberLaunchIssue('Leave request', error);
       setScreenNotice(error instanceof Error ? error.message : 'Leave request failed');
     } finally {
       setIsLeaveSubmitting(false);
@@ -595,9 +607,7 @@ function App() {
     setIsServiceSubmitting(true);
     setScreenNotice(serviceSaveResult ? 'Updating Service Step 1 details…' : 'Saving service visit with location…');
     try {
-      const serviceSession = session.agentId === 'agent_3' ? session : await crystalBioFrontendApi.login(
-        isBackendConfigured ? { loginCode: 'service1', passcode: '1234' } : 'agent_3',
-      );
+      const serviceSession = isBackendConfigured || session.agentId === 'agent_3' ? session : await crystalBioFrontendApi.login('agent_3');
       if (serviceSession !== session) setSession(serviceSession);
 
       if (serviceSaveResult) {
@@ -762,19 +772,19 @@ function App() {
   };
 
   const renderLogin = () => (
-    <ScreenPanel title="Login" subtitle="Enter your employee details to open the app.">
+    <ScreenPanel title="Login" subtitle="Use the registered email and password from the admin invite.">
       <section className="login-hero-card clean-login-card">
         <p>CrystalBio</p>
         <strong>Field work login</strong>
-        <span>One simple login. The app opens the right access based on the person’s account.</span>
+        <span>Invite-only access. No public signup; the app opens the right role from the registered email.</span>
       </section>
       <label className="field-card login-field-card">
-        <span>Mobile number / Employee ID</span>
-        <input aria-label="Mobile number or employee ID" value={loginCode} inputMode="text" onChange={(event) => setLoginCode(event.target.value)} />
+        <span>Registered email</span>
+        <input aria-label="Registered email" value={loginEmail} inputMode="email" onChange={(event) => setLoginEmail(event.target.value)} />
       </label>
       <label className="field-card login-field-card">
-        <span>Password / PIN</span>
-        <input aria-label="Password or PIN" value={passcode} type="password" onChange={(event) => setPasscode(event.target.value)} />
+        <span>Password</span>
+        <input aria-label="Password" value={password} type="password" onChange={(event) => setPassword(event.target.value)} />
       </label>
       <button type="button" className="primary-action login-main-button" onClick={handleAgentLogin}>Login</button>
       <button type="button" className="secondary-action login-admin-button" onClick={handleAdminLogin}>Admin access</button>
@@ -1506,9 +1516,27 @@ function App() {
       const rangeLabel = adminPeriod === 'custom' ? `${adminReportFromDate} to ${adminReportToDate}` : period.label.toLowerCase();
       setScreenNotice({
         title: `${adminReportScopeLabels[adminReportScope]} ready`,
-        message: `${adminReportScopeLabels[adminReportScope]} generated for ${rangeLabel}.`,
+        message: `${adminReportScopeLabels[adminReportScope]} generated for ${rangeLabel}. Use Download PDF for the owner-ready export.`,
         tone: 'success',
       });
+    };
+    const downloadAdminPdf = async () => {
+      if (!session) {
+        setScreenNotice({ title: 'Admin login needed', message: 'Login as admin before downloading the PDF.', tone: 'warning' });
+        return;
+      }
+      try {
+        const pdfUrl = await crystalBioFrontendApi.downloadAdminReportPdf(session, { fromDate: adminReportFromDate, toDate: adminReportToDate });
+        if (pdfUrl === '#demo-pdf-preview') {
+          setScreenNotice({ title: 'PDF ready in backend pilot', message: 'When the hosted backend URL is connected, this button downloads the real owner-ready PDF.', tone: 'info' });
+          return;
+        }
+        window.open(pdfUrl, '_blank');
+        setScreenNotice({ title: 'PDF opened', message: 'Owner-ready report PDF opened in a new tab.', tone: 'success' });
+      } catch (error) {
+        rememberLaunchIssue('Report PDF download', error);
+        setScreenNotice({ title: 'PDF download failed', message: error instanceof Error ? error.message : 'Could not download the report PDF.', tone: 'error' });
+      }
     };
     const changePeriod = (nextPeriod: ReportPeriod) => {
       setAdminPeriod(nextPeriod);
@@ -1534,13 +1562,14 @@ function App() {
       </section>
     );
     const showOverview = adminTab === 'overview';
+    const showFieldEntry = adminTab === 'fieldEntry';
     const showAgents = adminTab === 'agents';
     const showApprovals = adminTab === 'overview' || adminTab === 'approvals';
     const showReports = adminTab === 'adminReports';
     const showProfiles = adminTab === 'profiles';
 
     return (
-      <ScreenPanel title={adminTab === 'overview' ? 'Admin overview' : adminTab === 'agents' ? 'Agents' : adminTab === 'approvals' ? 'Approvals' : adminTab === 'profiles' ? 'Profiles' : 'Admin reports'} subtitle="">
+      <ScreenPanel title={adminTab === 'overview' ? 'Admin overview' : adminTab === 'fieldEntry' ? 'Field entry' : adminTab === 'agents' ? 'Agents' : adminTab === 'approvals' ? 'Approvals' : adminTab === 'profiles' ? 'Profiles' : 'Admin reports'} subtitle="">
         {(showOverview || showReports) && (
           <>
             {showOverview && (
@@ -1559,11 +1588,29 @@ function App() {
                   <div className="metric-card admin-metric-card"><strong>{overviewPeriod.leave}</strong><span>Leave</span><small>Needs review</small></div>
                   <div className="metric-card admin-metric-card"><strong>{overviewPeriod.followUps}</strong><span>Follow-ups</span><small>Need action</small></div>
                 </div>
+                <section className="admin-office-actions-card launch-monitor-card">
+                  <div className="admin-report-heading"><label>Launch monitoring</label><span>{launchIssues.length ? `${launchIssues.length} issue${launchIssues.length === 1 ? '' : 's'}` : 'Clear'}</span></div>
+                  {launchIssues.length ? launchIssues.map((issue) => (
+                    <div key={`${issue.area}-${issue.message}-${issue.when}`} className="admin-office-action-row"><span className="chip chip-warning">Issue</span><div><strong>{issue.area}</strong><small>{issue.message} • {issue.when}</small></div></div>
+                  )) : <div className="admin-office-action-row"><span className="chip chip-soft">OK</span><div><strong>No user-action failures captured</strong><small>Login, save, sync, and report errors will show here during pilot monitoring.</small></div></div>}
+                </section>
               </>
             )}
 
             {showReports && renderAdminDateFilter('Report date range')}
           </>
+        )}
+
+        {showFieldEntry && (
+          <section className="admin-action-card admin-field-entry-card">
+            <label>Back-office field entry</label>
+            <strong>Submit a sales or service update for an agent</strong>
+            <p>This is separate from Agents. Use it only when office staff need to enter a field report on behalf of the team.</p>
+            <div className="visit-action-grid">
+              <button type="button" className="visit-action-card" onClick={() => goToScreen('sales', { newSalesVisit: true })}><span className="visit-action-icon"><Plus size={19} /></span><strong>Sales entry</strong><small>Office-assisted sales report</small></button>
+              <button type="button" className="visit-action-card" onClick={() => goToScreen('service', { newServiceVisit: true })}><span className="visit-action-icon service-icon"><ClipboardList size={18} /></span><strong>Service entry</strong><small>Office-assisted service report</small></button>
+            </div>
+          </section>
         )}
 
         {showApprovals && (
@@ -1635,21 +1682,6 @@ function App() {
               </>
             )}
 
-            {adminAgentsView === 'add' && (
-              <section className="admin-seat-form-card">
-                <button type="button" className="admin-detail-back" onClick={() => setAdminAgentsView('list')}><ChevronLeft size={16} /> Back to agents</button>
-                <div className="admin-seat-form-heading"><label>New profile</label><strong>Add agent seat</strong><span>Create the profile first, then send the password setup invite to the registered email.</span></div>
-                <label className="field-card"><span>Agent name</span><input aria-label="New agent name" value={newSeatName} onChange={(event) => setNewSeatName(event.target.value)} /></label>
-                <label className="field-card"><span>Employee ID</span><input aria-label="New employee ID" value={newSeatEmployeeId} onChange={(event) => setNewSeatEmployeeId(event.target.value)} /></label>
-                <label className="field-card"><span>Email ID for invite</span><input aria-label="New agent email" inputMode="email" value={newSeatEmail} onChange={(event) => setNewSeatEmail(event.target.value)} /></label>
-                <label className="field-card"><span>Mobile number</span><input aria-label="New agent mobile" inputMode="tel" value={newSeatMobile} onChange={(event) => setNewSeatMobile(event.target.value)} /></label>
-                <div className="inline-field-grid">
-                  <label className="field-card"><span>Role</span><select aria-label="New agent role" value={newSeatRole} onChange={(event) => setNewSeatRole(event.target.value as AdminSeat['role'])}><option value="sales">Sales agent</option><option value="service">Service agent</option><option value="admin">Admin</option></select></label>
-                  <label className="field-card"><span>Territory</span><input aria-label="New agent territory" value={newSeatTerritory} onChange={(event) => setNewSeatTerritory(event.target.value)} /></label>
-                </div>
-                <button type="button" className="primary-action" onClick={handleCreateSeatInvite}>Create profile + send invite</button>
-              </section>
-            )}
 
             {adminAgentsView === 'profile' && selectedSeat && (
               <section className="admin-seat-profile-card">
@@ -1745,6 +1777,7 @@ function App() {
                   </select>
                 </div>
                 <button type="button" className="primary-action single-report-generate" onClick={generateAdminReport}>Generate report</button>
+                <button type="button" className="secondary-action single-report-generate" onClick={downloadAdminPdf}>Download PDF</button>
 
                 <section className="admin-report-summary-card">
                   <div className="admin-report-heading"><label>Report summary</label><span>{period.label}</span></div>
@@ -1845,7 +1878,7 @@ function App() {
     <main className="app-shell agent-only-shell">
       <section className="preview-note">
         <p className="eyebrow">CrystalBio Field Hub</p>
-        <h1>{screen === 'login' ? 'Login screen' : screen === 'admin' ? (adminTab === 'adminReports' ? 'Admin reports screen' : adminTab === 'approvals' ? 'Admin approvals screen' : adminTab === 'agents' ? 'Admin agents screen' : adminTab === 'profiles' ? 'Admin profiles screen' : 'Admin overview screen') : screen === 'profile' ? 'Agent profile screen' : 'Agent home screen'}</h1>
+        <h1>{screen === 'login' ? 'Login screen' : screen === 'admin' ? (adminTab === 'adminReports' ? 'Admin reports screen' : adminTab === 'fieldEntry' ? 'Admin field entry screen' : adminTab === 'approvals' ? 'Admin approvals screen' : adminTab === 'agents' ? 'Admin agents screen' : adminTab === 'profiles' ? 'Admin profiles screen' : 'Admin overview screen') : screen === 'profile' ? 'Agent profile screen' : 'Agent home screen'}</h1>
         <p>{screen === 'login' ? 'Role-based entry for field agents and admin users.' : screen === 'admin' ? 'Owner view for team attendance, leave, and field reports.' : 'Mobile workspace for field attendance, visits, leave, and reports.'}</p>
       </section>
 
@@ -1877,15 +1910,15 @@ function App() {
             {screen === 'admin' ? (
               [
                 { label: 'Overview', tab: 'overview' as AdminTab, icon: Home },
-                { label: 'Field entry', tab: 'overview' as AdminTab, screen: 'visits' as AppScreen, icon: ClipboardList },
+                { label: 'Field entry', tab: 'fieldEntry' as AdminTab, icon: ClipboardList },
                 { label: 'Agents', tab: 'agents' as AdminTab, icon: UsersRound },
                 { label: 'Approvals', tab: 'approvals' as AdminTab, icon: CalendarCheck },
                 { label: 'Reports', tab: 'adminReports' as AdminTab, icon: FileText },
               ].map((item) => {
                 const Icon = item.icon;
-                const selected = item.screen ? screen === item.screen : adminTab === (item.tab as AdminTab);
+                const selected = adminTab === item.tab;
                 return (
-                  <button key={item.label} type="button" className={selected ? 'nav-item nav-item-selected' : 'nav-item'} aria-label={selected ? `${item.label} selected` : item.label} onClick={() => item.screen ? goToScreen(item.screen) : openAdminTab(item.tab as AdminTab)}>
+                  <button key={item.label} type="button" className={selected ? 'nav-item nav-item-selected' : 'nav-item'} aria-label={selected ? `${item.label} selected` : item.label} onClick={() => openAdminTab(item.tab)}>
                     <Icon size={17} />
                     {item.label}
                   </button>

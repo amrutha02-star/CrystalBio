@@ -44,20 +44,20 @@ describe('CrystalBio frontend API client', () => {
     );
   });
 
-  it('sends login code and passcode credentials to configured backend URL', async () => {
+  it('sends registered email and password credentials to configured backend URL', async () => {
     const fetcher = vi.fn(async () => new Response(JSON.stringify({
       session: { token: 'token-1', agentId: 'agent_2', agentName: 'Rahul Sales', role: 'sales' },
     }), { status: 200, headers: { 'content-type': 'application/json' } })) as unknown as typeof fetch;
     const api = createCrystalBioFrontendApi({ baseUrl: 'http://127.0.0.1:8787/', fetcher });
 
-    const session = await api.login({ loginCode: 'sales1', passcode: '1234' });
+    const session = await api.login({ email: 'rahul.sales@crystalbio.in', password: 'pilot-test-password' });
 
     expect(session.agentName).toBe('Rahul Sales');
     expect(fetcher).toHaveBeenCalledWith(
       'http://127.0.0.1:8787/auth/login',
       expect.objectContaining({
         method: 'POST',
-        body: JSON.stringify({ loginCode: 'sales1', passcode: '1234' }),
+        body: JSON.stringify({ email: 'rahul.sales@crystalbio.in', password: 'pilot-test-password' }),
       }),
     );
   });
@@ -80,7 +80,7 @@ describe('CrystalBio frontend API client', () => {
       }), { status: 200, headers: { 'content-type': 'application/json' } });
     }) as unknown as typeof fetch;
     const api = createCrystalBioFrontendApi({ baseUrl: 'http://127.0.0.1:8787', fetcher });
-    const session = await api.login({ loginCode: 'admin', passcode: 'admin1234' });
+    const session = await api.login({ email: 'admin@crystalbio.in', password: 'pilot-test-password' });
 
     const report = await api.getAdminReport(session, { fromDate: '2026-06-01', toDate: '2026-06-30' });
 

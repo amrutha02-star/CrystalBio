@@ -46,13 +46,9 @@ npm run dev
 npm run backend:dev
 ```
 
-Backend pilot accounts seeded by `npm run backend:dev` when the database is empty:
+Backend pilot accounts are invite/email-password based. For local-only demo seeding, set `CRYSTALBIO_DEMO_PASSWORD` yourself and keep it out of public docs/client messages.
 
-- Admin: login code `admin`, PIN `admin1234`
-- Sales agent: login code `sales1`, PIN `1234`
-- Service agent: login code `service1`, PIN `1234`
-
-To connect the web app to the backend, build/run it with `VITE_CRYSTALBIO_API_URL` pointing to the backend URL.
+For free pilot hosting, see [`DEPLOYMENT.md`](./DEPLOYMENT.md). To connect the web app to the backend, build/run it with `VITE_CRYSTALBIO_API_URL` pointing to the backend URL.
 
 Production/pilot backend settings:
 
@@ -128,12 +124,12 @@ Admins should be able to:
 - View pending follow-ups and overdue items.
 - Approve or reject leave requests.
 - See missing submissions.
-- Download PDF/Excel reports.
+- Download PDF reports now; Excel export is intentionally deferred from this pilot scope.
 - View platform issues and user difficulties.
 
 ### 3. Owner / Client
 
-The owner should receive:
+The owner should receive app-downloadable reports now. Regular automated delivery is planned for the end-of-June 2026 reporting phase:
 
 - Immediate Telegram alerts for important field updates.
 - Weekly email report every Saturday.

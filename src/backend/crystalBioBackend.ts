@@ -16,8 +16,12 @@ export type Agent = {
   name: string;
   role: AgentRole;
   active: boolean;
+  employeeId?: string;
+  email?: string;
+  mobile?: string;
   loginCode?: string;
   passcode?: string;
+  password?: string;
 };
 
 export type AttendanceRecord = {
@@ -159,6 +163,9 @@ export type LoginSession = {
   agentId: string;
   agentName: string;
   role: AgentRole;
+  employeeId?: string;
+  phone?: string;
+  email?: string;
 };
 
 export type LeaveRequest = {
@@ -212,7 +219,7 @@ type ServiceRecordInput = Omit<Partial<ServiceRecord>, 'id' | 'ownerAgentId' | '
   customerName: string;
 };
 
-export type LoginInput = string | { agentId?: string; loginCode?: string; passcode?: string };
+export type LoginInput = string | { agentId?: string; email?: string; password?: string; loginCode?: string; passcode?: string };
 
 const dateFromTimestamp = (timestamp: string) => timestamp.slice(0, 10);
 
@@ -276,16 +283,22 @@ export function createCrystalBioBackend(initialState?: CrystalBioBackendState) {
       };
     },
 
-    createAgent(input: { name: string; role: AgentRole; loginCode?: string; passcode?: string }): Agent {
+    createAgent(input: { name: string; role: AgentRole; employeeId?: string; email?: string; mobile?: string; loginCode?: string; passcode?: string; password?: string }): Agent {
       requireText(input.name, 'Agent name is required');
       const id = nextId('agent');
+      const email = input.email?.trim().toLowerCase();
+      const employeeId = input.employeeId?.trim() ?? input.loginCode;
       const agent: Agent = {
         id,
         name: input.name,
         role: input.role,
         active: true,
-        loginCode: input.loginCode ?? id,
-        passcode: input.passcode ?? '1234',
+        employeeId,
+        email,
+        mobile: input.mobile?.trim(),
+        loginCode: input.loginCode ?? employeeId ?? id,
+        passcode: input.passcode ?? input.password ?? `invite-${id}`,
+        password: input.password ?? input.passcode ?? `invite-${id}`,
       };
       agents.set(agent.id, agent);
       return agent;
@@ -296,6 +309,14 @@ export function createCrystalBioBackend(initialState?: CrystalBioBackendState) {
       let agent: Agent | undefined;
       if (credentials.agentId) {
         agent = getAgent(credentials.agentId);
+      } else if (credentials.email || credentials.password) {
+        requireText(credentials.email, 'Email is required');
+        requireText(credentials.password, 'Password is required');
+        const requestedEmail = credentials.email?.trim().toLowerCase();
+        agent = [...agents.values()].find(
+          (candidate) => candidate.active && candidate.email?.toLowerCase() === requestedEmail && candidate.password === credentials.password,
+        );
+        if (!agent) throw new ValidationError('Invalid email or password');
       } else {
         requireText(credentials.loginCode, 'Login code is required');
         requireText(credentials.passcode, 'Passcode is required');
@@ -309,6 +330,9 @@ export function createCrystalBioBackend(initialState?: CrystalBioBackendState) {
         agentId: agent.id,
         agentName: agent.name,
         role: agent.role,
+        employeeId: agent.employeeId,
+        phone: agent.mobile,
+        email: agent.email,
       };
       sessions.set(session.token, session);
       return session;

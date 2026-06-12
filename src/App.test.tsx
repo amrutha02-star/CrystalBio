@@ -1,4 +1,5 @@
 import '@testing-library/jest-dom/vitest';
+import { act } from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 import App from './App';
@@ -13,8 +14,8 @@ describe('Crystal Bio agent view shell', () => {
     render(<App />);
 
     expect(screen.getByText('Login screen')).toBeInTheDocument();
-    expect(screen.getByLabelText('Mobile number or employee ID')).toBeInTheDocument();
-    expect(screen.getByLabelText('Password or PIN')).toBeInTheDocument();
+    expect(screen.getByLabelText('Registered email')).toBeInTheDocument();
+    expect(screen.getByLabelText('Password')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^login$/i })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /admin access/i }));
     expect(await screen.findByRole('button', { name: /^home$/i })).toBeInTheDocument();
@@ -123,7 +124,7 @@ describe('Crystal Bio agent view shell', () => {
 
     await screen.findByText('Rahul Sales');
 
-    fireEvent.click(screen.getByRole('button', { name: /sales new visit/i }));
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /sales new visit/i })); });
     expect(screen.getByText('Sales visit')).toBeInTheDocument();
     expect(screen.queryByText('Field visit assistant')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /previous entries/i })).not.toBeInTheDocument();
@@ -132,8 +133,8 @@ describe('Crystal Bio agent view shell', () => {
     expect(screen.getByText('Office action markers')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /save step 1/i })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByLabelText('Home'));
-    fireEvent.click(screen.getByRole('button', { name: /service report/i }));
+    act(() => { fireEvent.click(screen.getByLabelText('Home')); });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /service report/i })); });
     expect(screen.getByText('Service visit')).toBeInTheDocument();
     expect(screen.queryByText('Save the site update first')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Service quick equipment')).toBeInTheDocument();
@@ -141,8 +142,8 @@ describe('Crystal Bio agent view shell', () => {
     expect(screen.getByRole('button', { name: /arrange parts/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /save step 1/i })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByLabelText('Home'));
-    fireEvent.click(screen.getByRole('button', { name: /^attendance logs & leave$/i }));
+    act(() => { fireEvent.click(screen.getByLabelText('Home')); });
+    act(() => { fireEvent.click(screen.getByRole('button', { name: /^attendance logs & leave$/i })); });
     expect(screen.getByRole('heading', { name: 'Attendance' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /request leave/i })).toBeInTheDocument();
   });
@@ -183,7 +184,7 @@ describe('Crystal Bio agent view shell', () => {
 
     await screen.findByText('Rahul Sales');
 
-    fireEvent.click(screen.getByRole('button', { name: /apollo diagnostics/i }));
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /apollo diagnostics/i })); });
     expect(screen.getByText('Sales visit')).toBeInTheDocument();
   });
 

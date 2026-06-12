@@ -9,6 +9,7 @@ const main = async () => {
   const allowedOrigin = process.env.CRYSTALBIO_ALLOWED_ORIGIN ?? '*';
   const databasePath = resolve(process.env.CRYSTALBIO_DB_PATH ?? 'data/crystalbio-db.json');
   const seedDemoUsers = process.env.CRYSTALBIO_SEED_DEMO !== 'false';
+  const demoPassword = process.env.CRYSTALBIO_DEMO_PASSWORD ?? `Pilot-${Math.random().toString(36).slice(2, 10)}!`;
 
   mkdirSync(dirname(databasePath), { recursive: true });
 
@@ -16,11 +17,22 @@ const main = async () => {
   const app = createCrystalBioPersistentHttpApp(store, { allowedOrigin, host });
 
   if (seedDemoUsers && app.backend.exportState().agents.length === 0) {
-    app.backend.createAgent({ name: 'Admin User', role: 'admin', loginCode: 'admin', passcode: 'admin1234' });
-    app.backend.createAgent({ name: 'Rahul Sales', role: 'sales', loginCode: 'sales1', passcode: '1234' });
-    app.backend.createAgent({ name: 'Meera Service', role: 'service', loginCode: 'service1', passcode: '1234' });
+    [
+      ['Admin User', 'admin', 'CB-ADM-001', 'admin@crystalbio.in', '+91 98765 43000'],
+      ['Rahul Sales', 'sales', 'CB-S-014', 'rahul.sales@crystalbio.in', '+91 98765 43210'],
+      ['Anil Sales', 'sales', 'CB-S-021', 'anil.sales@crystalbio.in', '+91 98765 43009'],
+      ['Priya Sales', 'sales', 'CB-S-026', 'priya.sales@crystalbio.in', '+91 98765 43026'],
+      ['Vikram Sales', 'sales', 'CB-S-031', 'vikram.sales@crystalbio.in', '+91 98765 43031'],
+      ['Meera Service', 'service', 'CB-SE-008', 'meera.service@crystalbio.in', '+91 98765 43111'],
+      ['Arun Service', 'service', 'CB-SE-011', 'arun.service@crystalbio.in', '+91 98765 43112'],
+      ['Nisha Service', 'service', 'CB-SE-017', 'nisha.service@crystalbio.in', '+91 98765 43117'],
+      ['Deepak Service', 'service', 'CB-SE-022', 'deepak.service@crystalbio.in', '+91 98765 43122'],
+      ['Kiran Field', 'both', 'CB-F-005', 'kiran.field@crystalbio.in', '+91 98765 43205'],
+      ['Sana Field', 'both', 'CB-F-006', 'sana.field@crystalbio.in', '+91 98765 43206'],
+      ['Office Coordinator', 'admin', 'CB-ADM-002', 'office@crystalbio.in', '+91 98765 43002'],
+    ].forEach(([name, role, employeeId, email, mobile]) => app.backend.createAgent({ name, role: role as any, employeeId, email, mobile, password: demoPassword }));
     app.save();
-    console.log('Seeded demo users: admin/admin1234, sales1/1234, service1/1234');
+    console.log('Seeded pilot demo users with email/password credentials. Set CRYSTALBIO_DEMO_PASSWORD before sharing a hosted pilot.');
   }
 
   await app.listen(port);
