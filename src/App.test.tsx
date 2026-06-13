@@ -136,7 +136,7 @@ describe('Crystal Bio agent view shell', () => {
     expect(screen.getByRole('button', { name: /save step 1/i })).toBeInTheDocument();
 
     act(() => { fireEvent.click(screen.getByLabelText('Home')); });
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /service report/i })); });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /service new service update/i })); });
     expect(screen.getByText('Service visit')).toBeInTheDocument();
     expect(screen.queryByText('Save the site update first')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Service quick equipment')).toBeInTheDocument();
@@ -243,7 +243,7 @@ describe('Crystal Bio agent view shell', () => {
     expect(screen.getByRole('button', { name: /save step 2/i })).toBeDisabled();
 
     fireEvent.click(screen.getByLabelText('Home'));
-    fireEvent.click(screen.getByRole('button', { name: /service report/i }));
+    fireEvent.click(screen.getByRole('button', { name: /service new service update/i }));
     await waitFor(() => expect(screen.getByText('Meera Service')).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: /save step 1/i }));
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Service visit saved'));

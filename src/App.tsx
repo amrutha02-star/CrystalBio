@@ -225,8 +225,8 @@ function App() {
   const actionMeta = useMemo(
     () => [
       { label: attendanceAction, hint: attendanceHint, className: 'action-mint', icon: MapPin, onClick: 'attendance-action' as const },
-      { label: 'Sales', hint: 'New visit', className: 'action-peach', icon: Plus, onClick: 'sales' as const },
-      { label: 'Service', hint: 'Report', className: 'action-sky', icon: ClipboardList, onClick: 'service' as const },
+      { label: 'Sales', hint: 'New visit update', className: 'action-peach', icon: Plus, onClick: 'sales' as const },
+      { label: 'Service', hint: 'New service update', className: 'action-sky', icon: ClipboardList, onClick: 'service' as const },
       { label: 'Attendance', hint: 'Logs & leave', className: 'action-attendance', icon: CalendarCheck, onClick: 'attendance' as const },
     ],
     [attendanceAction, attendanceHint],
@@ -970,7 +970,7 @@ function App() {
 
       <section className={isSalesStep2Open ? 'step-card step-card-open' : 'step-card step-card-collapsed'}>
         <button type="button" className="step-heading step-toggle" aria-expanded={isSalesStep2Open} onClick={() => setIsSalesStep2Open((open) => !open)}>
-          <div><span className="step-pill">Step 2</span><h3>Customer & requirement details</h3><p>Add contact and product details when available.</p></div>
+          <div><span className="step-pill">Step 2</span><h3>Customer & requirement details</h3><p>Add contact and product details when available.</p><span className="step-collapsed-hint">Contact, phone, address, product</span></div>
           <span className={salesStep2Saved ? 'chip chip-soft' : 'chip chip-info'}>{salesStep2Saved ? 'Saved' : isSalesStep2Open ? 'Open' : 'Tap to open'}</span>
         </button>
         {isSalesStep2Open && <div className="step-body">
@@ -1020,7 +1020,7 @@ function App() {
 
       <section className={isSalesStep3Open ? 'step-card step-card-open' : 'step-card step-card-collapsed'}>
         <button type="button" className="step-heading step-toggle" aria-expanded={isSalesStep3Open} onClick={() => setIsSalesStep3Open((open) => !open)}>
-          <div><span className="step-pill">Step 3</span><h3>Quote, proof & office details</h3><p>Useful for follow-up, admin reports, and office team work.</p></div>
+          <div><span className="step-pill">Step 3</span><h3>Quote, proof & office details</h3><p>Useful for follow-up, admin reports, and office team work.</p><span className="step-collapsed-hint">Quote status, support, proof, office notes</span></div>
           <span className={salesStep3Saved ? 'chip chip-soft' : 'chip chip-info'}>{salesStep3Saved ? 'Saved' : isSalesStep3Open ? 'Open' : 'Tap to open'}</span>
         </button>
         {isSalesStep3Open && <div className="step-body">
@@ -1099,7 +1099,7 @@ function App() {
 
         <section className={isServiceStep2Open ? 'step-card step-card-open' : 'step-card step-card-collapsed'}>
           <button type="button" className="step-heading step-toggle" aria-expanded={isServiceStep2Open} onClick={() => setIsServiceStep2Open((open) => !open)}>
-            <div><span className="step-pill">Step 2</span><h3>Customer, equipment, issue</h3><p>Add instrument and issue details when available.</p></div>
+            <div><span className="step-pill">Step 2</span><h3>Customer, equipment, issue</h3><p>Add instrument and issue details when available.</p><span className="step-collapsed-hint">Contact, equipment, serial, issue</span></div>
             <span className={serviceStep2Saved ? 'chip chip-soft' : 'chip chip-info'}>{serviceStep2Saved ? 'Saved' : isServiceStep2Open ? 'Open' : 'Tap to open'}</span>
           </button>
           {isServiceStep2Open && <div className="step-body">
@@ -1120,7 +1120,7 @@ function App() {
 
         <section className={isServiceStep3Open ? 'step-card step-card-open' : 'step-card step-card-collapsed'}>
           <button type="button" className="step-heading step-toggle" aria-expanded={isServiceStep3Open} onClick={() => setIsServiceStep3Open((open) => !open)}>
-            <div><span className="step-pill">Step 3</span><h3>Parts, proof, office details</h3><p>For service closure and admin reporting.</p></div>
+            <div><span className="step-pill">Step 3</span><h3>Parts, proof, office details</h3><p>For service closure and admin reporting.</p><span className="step-collapsed-hint">Parts, photos, support, final notes</span></div>
             <span className={serviceStep3Saved ? 'chip chip-soft' : 'chip chip-info'}>{serviceStep3Saved ? 'Saved' : isServiceStep3Open ? 'Open' : 'Tap to open'}</span>
           </button>
           {isServiceStep3Open && <div className="step-body">

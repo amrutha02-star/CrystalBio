@@ -369,6 +369,14 @@ p { color: var(--muted); line-height: 1.5; }
   line-height: 1.32;
   color: var(--ink-soft);
 }
+.step-collapsed-hint {
+  display: block;
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.25;
+}
+.step-card-open .step-collapsed-hint { color: var(--ink-soft); }
 .step-pill {
   display: inline-flex;
   width: max-content;
