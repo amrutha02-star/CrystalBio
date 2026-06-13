@@ -873,7 +873,7 @@ function App() {
       return !query || haystack.includes(query);
     });
     return (
-      <ScreenPanel title="Visits" subtitle="Search previous entries or start a new field update.">
+      <ScreenPanel title="Visits" subtitle="Search previous entries, continue follow-ups, or start a new field update.">
         <label className="search-card visit-search-card">
           <Search size={17} />
           <input
@@ -887,19 +887,23 @@ function App() {
           <button type="button" className="visit-action-card" aria-label="New sales visit update" onClick={() => goToScreen('sales', { newSalesVisit: true })}>
             <span className="visit-action-icon"><Plus size={19} /></span>
             <strong>Sales</strong>
-            <small>New visit update</small>
+            <small>New sales visit</small>
           </button>
           <button type="button" className="visit-action-card" aria-label="New service visit update" onClick={() => goToScreen('service', { newServiceVisit: true })}>
             <span className="visit-action-icon service-icon"><ClipboardList size={18} /></span>
             <strong>Service</strong>
-            <small>New service update</small>
+            <small>New service visit</small>
           </button>
+        </div>
+        <div className="section-title previous-entries-title">
+          <h3>Previous entries</h3>
+          <span>Tap to continue</span>
         </div>
         {filteredEntries.length ? filteredEntries.map((entry) => (
           <button className="entry-row entry-button" key={entry.customer} type="button" onClick={() => goToScreen(entry.type === 'Sales' ? 'sales' : 'service')}>
             <div>
               <strong>{entry.customer}</strong>
-              <p>{entry.type} • Next: {entry.next}</p>
+              <p>{entry.type} • Next: {entry.next} • Continue update</p>
             </div>
             <span className={toneClass[entry.tone]}>{entry.status}</span>
           </button>
@@ -1344,6 +1348,7 @@ function App() {
           </div>
 
           <button type="button" className="primary-action single-report-generate" onClick={generateReport}>Generate report</button>
+          <p className="report-approval-note">Preview only for visual approval. Backend connection comes after this flow is approved.</p>
         </section>
 
         <section className="report-preview-card simple-report-preview-card">
@@ -1353,7 +1358,7 @@ function App() {
               <strong>{kindLabels[reportKind].title}</strong>
               <span>{activeReport.title} • {activeReport.range}</span>
             </div>
-            <span className="chip chip-soft">Ready</span>
+            <span className="chip chip-soft">Preview</span>
           </div>
           {(reportKind === 'attendance' || reportKind === 'combined') && (
             <div className="report-line"><span>Attendance</span><strong>{activeReport.attendance}</strong></div>

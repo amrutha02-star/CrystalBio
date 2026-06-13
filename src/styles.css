@@ -239,6 +239,9 @@ p { color: var(--muted); line-height: 1.5; }
   color: var(--sage-deep);
 }
 .visit-action-icon.service-icon { background: #eef3e9; color: #4f6d58; }
+.previous-entries-title { margin: 12px 2px 4px; }
+.previous-entries-title h3 { font-size: 14px; font-weight: 560; }
+.previous-entries-title span { color: var(--muted); font-size: 11.5px; font-weight: 520; }
 .login-hero-card {
   border-radius: 24px;
   padding: 16px;
@@ -721,6 +724,13 @@ p { color: var(--muted); line-height: 1.5; }
   min-height: 40px;
   margin-top: 2px;
   margin-bottom: 0;
+}
+.report-approval-note {
+  margin: 7px 2px 0;
+  color: var(--muted);
+  font-size: 11.5px;
+  line-height: 1.35;
+  text-align: center;
 }
 .admin-report-setup-card .single-report-generate { margin: 0 0 12px; }
 .four-report-actions { grid-template-columns: repeat(2, 1fr); }

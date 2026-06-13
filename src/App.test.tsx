@@ -160,12 +160,14 @@ describe('Crystal Bio agent view shell', () => {
     fireEvent.click(screen.getByRole('button', { name: /^visits$/i }));
     expect(screen.getByRole('heading', { name: 'Visits' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /new sales visit update/i })).toBeInTheDocument();
+    expect(screen.getByText('Previous entries')).toBeInTheDocument();
+    expect(screen.getAllByText(/Continue update/i).length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByRole('button', { name: /^reports$/i }));
     expect(screen.getByText('My reports')).toBeInTheDocument();
     expect(screen.getByText(/Weekly report/)).toBeInTheDocument();
-    expect(screen.getByText('Ready')).toBeInTheDocument();
-    expect(screen.getByText('Preview')).toBeInTheDocument();
+    expect(screen.getAllByText('Preview').length).toBeGreaterThan(0);
+    expect(screen.getByText(/Preview only for visual approval/i)).toBeInTheDocument();
     expect(screen.getByText('Attendance report')).toBeInTheDocument();
     expect(screen.getAllByText('Custom dates').length).toBeGreaterThan(0);
     fireEvent.change(screen.getByLabelText('My report preset'), { target: { value: 'custom' } });
