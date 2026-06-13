@@ -1503,6 +1503,11 @@ function App() {
       { title: 'Arrange parts', detail: 'Metro Lab • bearing kit required', tone: 'info' },
       { title: 'Complete missing update', detail: 'Anil Sales • Wednesday visit fields missing', tone: 'warning' },
     ];
+    const adminTodayPriorities = [
+      { label: 'Sales', title: 'Quote to send', detail: 'Apollo Diagnostics needs biochemistry analyzer quote today', tone: 'warning' },
+      { label: 'Service', title: 'Parts to arrange', detail: 'Metro Lab bearing kit needed before next service visit', tone: 'info' },
+      { label: 'Missing', title: 'Check Anil update', detail: 'No check-in yet and Wednesday visit details are incomplete', tone: 'warning' },
+    ];
     const adminReportScopeLabels: Record<AdminReportScope, string> = {
       office: 'Whole office report',
       sales: 'All sales agents',
@@ -1622,6 +1627,15 @@ function App() {
                   {launchIssues.length ? launchIssues.map((issue) => (
                     <div key={`${issue.area}-${issue.message}-${issue.when}`} className="admin-office-action-row"><span className="chip chip-warning">Issue</span><div><strong>{issue.area}</strong><small>{issue.message} • {issue.when}</small></div></div>
                   )) : <div className="admin-office-action-row"><span className="chip chip-soft">OK</span><div><strong>No user-action failures captured</strong><small>Login, save, sync, and report errors will show here during pilot monitoring.</small></div></div>}
+                </section>
+                <section className="admin-office-actions-card admin-today-priority-card">
+                  <div className="admin-report-heading"><label>Today’s action queue</label><span>{adminTodayPriorities.length} items</span></div>
+                  {adminTodayPriorities.map((item) => (
+                    <button key={item.title} type="button" className="admin-office-action-row admin-priority-row admin-click-row" onClick={() => setScreenNotice({ title: item.title, message: item.detail, tone: item.tone === 'info' ? 'info' : 'warning' })}>
+                      <span className={item.tone === 'info' ? 'chip chip-info' : 'chip chip-warning'}>{item.label}</span>
+                      <div><strong>{item.title}</strong><small>{item.detail}</small></div>
+                    </button>
+                  ))}
                 </section>
               </>
             )}

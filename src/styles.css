@@ -1243,13 +1243,23 @@ p { color: var(--muted); line-height: 1.5; }
 .admin-chart-row .warning-bar { background: #d9b452; }
 .admin-chart-row strong { color: var(--ink); font-size: 11px; text-align: right; }
 .admin-office-action-row {
+  width: 100%;
   display: grid;
   grid-template-columns: auto 1fr;
   gap: 9px;
   align-items: start;
   padding: 6px 0;
   border-top: 1px solid rgba(227, 232, 220, 0.8);
+  text-align: left;
 }
+.admin-priority-row {
+  min-height: 0;
+  border-radius: 14px;
+  padding: 8px 4px;
+}
+.admin-priority-row:first-of-type { margin-top: 2px; }
+.admin-priority-row:hover { background: rgba(237, 243, 232, 0.72); }
+.admin-today-priority-card { margin-bottom: 12px; }
 .admin-office-action-row:first-of-type { border-top: 0; padding-top: 0; }
 .admin-office-action-row strong,
 .admin-office-action-row small { display: block; margin: 0; }
