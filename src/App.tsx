@@ -357,13 +357,17 @@ function App() {
     if (options?.newSalesVisit) resetSalesFormForNewVisit();
     if (options?.newServiceVisit) resetServiceFormForNewVisit();
     if (nextScreen === 'sales' || nextScreen === 'service') {
-      setStatusMessage('Loading logged-in agent…');
-      crystalBioFrontendApi.login(isBackendConfigured ? loginInputForScreen(nextScreen) : agentIdForScreen(nextScreen)).then((nextSession) => {
-        setSession(nextSession);
-        setStatusMessage('Logged in. Check in to start field work.');
-      }).catch((error: Error) => {
-        setStatusMessage(error.message);
-      });
+      if (isBackendConfigured) {
+        setStatusMessage(session ? 'Logged in. Check in to start field work.' : 'Login is required before field work.');
+      } else {
+        setStatusMessage('Loading logged-in agent…');
+        crystalBioFrontendApi.login(agentIdForScreen(nextScreen)).then((nextSession) => {
+          setSession(nextSession);
+          setStatusMessage('Logged in. Check in to start field work.');
+        }).catch((error: Error) => {
+          setStatusMessage(error.message);
+        });
+      }
     }
     setScreen(nextScreen);
   };
