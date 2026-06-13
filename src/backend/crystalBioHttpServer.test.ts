@@ -5,6 +5,7 @@ import { createCrystalBioBackend } from './crystalBioBackend';
 import { createCrystalBioHttpServer } from './crystalBioHttpServer';
 
 const gps = { latitude: 12.9716, longitude: 77.5946, accuracyMeters: 18 };
+const password = 'pilot-test-password';
 
 const servers: ReturnType<typeof createCrystalBioHttpServer>[] = [];
 
@@ -16,7 +17,7 @@ afterEach(async () => {
 describe('CrystalBio HTTP server adapter', () => {
   it('serves real HTTP requests for login and attendance', async () => {
     const backend = createCrystalBioBackend();
-    const agent = backend.createAgent({ name: 'Rahul', role: 'sales' });
+    const agent = backend.createAgent({ name: 'Rahul', role: 'sales', email: 'rahul@crystalbio.in', password });
     const server = createCrystalBioHttpServer(createCrystalBioApi(backend));
     servers.push(server);
     await server.listen(0);
@@ -26,7 +27,7 @@ describe('CrystalBio HTTP server adapter', () => {
     const loginResponse = await fetch(`${baseUrl}/auth/login`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ agentId: agent.id }),
+      body: JSON.stringify({ email: agent.email, password }),
     });
     const login = await loginResponse.json();
 

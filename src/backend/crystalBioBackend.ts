@@ -22,6 +22,8 @@ export type Agent = {
   loginCode?: string;
   passcode?: string;
   password?: string;
+  inviteToken?: string;
+  inviteStatus?: 'pending' | 'accepted';
 };
 
 export type AttendanceRecord = {
@@ -239,6 +241,8 @@ const createIdFactory = () => {
   return (prefix: string) => `${prefix}_${next++}`;
 };
 
+const createInviteToken = (agentId: string) => `invite_${agentId}_${Math.random().toString(36).slice(2, 12)}`;
+
 export function createCrystalBioBackend(initialState?: CrystalBioBackendState) {
   let nextNumericId = initialState?.nextId ?? 1;
   const nextId = (prefix: string) => `${prefix}_${nextNumericId++}`;
@@ -290,17 +294,56 @@ export function createCrystalBioBackend(initialState?: CrystalBioBackendState) {
       const employeeId = input.employeeId?.trim() ?? input.loginCode;
       const agent: Agent = {
         id,
-        name: input.name,
+        name: input.name.trim(),
         role: input.role,
         active: true,
         employeeId,
         email,
         mobile: input.mobile?.trim(),
         loginCode: input.loginCode ?? employeeId ?? id,
-        passcode: input.passcode ?? input.password ?? `invite-${id}`,
-        password: input.password ?? input.passcode ?? `invite-${id}`,
+        passcode: input.passcode ?? input.password,
+        password: input.password ?? input.passcode,
+        inviteStatus: input.password || input.passcode ? 'accepted' : undefined,
       };
       agents.set(agent.id, agent);
+      return agent;
+    },
+
+    createAdminInvite(adminAgentId: string, input: { name: string; role: AgentRole; employeeId: string; email: string; mobile?: string }): Agent {
+      requireAdmin(adminAgentId);
+      requireText(input.name, 'Agent name is required');
+      requireText(input.employeeId, 'Employee ID is required');
+      requireText(input.email, 'Email is required');
+      const duplicateEmail = [...agents.values()].find((candidate) => candidate.email?.toLowerCase() === input.email.trim().toLowerCase());
+      if (duplicateEmail) throw new ValidationError('Email is already registered');
+      const id = nextId('agent');
+      const agent: Agent = {
+        id,
+        name: input.name.trim(),
+        role: input.role,
+        active: false,
+        employeeId: input.employeeId.trim(),
+        email: input.email.trim().toLowerCase(),
+        mobile: input.mobile?.trim(),
+        loginCode: input.employeeId.trim(),
+        inviteToken: createInviteToken(id),
+        inviteStatus: 'pending',
+      };
+      agents.set(agent.id, agent);
+      return agent;
+    },
+
+    setupPassword(input: { inviteToken: string; password: string }): Agent {
+      requireText(input.inviteToken, 'Invite token is required');
+      requireText(input.password, 'Password is required');
+      if (input.password.trim().length < 8) throw new ValidationError('Password must be at least 8 characters');
+      const agent = [...agents.values()].find((candidate) => candidate.inviteToken === input.inviteToken && candidate.inviteStatus === 'pending');
+      if (!agent) throw new ValidationError('Valid invite token is required');
+      agent.password = input.password;
+      agent.passcode = input.password;
+      agent.active = true;
+      agent.inviteStatus = 'accepted';
+      delete agent.inviteToken;
       return agent;
     },
 
@@ -694,7 +737,7 @@ export function createCrystalBioBackend(initialState?: CrystalBioBackendState) {
           ).size,
           salesVisits: salesVisits.length,
           serviceVisits: serviceVisits.length,
-          pendingLeaveRequests: [...leaveRequests.values()].filter((leave) => leave.status === 'pending').length,
+          pendingLeaveRequests: [...leaveRequests.values()].filter((leave) => leave.status === 'pending' && leave.fromDate <= input.toDate && leave.toDate >= input.fromDate).length,
         },
         agentSummaries,
         followUpsDue,

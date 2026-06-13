@@ -3,14 +3,19 @@ import { createCrystalBioBackend } from './crystalBioBackend';
 import { createCrystalBioApi } from './crystalBioApi';
 
 const gps = { latitude: 12.9716, longitude: 77.5946, accuracyMeters: 18 };
+const password = 'pilot-test-password';
+const createLoginAgent = (backend: ReturnType<typeof createCrystalBioBackend>, input: Parameters<ReturnType<typeof createCrystalBioBackend>['createAgent']>[0]) =>
+  backend.createAgent({ ...input, email: input.email ?? `${input.name.toLowerCase().replace(/\s+/g, '.')}@crystalbio.in`, password });
+const loginToken = (api: ReturnType<typeof createCrystalBioApi>, email: string) =>
+  api.handle({ method: 'POST', path: '/auth/login', body: { email, password } }).body.session.token;
 
 describe('CrystalBio API layer', () => {
   it('logs in an agent and uses session identity for attendance', () => {
     const backend = createCrystalBioBackend();
-    const agent = backend.createAgent({ name: 'Rahul', role: 'sales' });
+    const agent = createLoginAgent(backend, { name: 'Rahul', role: 'sales', email: 'rahul@crystalbio.in' });
     const api = createCrystalBioApi(backend);
 
-    const login = api.handle({ method: 'POST', path: '/auth/login', body: { agentId: agent.id } });
+    const login = api.handle({ method: 'POST', path: '/auth/login', body: { email: agent.email, password } });
     expect(login.status).toBe(200);
     const token = login.body.session.token;
 
@@ -28,16 +33,58 @@ describe('CrystalBio API layer', () => {
 
   it('accepts credential login and rejects bad credential login through auth API', () => {
     const backend = createCrystalBioBackend();
-    const agent = backend.createAgent({ name: 'Rahul', role: 'sales', employeeId: 'CB-S-014', email: 'rahul.sales@crystalbio.in', password: 'pilot-test-password' });
+    const agent = backend.createAgent({ name: 'Rahul', role: 'sales', employeeId: 'CB-S-014', email: 'rahul.sales@crystalbio.in', password });
     const api = createCrystalBioApi(backend);
 
-    const login = api.handle({ method: 'POST', path: '/auth/login', body: { email: 'rahul.sales@crystalbio.in', password: 'pilot-test-password' } });
+    const login = api.handle({ method: 'POST', path: '/auth/login', body: { email: 'rahul.sales@crystalbio.in', password } });
     const failed = api.handle({ method: 'POST', path: '/auth/login', body: { email: 'rahul.sales@crystalbio.in', password: 'wrong-password' } });
 
     expect(login.status).toBe(200);
     expect(login.body.session.agentId).toBe(agent.id);
     expect(failed.status).toBe(400);
     expect(failed.body.error).toBe('Invalid email or password');
+  });
+
+
+  it('rejects public agent-id login and requires credentials at the API boundary', () => {
+    const backend = createCrystalBioBackend();
+    const agent = createLoginAgent(backend, { name: 'Rahul', role: 'sales', email: 'rahul.secure@crystalbio.in' });
+    const api = createCrystalBioApi(backend);
+
+    const blocked = api.handle({ method: 'POST', path: '/auth/login', body: { agentId: agent.id } });
+    const allowed = api.handle({ method: 'POST', path: '/auth/login', body: { email: agent.email, password } });
+
+    expect(blocked.status).toBe(400);
+    expect(blocked.body.error).toBe('Email and password login is required');
+    expect(allowed.status).toBe(200);
+  });
+
+  it('lets admin create an invite and activates the profile only after password setup', () => {
+    const backend = createCrystalBioBackend();
+    const admin = createLoginAgent(backend, { name: 'Admin User', role: 'admin', email: 'admin.invite@crystalbio.in' });
+    const api = createCrystalBioApi(backend);
+    const adminToken = loginToken(api, admin.email!);
+
+    const invite = api.handle({
+      method: 'POST',
+      path: '/admin/agents',
+      headers: { authorization: `Bearer ${adminToken}` },
+      body: { name: 'New Sales', role: 'sales', employeeId: 'CB-S-099', email: 'new.sales@crystalbio.in', mobile: '+91 99999 99999' },
+    });
+    expect(invite.status).toBe(201);
+    expect(invite.body.agent.active).toBe(false);
+    expect(invite.body.agent.inviteStatus).toBe('pending');
+
+    const beforeSetup = api.handle({ method: 'POST', path: '/auth/login', body: { email: 'new.sales@crystalbio.in', password: 'NewPassword123' } });
+    expect(beforeSetup.status).toBe(400);
+
+    const setup = api.handle({ method: 'POST', path: '/auth/setup-password', body: { inviteToken: invite.body.agent.inviteToken, password: 'NewPassword123' } });
+    expect(setup.status).toBe(200);
+    expect(setup.body.agent.active).toBe(true);
+
+    const login = api.handle({ method: 'POST', path: '/auth/login', body: { email: 'new.sales@crystalbio.in', password: 'NewPassword123' } });
+    expect(login.status).toBe(200);
+    expect(login.body.session.agentName).toBe('New Sales');
   });
 
   it('blocks protected routes without a valid session token', () => {
@@ -55,11 +102,11 @@ describe('CrystalBio API layer', () => {
 
   it('submits and admin-reviews leave requests through API routes', () => {
     const backend = createCrystalBioBackend();
-    const agent = backend.createAgent({ name: 'Meera', role: 'service' });
-    const admin = backend.createAgent({ name: 'Admin User', role: 'admin' });
+    const agent = createLoginAgent(backend, { name: 'Meera', role: 'service', email: 'meera@crystalbio.in' });
+    const admin = createLoginAgent(backend, { name: 'Admin User', role: 'admin', email: 'admin@crystalbio.in' });
     const api = createCrystalBioApi(backend);
-    const agentToken = api.handle({ method: 'POST', path: '/auth/login', body: { agentId: agent.id } }).body.session.token;
-    const adminToken = api.handle({ method: 'POST', path: '/auth/login', body: { agentId: admin.id } }).body.session.token;
+    const agentToken = loginToken(api, agent.email!);
+    const adminToken = loginToken(api, admin.email!);
 
     const leave = api.handle({
       method: 'POST',
@@ -85,11 +132,11 @@ describe('CrystalBio API layer', () => {
 
   it('rejects invalid leave review status values', () => {
     const backend = createCrystalBioBackend();
-    const agent = backend.createAgent({ name: 'Meera', role: 'service' });
-    const admin = backend.createAgent({ name: 'Admin User', role: 'admin' });
+    const agent = createLoginAgent(backend, { name: 'Meera', role: 'service', email: 'meera@crystalbio.in' });
+    const admin = createLoginAgent(backend, { name: 'Admin User', role: 'admin', email: 'admin@crystalbio.in' });
     const api = createCrystalBioApi(backend);
-    const agentToken = api.handle({ method: 'POST', path: '/auth/login', body: { agentId: agent.id } }).body.session.token;
-    const adminToken = api.handle({ method: 'POST', path: '/auth/login', body: { agentId: admin.id } }).body.session.token;
+    const agentToken = loginToken(api, agent.email!);
+    const adminToken = loginToken(api, admin.email!);
     const leave = api.handle({
       method: 'POST',
       path: '/leave-requests',
@@ -110,9 +157,9 @@ describe('CrystalBio API layer', () => {
 
   it('returns validation errors instead of 500 when request body is missing', () => {
     const backend = createCrystalBioBackend();
-    const agent = backend.createAgent({ name: 'Rahul', role: 'sales' });
+    const agent = createLoginAgent(backend, { name: 'Rahul', role: 'sales', email: 'rahul@crystalbio.in' });
     const api = createCrystalBioApi(backend);
-    const token = api.handle({ method: 'POST', path: '/auth/login', body: { agentId: agent.id } }).body.session.token;
+    const token = loginToken(api, agent.email!);
 
     const response = api.handle({
       method: 'POST',
@@ -126,9 +173,9 @@ describe('CrystalBio API layer', () => {
 
   it('creates sales opportunity and visit update using logged-in agent identity', () => {
     const backend = createCrystalBioBackend();
-    const agent = backend.createAgent({ name: 'Rahul', role: 'sales' });
+    const agent = createLoginAgent(backend, { name: 'Rahul', role: 'sales', email: 'rahul@crystalbio.in' });
     const api = createCrystalBioApi(backend);
-    const token = api.handle({ method: 'POST', path: '/auth/login', body: { agentId: agent.id } }).body.session.token;
+    const token = loginToken(api, agent.email!);
 
     const opportunity = api.handle({
       method: 'POST',
@@ -179,9 +226,9 @@ describe('CrystalBio API layer', () => {
 
   it('creates service record and visit update using logged-in engineer identity', () => {
     const backend = createCrystalBioBackend();
-    const engineer = backend.createAgent({ name: 'Meera', role: 'service' });
+    const engineer = createLoginAgent(backend, { name: 'Meera', role: 'service', email: 'meera@crystalbio.in' });
     const api = createCrystalBioApi(backend);
-    const token = api.handle({ method: 'POST', path: '/auth/login', body: { agentId: engineer.id } }).body.session.token;
+    const token = loginToken(api, engineer.email!);
 
     const record = api.handle({
       method: 'POST',
@@ -215,13 +262,13 @@ describe('CrystalBio API layer', () => {
 
   it('requires logged-in owner or admin identity to patch service record details', () => {
     const backend = createCrystalBioBackend();
-    const owner = backend.createAgent({ name: 'Meera', role: 'service' });
-    const otherEngineer = backend.createAgent({ name: 'Sanjay', role: 'service' });
-    const admin = backend.createAgent({ name: 'Admin User', role: 'admin' });
+    const owner = createLoginAgent(backend, { name: 'Meera', role: 'service', email: 'meera@crystalbio.in' });
+    const otherEngineer = createLoginAgent(backend, { name: 'Sanjay', role: 'service', email: 'sanjay@crystalbio.in' });
+    const admin = createLoginAgent(backend, { name: 'Admin User', role: 'admin', email: 'admin@crystalbio.in' });
     const api = createCrystalBioApi(backend);
-    const ownerToken = api.handle({ method: 'POST', path: '/auth/login', body: { agentId: owner.id } }).body.session.token;
-    const otherToken = api.handle({ method: 'POST', path: '/auth/login', body: { agentId: otherEngineer.id } }).body.session.token;
-    const adminToken = api.handle({ method: 'POST', path: '/auth/login', body: { agentId: admin.id } }).body.session.token;
+    const ownerToken = loginToken(api, owner.email!);
+    const otherToken = loginToken(api, otherEngineer.email!);
+    const adminToken = loginToken(api, admin.email!);
     const record = api.handle({
       method: 'POST',
       path: '/service-records',
@@ -266,11 +313,11 @@ describe('CrystalBio API layer', () => {
 
   it('returns admin report only for admin sessions', () => {
     const backend = createCrystalBioBackend();
-    const agent = backend.createAgent({ name: 'Rahul', role: 'sales' });
-    const admin = backend.createAgent({ name: 'Admin User', role: 'admin' });
+    const agent = createLoginAgent(backend, { name: 'Rahul', role: 'sales', email: 'rahul@crystalbio.in' });
+    const admin = createLoginAgent(backend, { name: 'Admin User', role: 'admin', email: 'admin@crystalbio.in' });
     const api = createCrystalBioApi(backend);
-    const agentToken = api.handle({ method: 'POST', path: '/auth/login', body: { agentId: agent.id } }).body.session.token;
-    const adminToken = api.handle({ method: 'POST', path: '/auth/login', body: { agentId: admin.id } }).body.session.token;
+    const agentToken = loginToken(api, agent.email!);
+    const adminToken = loginToken(api, admin.email!);
 
     const blocked = api.handle({
       method: 'GET',

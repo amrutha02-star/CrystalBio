@@ -133,10 +133,18 @@ describe('CrystalBio backend auth leave and admin reports', () => {
       photos: [],
     });
 
+    backend.submitLeaveRequest(agent.id, {
+      fromDate: '2026-06-20',
+      toDate: '2026-06-21',
+      reason: 'Personal work',
+    });
+
     const weekly = backend.getAdminReport(admin.id, { fromDate: '2026-06-01', toDate: '2026-06-07' });
     const monthly = backend.getAdminReport(admin.id, { fromDate: '2026-06-01', toDate: '2026-06-30' });
 
     expect(weekly.totals.salesVisits).toBe(1);
+    expect(weekly.totals.pendingLeaveRequests).toBe(0);
     expect(monthly.totals.salesVisits).toBe(2);
+    expect(monthly.totals.pendingLeaveRequests).toBe(1);
   });
 });

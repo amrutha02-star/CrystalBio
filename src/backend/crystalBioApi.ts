@@ -69,13 +69,19 @@ export function createCrystalBioApi(backend: Backend) {
 
         if (request.method === 'POST' && pathname === '/auth/login') {
           const body = requireBody(request.body);
+          if (body.agentId) throw new ValidationError('Email and password login is required');
           const loginInput: LoginInput = body.email || body.password
             ? { email: String(body.email ?? ''), password: String(body.password ?? '') }
             : body.loginCode || body.passcode
               ? { loginCode: String(body.loginCode ?? ''), passcode: String(body.passcode ?? '') }
-              : String(body.agentId ?? '');
+              : { email: '', password: '' };
           const session = backend.login(loginInput);
           return ok({ session });
+        }
+
+        if (request.method === 'POST' && pathname === '/auth/setup-password') {
+          const agent = backend.setupPassword(requireBody(request.body) as any);
+          return ok({ agent: { id: agent.id, name: agent.name, role: agent.role, employeeId: agent.employeeId, email: agent.email, mobile: agent.mobile, active: agent.active, inviteStatus: agent.inviteStatus } });
         }
 
         if (request.method === 'POST' && pathname === '/attendance/check-in') {
@@ -146,6 +152,12 @@ export function createCrystalBioApi(backend: Backend) {
           const session = sessionFor(request);
           const visit = backend.addServiceVisitUpdate(session.agentId, serviceVisitMatch[1], requireBody(request.body) as any);
           return ok({ visit }, 201);
+        }
+
+        if (request.method === 'POST' && pathname === '/admin/agents') {
+          const session = sessionFor(request);
+          const agent = backend.createAdminInvite(session.agentId, requireBody(request.body) as any);
+          return ok({ agent: { id: agent.id, name: agent.name, role: agent.role, employeeId: agent.employeeId, email: agent.email, mobile: agent.mobile, active: agent.active, inviteStatus: agent.inviteStatus, inviteToken: agent.inviteToken } }, 201);
         }
 
         if (request.method === 'GET' && pathname === '/admin/reports') {

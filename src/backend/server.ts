@@ -6,9 +6,9 @@ import { JsonFileCrystalBioStore } from './crystalBioPersistence';
 const main = async () => {
   const port = Number(process.env.PORT ?? 8787);
   const host = process.env.HOST ?? '127.0.0.1';
-  const allowedOrigin = process.env.CRYSTALBIO_ALLOWED_ORIGIN ?? '*';
+  const allowedOrigin = process.env.CRYSTALBIO_ALLOWED_ORIGIN ?? 'http://localhost:5173';
   const databasePath = resolve(process.env.CRYSTALBIO_DB_PATH ?? 'data/crystalbio-db.json');
-  const seedDemoUsers = process.env.CRYSTALBIO_SEED_DEMO !== 'false';
+  const seedDemoUsers = process.env.CRYSTALBIO_SEED_DEMO === 'true';
   const demoPassword = process.env.CRYSTALBIO_DEMO_PASSWORD ?? `Pilot-${Math.random().toString(36).slice(2, 10)}!`;
 
   mkdirSync(dirname(databasePath), { recursive: true });

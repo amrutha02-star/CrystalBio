@@ -7,6 +7,7 @@ import { JsonFileCrystalBioStore } from './crystalBioPersistence';
 import { createCrystalBioPersistentHttpApp } from './crystalBioPersistentHttpApp';
 
 const gps = { latitude: 12.9716, longitude: 77.5946, accuracyMeters: 18 };
+const password = 'pilot-test-password';
 const apps: ReturnType<typeof createCrystalBioPersistentHttpApp>[] = [];
 
 afterEach(async () => {
@@ -23,8 +24,8 @@ describe('CrystalBio persistent HTTP app', () => {
       const store = new JsonFileCrystalBioStore(filePath);
       const app = createCrystalBioPersistentHttpApp(store);
       apps.push(app);
-      const admin = app.backend.createAgent({ name: 'Admin User', role: 'admin' });
-      const agent = app.backend.createAgent({ name: 'Rahul', role: 'sales' });
+      const admin = app.backend.createAgent({ name: 'Admin User', role: 'admin', email: 'admin@crystalbio.in', password });
+      const agent = app.backend.createAgent({ name: 'Rahul', role: 'sales', email: 'rahul@crystalbio.in', password });
       app.save();
       await app.listen(0);
       const address = app.address() as AddressInfo;
@@ -33,7 +34,7 @@ describe('CrystalBio persistent HTTP app', () => {
       const loginResponse = await fetch(`${baseUrl}/auth/login`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ agentId: agent.id }),
+        body: JSON.stringify({ email: agent.email, password }),
       });
       const login = await loginResponse.json();
 
