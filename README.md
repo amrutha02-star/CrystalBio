@@ -26,7 +26,7 @@ Current app includes:
 Current UX corrections to preserve:
 
 - **Agents** is an operational visibility screen: today's live status — who checked in, who updated visits, who is missing data, Sales/Service filtering, and compact visible-count snapshot. It must not look like report generation and should not carry report date-range/export controls.
-- **Admin overview** is a same-day owner snapshot, not a report page. Keep it focused on today's field status, quick counts, launch monitoring, today’s action queue, and urgent approvals; detailed date ranges belong in Reports.
+- **Admin overview** is a same-day owner snapshot, not a report page. Keep it focused on today's field status, quick counts, today’s action queue, and urgent approvals; detailed date ranges belong in Reports. App-health monitoring/error tracking should live in a separate owner/operator monitoring view, not inside the admin user's daily workflow.
 - **Field entry** is separate from Agents. It is the admin path for entering a Sales or Service report when admin/back office needs to submit one on behalf of an agent; keep the screen simple with Sales/Service entry choices plus a short office-assisted checklist.
 - **Approvals** should stay decision-focused: show pending count/type first, then tappable request rows, then approve/reject detail actions.
 - **Profile** owns controlled user/profile creation, invites, password setup, resend/reset/deactivate, access rules, and a compact active/invited/inactive seat summary.
@@ -129,7 +129,7 @@ Admins should be able to:
 - Approve or reject leave requests.
 - See missing submissions.
 - Download PDF reports now; Excel export is intentionally deferred from this pilot scope.
-- View platform issues and user difficulties.
+- View app-health issues and user difficulties in a separate owner/operator monitoring site, not crowded into the daily admin workflow.
 
 ### 3. Owner / Client
 
