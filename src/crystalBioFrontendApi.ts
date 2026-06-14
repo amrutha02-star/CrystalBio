@@ -346,8 +346,8 @@ export function createCrystalBioFrontendApi(options: ApiClientOptions = {}) {
       const agentId = typeof input === 'string' ? input : 'agent_2';
       if (!baseUrl) {
         return agentId === 'agent_3'
-          ? { token: 'demo-token-service', agentId, agentName: 'Meera Service', role: 'service', phone: '+91 98765 43211', email: 'meera.service@crystalbio.in' }
-          : { token: 'demo-token', agentId, agentName: 'Rahul Sales', role: 'sales', phone: '+91 98765 43210', email: 'rahul.sales@crystalbio.in' };
+          ? { token: 'local-token-service', agentId, agentName: 'Service Agent', role: 'service', phone: 'Registered mobile', email: 'service.agent@crystalbio.in' }
+          : { token: 'local-token', agentId, agentName: 'QA Test Agent', role: 'both', phone: 'Registered mobile', email: 'qa.agent@crystalbio.in' };
       }
       const body = typeof input === 'string' ? { agentId: input } : input;
       const result = await post<{ session: FrontendSession }>('/auth/login', body);
@@ -400,10 +400,10 @@ export function createCrystalBioFrontendApi(options: ApiClientOptions = {}) {
         return {
           id: leaveRequestId,
           agentId: 'agent_3',
-          agentName: 'Meera Service',
+          agentName: 'Service Agent',
           fromDate: '2026-06-12',
           toDate: '2026-06-13',
-          reason: 'Sick leave',
+          reason: 'Leave request',
           status,
         };
       }
@@ -418,7 +418,7 @@ export function createCrystalBioFrontendApi(options: ApiClientOptions = {}) {
     async createAdminInvite(session: FrontendSession, input: FrontendAdminSeatInput): Promise<FrontendAdminSeatInvite> {
       if (!baseUrl) {
         return {
-          id: `demo-seat-${now().getTime()}`,
+          id: `local-seat-${now().getTime()}`,
           ...input,
           active: false,
           inviteStatus: 'pending',
@@ -433,7 +433,7 @@ export function createCrystalBioFrontendApi(options: ApiClientOptions = {}) {
       if (!baseUrl) {
         demoCheckedIn = true;
         return {
-          id: 'demo-attendance-1',
+          id: 'local-attendance-1',
           agentId: session.agentId,
           agentName: session.agentName,
           date: now().toISOString().slice(0, 10),
@@ -455,7 +455,7 @@ export function createCrystalBioFrontendApi(options: ApiClientOptions = {}) {
       if (!baseUrl) {
         demoCheckedIn = false;
         return {
-          id: 'demo-attendance-1',
+          id: 'local-attendance-1',
           agentId: session.agentId,
           agentName: session.agentName,
           date: now().toISOString().slice(0, 10),
@@ -477,7 +477,7 @@ export function createCrystalBioFrontendApi(options: ApiClientOptions = {}) {
     async submitLeaveRequest(session: FrontendSession, input: FrontendLeaveRequestInput): Promise<FrontendLeaveRequest> {
       if (!baseUrl) {
         return {
-          id: `demo-leave-${now().getTime()}`,
+          id: `local-leave-${now().getTime()}`,
           agentId: session.agentId,
           agentName: session.agentName,
           fromDate: input.fromDate,
@@ -503,7 +503,7 @@ export function createCrystalBioFrontendApi(options: ApiClientOptions = {}) {
       if (!baseUrl) {
         return {
           opportunity: {
-            id: `demo-sales-${visitTimestamp.getTime()}`,
+            id: `local-sales-${visitTimestamp.getTime()}`,
             ownerAgentId: session.agentId,
             accountName: input.accountName,
             ...(input.contactPerson ? { contactPerson: input.contactPerson } : {}),
@@ -512,8 +512,8 @@ export function createCrystalBioFrontendApi(options: ApiClientOptions = {}) {
             status: input.nextAction === 'closed' ? 'closed' : 'open',
           },
           visit: {
-            id: `demo-sales-visit-${visitTimestamp.getTime()}`,
-            opportunityId: `demo-sales-${visitTimestamp.getTime()}`,
+            id: `local-sales-visit-${visitTimestamp.getTime()}`,
+            opportunityId: `local-sales-${visitTimestamp.getTime()}`,
             agentId: session.agentId,
             agentName: session.agentName,
             visitNumber: 1,
@@ -596,7 +596,7 @@ export function createCrystalBioFrontendApi(options: ApiClientOptions = {}) {
       if (!baseUrl) {
         return {
           serviceRecord: {
-            id: `demo-service-${visitTimestamp.getTime()}`,
+            id: `local-service-${visitTimestamp.getTime()}`,
             ownerAgentId: session.agentId,
             customerName: input.customerName,
             ...(input.phone ? { phone: input.phone } : {}),
@@ -613,8 +613,8 @@ export function createCrystalBioFrontendApi(options: ApiClientOptions = {}) {
             status: input.nextAction === 'closed' ? 'closed' : input.nextAction === 'parts_required' ? 'pending_parts' : 'open',
           },
           visit: {
-            id: `demo-service-visit-${visitTimestamp.getTime()}`,
-            serviceRecordId: `demo-service-${visitTimestamp.getTime()}`,
+            id: `local-service-visit-${visitTimestamp.getTime()}`,
+            serviceRecordId: `local-service-${visitTimestamp.getTime()}`,
             agentId: session.agentId,
             agentName: session.agentName,
             visitNumber: 1,

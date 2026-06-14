@@ -1,13 +1,12 @@
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { CalendarCheck, CheckCircle2, ChevronLeft, ClipboardList, Clock3, FileText, Home, MapPin, Plus, Search, UserRound, UsersRound, X } from 'lucide-react';
-import { sampleEntries } from './appData';
-import { crystalBioFrontendApi, type FrontendAdminSeatInvite, type FrontendAttendance, type FrontendLeaveRequest, type FrontendLoginInput, type FrontendSalesSaveResult, type FrontendSalesNextAction, type FrontendServiceSaveResult, type FrontendServiceNextAction, type FrontendServiceType, type FrontendSession } from './crystalBioFrontendApi';
+import { crystalBioFrontendApi, type FrontendAdminReport, type FrontendAdminSeatInvite, type FrontendAttendance, type FrontendLeaveRequest, type FrontendLoginInput, type FrontendSalesSaveResult, type FrontendSalesNextAction, type FrontendServiceSaveResult, type FrontendServiceNextAction, type FrontendServiceType, type FrontendSession } from './crystalBioFrontendApi';
 
 type AppScreen = 'login' | 'home' | 'visits' | 'sales' | 'service' | 'checkin' | 'attendance' | 'leave' | 'reports' | 'profile' | 'admin';
 type ReportPeriod = 'today' | 'week' | 'month' | 'custom';
 type AgentReportKind = 'attendance' | 'visits' | 'combined';
 type AdminAgentFilter = 'all' | 'sales' | 'service';
-type AdminReportScope = 'office' | 'sales' | 'service' | 'rahul' | 'meera' | 'anil';
+type AdminReportScope = 'office' | 'sales' | 'service' | 'agent';
 type AdminTab = 'overview' | 'fieldEntry' | 'agents' | 'approvals' | 'adminReports' | 'profiles';
 type AdminApprovalId = string;
 type AdminAgentsView = 'list' | 'add' | 'profile' | 'invite';
@@ -22,6 +21,19 @@ type AdminSeat = {
   territory: string;
   status: AdminSeatStatus;
   lastActive: string;
+};
+
+type AdminActivityRow = {
+  id: string;
+  name: string;
+  role: string;
+  attendance: string;
+  visits: string;
+  status: string;
+  chipClass: string;
+  salesVisitCount: number;
+  serviceVisitCount: number;
+  followUpsDue: string[];
 };
 type ToastNotice = { title: string; message: string; tone?: 'success' | 'info' | 'warning' | 'error' };
 type LaunchIssue = { area: string; message: string; when: string };
@@ -40,15 +52,10 @@ const navItems: Array<{ screen: AppScreen; label: string; icon: typeof Home }> =
 ];
 
 
-const initialAdminSeats: AdminSeat[] = [
-  { id: 'seat_rahul', name: 'Rahul Sales', employeeId: 'CB-S-014', email: 'rahul.sales@crystalbio.in', mobile: '+91 98765 43210', role: 'sales', territory: 'Kochi', status: 'active', lastActive: 'Today, 10:42 AM' },
-  { id: 'seat_meera', name: 'Meera Service', employeeId: 'CB-SE-008', email: 'meera.service@crystalbio.in', mobile: '+91 98765 43111', role: 'service', territory: 'Ernakulam', status: 'active', lastActive: 'Today, 9:58 AM' },
-  { id: 'seat_anil', name: 'Anil Sales', employeeId: 'CB-S-021', email: 'anil.sales@crystalbio.in', mobile: '+91 98765 43009', role: 'sales', territory: 'Thrissur', status: 'invited', lastActive: 'Invite sent today' },
-];
+const initialAdminSeats: AdminSeat[] = [];
 
 const sampleAttendanceLogs = [
   { date: 'Today', status: 'Ready to check in', detail: 'GPS will be saved when the agent taps Check in.' },
-  { date: 'Yesterday', status: 'Checked out', detail: '9:18 AM to 6:04 PM' },
 ];
 
 const screenOptions: AppScreen[] = ['login', 'home', 'visits', 'sales', 'service', 'checkin', 'attendance', 'leave', 'reports', 'profile', 'admin'];
@@ -104,13 +111,14 @@ function App() {
   const [adminReportFromDate, setAdminReportFromDate] = useState('2026-06-01');
   const [adminReportToDate, setAdminReportToDate] = useState('2026-06-08');
   const [adminReportScope, setAdminReportScope] = useState<AdminReportScope>('office');
+  const [adminReport, setAdminReport] = useState<FrontendAdminReport | null>(null);
   const [expandedAdminReportId, setExpandedAdminReportId] = useState<string | null>(null);
   const [expandedAgentActivityId, setExpandedAgentActivityId] = useState<string | null>(null);
   const [adminAgentFilter, setAdminAgentFilter] = useState<AdminAgentFilter>('all');
   const [adminTab, setAdminTab] = useState<AdminTab>(getInitialAdminTab);
   const [selectedAdminApproval, setSelectedAdminApproval] = useState<AdminApprovalId | null>(getInitialAdminApproval);
   const [adminAgentsView, setAdminAgentsView] = useState<AdminAgentsView>('list');
-  const [selectedAdminSeatId, setSelectedAdminSeatId] = useState(initialAdminSeats[0].id);
+  const [selectedAdminSeatId, setSelectedAdminSeatId] = useState(initialAdminSeats[0]?.id ?? '');
   const [adminSeats, setAdminSeats] = useState<AdminSeat[]>(initialAdminSeats);
   const [newSeatName, setNewSeatName] = useState('Priya Service');
   const [newSeatEmployeeId, setNewSeatEmployeeId] = useState('CB-SE-022');
@@ -129,9 +137,9 @@ function App() {
   const [visitSearch, setVisitSearch] = useState('');
   const [workTypes, setWorkTypes] = useState<string[]>(['Sales visit']);
   const [checkInNote, setCheckInNote] = useState('');
-  const [salesAccountName, setSalesAccountName] = useState('Apollo Diagnostics');
-  const [salesContactPerson, setSalesContactPerson] = useState('Lab manager');
-  const [salesDesignation, setSalesDesignation] = useState('Lab manager');
+  const [salesAccountName, setSalesAccountName] = useState('');
+  const [salesContactPerson, setSalesContactPerson] = useState('');
+  const [salesDesignation, setSalesDesignation] = useState('');
   const [salesPhone, setSalesPhone] = useState('');
   const [salesEmail, setSalesEmail] = useState('');
   const [salesDepartmentAddress, setSalesDepartmentAddress] = useState('');
@@ -139,10 +147,10 @@ function App() {
   const [salesProductType, setSalesProductType] = useState('Laboratory equipment');
   const [salesBrandName, setSalesBrandName] = useState('');
   const [salesEquipmentModel, setSalesEquipmentModel] = useState('');
-  const [salesRequirement, setSalesRequirement] = useState('Biochemistry analyzer requirement');
-  const [salesVisitNote, setSalesVisitNote] = useState('Requirement confirmed. Quote to be shared.');
+  const [salesRequirement, setSalesRequirement] = useState('');
+  const [salesVisitNote, setSalesVisitNote] = useState('');
   const [salesNextAction, setSalesNextAction] = useState<FrontendSalesNextAction>('follow_up_needed');
-  const [salesFollowUpDate, setSalesFollowUpDate] = useState('2026-06-10');
+  const [salesFollowUpDate, setSalesFollowUpDate] = useState('');
   const [salesQuoteSubmitted, setSalesQuoteSubmitted] = useState<'yes' | 'no' | ''>('');
   const [salesBudgetaryProposal, setSalesBudgetaryProposal] = useState('');
   const [salesQuoteStatus, setSalesQuoteStatus] = useState('New inquiry');
@@ -161,30 +169,30 @@ function App() {
   const [isSalesSubmitting, setIsSalesSubmitting] = useState(false);
   const [isSalesStep2Submitting, setIsSalesStep2Submitting] = useState(false);
   const [isSalesStep3Submitting, setIsSalesStep3Submitting] = useState(false);
-  const [serviceCustomerName, setServiceCustomerName] = useState('Metro Lab');
-  const [serviceContactPerson, setServiceContactPerson] = useState('Lab supervisor');
+  const [serviceCustomerName, setServiceCustomerName] = useState('');
+  const [serviceContactPerson, setServiceContactPerson] = useState('');
   const [servicePhone, setServicePhone] = useState('');
   const [serviceEmail, setServiceEmail] = useState('');
   const [serviceDepartmentAddress, setServiceDepartmentAddress] = useState('');
-  const [serviceEquipmentName, setServiceEquipmentName] = useState('Centrifuge');
+  const [serviceEquipmentName, setServiceEquipmentName] = useState('');
   const [serviceBrandName, setServiceBrandName] = useState('');
   const [serviceModelName, setServiceModelName] = useState('');
-  const [serviceSerialNumber, setServiceSerialNumber] = useState('CB-01');
-  const [serviceIssueCategory, setServiceIssueCategory] = useState('Machine noise');
+  const [serviceSerialNumber, setServiceSerialNumber] = useState('');
+  const [serviceIssueCategory, setServiceIssueCategory] = useState('');
   const [serviceIssueDescription, setServiceIssueDescription] = useState('');
   const [serviceWarrantyAmc, setServiceWarrantyAmc] = useState('');
   const [serviceType, setServiceType] = useState<FrontendServiceType>('breakdown');
-  const [serviceWorkDone, setServiceWorkDone] = useState('Diagnosed issue and checked machine performance.');
+  const [serviceWorkDone, setServiceWorkDone] = useState('');
   const [serviceSupportRequired, setServiceSupportRequired] = useState(true);
   const [serviceNextAction, setServiceNextAction] = useState<FrontendServiceNextAction>('parts_required');
-  const [serviceNextVisitDate, setServiceNextVisitDate] = useState('2026-06-09');
-  const [servicePartsRequired, setServicePartsRequired] = useState('Bearing kit');
+  const [serviceNextVisitDate, setServiceNextVisitDate] = useState('');
+  const [servicePartsRequired, setServicePartsRequired] = useState('');
   const [servicePartsUsed, setServicePartsUsed] = useState('');
-  const [serviceMachineStatus, setServiceMachineStatus] = useState('Working with observation');
+  const [serviceMachineStatus, setServiceMachineStatus] = useState('');
   const [serviceSupportRequiredNote, setServiceSupportRequiredNote] = useState('');
   const [serviceFinalRemarks, setServiceFinalRemarks] = useState('');
   const [servicePhotoNote, setServicePhotoNote] = useState('');
-  const [serviceOfficeNotes, setServiceOfficeNotes] = useState('Share parts availability with office.');
+  const [serviceOfficeNotes, setServiceOfficeNotes] = useState('');
   const [serviceStep2Saved, setServiceStep2Saved] = useState(false);
   const [serviceStep3Saved, setServiceStep3Saved] = useState(false);
   const [isServiceStep2Open, setIsServiceStep2Open] = useState(false);
@@ -201,13 +209,28 @@ function App() {
     setLaunchIssues((current) => [{ area, message, when: 'Just now' }, ...current].slice(0, 5));
   };
 
-  const refreshAdminLeaveRequests = async (adminSession = session) => {
+  const refreshAdminData = async (adminSession = session) => {
     if (!adminSession || adminSession.role !== 'admin') return;
     try {
-      const requests = await crystalBioFrontendApi.getAdminLeaveRequests(adminSession);
+      const [requests, report] = await Promise.all([
+        crystalBioFrontendApi.getAdminLeaveRequests(adminSession),
+        crystalBioFrontendApi.getAdminReport(adminSession, { fromDate: adminReportFromDate, toDate: adminReportToDate }),
+      ]);
       setAdminLeaveRequests(requests);
+      setAdminReport(report);
+      setAdminSeats(report.agentSummaries.map((summary) => ({
+        id: summary.agentId,
+        name: summary.agentName,
+        employeeId: summary.agentId,
+        email: 'Registered email',
+        mobile: 'Registered mobile',
+        role: summary.salesVisitCount > 0 && summary.serviceVisitCount === 0 ? 'sales' : 'service',
+        territory: 'CrystalBio team',
+        status: 'active',
+        lastActive: summary.attendanceStatus === 'not_checked_in' ? 'Not checked in today' : summary.attendanceStatus.replace(/_/g, ' '),
+      })));
     } catch (error) {
-      rememberLaunchIssue('Leave approvals refresh', error);
+      rememberLaunchIssue('Admin data refresh', error);
     }
   };
 
@@ -252,6 +275,25 @@ function App() {
     ],
     [attendanceAction, attendanceHint],
   );
+
+  const recentVisitEntries = [
+    ...(salesSaveResult ? [{
+      id: salesSaveResult.visit.id,
+      customer: salesSaveResult.opportunity.accountName,
+      type: 'Sales' as const,
+      status: salesSaveResult.visit.nextAction === 'closed' ? 'Closed' : salesSaveResult.visit.nextAction === 'no_follow_up' ? 'No follow-up' : 'Follow-up needed',
+      next: salesSaveResult.visit.followUpDate ? formatShortDate(salesSaveResult.visit.followUpDate) : 'No date set',
+      tone: salesSaveResult.visit.nextAction === 'follow_up_needed' ? 'warning' : 'soft',
+    }] : []),
+    ...(serviceSaveResult ? [{
+      id: serviceSaveResult.visit.id,
+      customer: serviceSaveResult.serviceRecord.customerName,
+      type: 'Service' as const,
+      status: serviceSaveResult.visit.nextAction === 'closed' ? 'Closed' : serviceSaveResult.visit.nextAction === 'no_follow_up' ? 'No follow-up' : 'Follow-up needed',
+      next: serviceSaveResult.visit.nextVisitDate ? formatShortDate(serviceSaveResult.visit.nextVisitDate) : 'No date set',
+      tone: serviceSaveResult.visit.nextAction === 'closed' ? 'soft' : 'info',
+    }] : []),
+  ];
 
   const toggleWorkType = (type: string) => {
     setWorkTypes((current) => current.includes(type) ? current.filter((item) => item !== type) : [...current, type]);
@@ -310,9 +352,9 @@ function App() {
   };
 
   const resetSalesFormForNewVisit = () => {
-    setSalesAccountName('Apollo Diagnostics');
-    setSalesContactPerson('Lab manager');
-    setSalesDesignation('Lab manager');
+    setSalesAccountName('');
+    setSalesContactPerson('');
+    setSalesDesignation('');
     setSalesPhone('');
     setSalesEmail('');
     setSalesDepartmentAddress('');
@@ -320,10 +362,10 @@ function App() {
     setSalesProductType('Laboratory equipment');
     setSalesBrandName('');
     setSalesEquipmentModel('');
-    setSalesRequirement('Biochemistry analyzer requirement');
-    setSalesVisitNote('Requirement confirmed. Quote to be shared.');
+    setSalesRequirement('');
+    setSalesVisitNote('');
     setSalesNextAction('follow_up_needed');
-    setSalesFollowUpDate('2026-06-10');
+    setSalesFollowUpDate('');
     setSalesQuoteSubmitted('');
     setSalesBudgetaryProposal('');
     setSalesQuoteStatus('New inquiry');
@@ -342,30 +384,30 @@ function App() {
   };
 
   const resetServiceFormForNewVisit = () => {
-    setServiceCustomerName('Metro Lab');
-    setServiceContactPerson('Lab supervisor');
+    setServiceCustomerName('');
+    setServiceContactPerson('');
     setServicePhone('');
     setServiceEmail('');
     setServiceDepartmentAddress('');
-    setServiceEquipmentName('Centrifuge');
+    setServiceEquipmentName('');
     setServiceBrandName('');
     setServiceModelName('');
-    setServiceSerialNumber('CB-01');
-    setServiceIssueCategory('Machine noise');
+    setServiceSerialNumber('');
+    setServiceIssueCategory('');
     setServiceIssueDescription('');
     setServiceWarrantyAmc('');
     setServiceType('breakdown');
-    setServiceWorkDone('Diagnosed issue and checked machine performance.');
+    setServiceWorkDone('');
     setServiceSupportRequired(true);
     setServiceNextAction('parts_required');
-    setServiceNextVisitDate('2026-06-09');
-    setServicePartsRequired('Bearing kit');
+    setServiceNextVisitDate('');
+    setServicePartsRequired('');
     setServicePartsUsed('');
-    setServiceMachineStatus('Working with observation');
+    setServiceMachineStatus('');
     setServiceSupportRequiredNote('');
     setServiceFinalRemarks('');
     setServicePhotoNote('');
-    setServiceOfficeNotes('Share parts availability with office.');
+    setServiceOfficeNotes('');
     setServiceStep2Saved(false);
     setServiceStep3Saved(false);
     setIsServiceStep2Open(false);
@@ -403,6 +445,12 @@ function App() {
   const handleAgentLogin = async () => {
     setIsAdminSignedIn(false);
     setScreenNotice(null);
+    if (isBackendConfigured && (!loginEmail.trim() || !password.trim())) {
+      const message = 'Enter registered email and password before logging in.';
+      setStatusMessage(message);
+      setScreenNotice({ title: 'Login details required', message, tone: 'warning' });
+      return;
+    }
     setStatusMessage('Checking login…');
     try {
       const nextSession = await crystalBioFrontendApi.login(
@@ -415,15 +463,16 @@ function App() {
         setSelectedAdminApproval(null);
         setStatusMessage('Admin logged in.');
         setScreen('admin');
-        void refreshAdminLeaveRequests(nextSession);
+        void refreshAdminData(nextSession);
         return;
       }
       setStatusMessage('Logged in. Check in to start field work.');
       setScreen('home');
     } catch (error) {
       rememberLaunchIssue('Login', error);
-      setStatusMessage(error instanceof Error ? error.message : 'Login failed');
-      setScreenNotice(error instanceof Error ? error.message : 'Login failed');
+      const message = error instanceof Error ? error.message : 'Login failed';
+      setStatusMessage(message);
+      setScreenNotice({ title: 'Login failed', message, tone: 'error' });
     }
   };
 
@@ -787,15 +836,24 @@ function App() {
 
   const renderLogin = () => (
     <ScreenPanel title="Login" subtitle="Use your registered email and password.">
-      <label className="field-card login-field-card">
-        <span>Registered email</span>
-        <input aria-label="Registered email" value={loginEmail} inputMode="email" onChange={(event) => setLoginEmail(event.target.value)} />
-      </label>
-      <label className="field-card login-field-card">
-        <span>Password</span>
-        <input aria-label="Password" value={password} type="password" onChange={(event) => setPassword(event.target.value)} />
-      </label>
-      <button type="button" className="primary-action login-main-button" onClick={handleAgentLogin}>Login</button>
+      <section className="login-brand-card" aria-label="CrystalBio login">
+        <span className="login-brand-mark">CB</span>
+        <div>
+          <strong>CrystalBio Field App</strong>
+          <small>Private team access</small>
+        </div>
+      </section>
+      <section className="clean-login-card" aria-label="Login form">
+        <label className="field-card login-field-card">
+          <span>Registered email</span>
+          <input aria-label="Registered email" value={loginEmail} inputMode="email" autoComplete="email" placeholder="name@crystalbio.in" onChange={(event) => setLoginEmail(event.target.value)} />
+        </label>
+        <label className="field-card login-field-card">
+          <span>Password</span>
+          <input aria-label="Password" value={password} type="password" autoComplete="current-password" placeholder="Enter password" onChange={(event) => setPassword(event.target.value)} />
+        </label>
+        <button type="button" className="primary-action login-main-button" onClick={handleAgentLogin}>Login</button>
+      </section>
     </ScreenPanel>
   );
 
@@ -845,22 +903,24 @@ function App() {
           <h3>Recent visits</h3>
           <button type="button" className="text-link" onClick={() => goToScreen('visits')}>View all</button>
         </div>
-        {sampleEntries.slice(0, 2).map((entry) => (
-          <button className="entry-row entry-button" key={entry.customer} type="button" onClick={() => goToScreen(entry.type === 'Sales' ? 'sales' : 'service')}>
+        {recentVisitEntries.length ? recentVisitEntries.slice(0, 2).map((entry) => (
+          <button className="entry-row entry-button" key={entry.id} type="button" onClick={() => goToScreen(entry.type === 'Sales' ? 'sales' : 'service')}>
             <div>
               <strong>{entry.customer}</strong>
               <p>{entry.type} • Next: {entry.next}</p>
             </div>
             <span className={toneClass[entry.tone]}>{entry.status}</span>
           </button>
-        ))}
+        )) : (
+          <div className="empty-state">No saved visits yet. New Sales or Service updates will appear here.</div>
+        )}
       </section>
     </>
   );
 
   const renderVisits = () => {
     const query = visitSearch.trim().toLowerCase();
-    const filteredEntries = sampleEntries.filter((entry) => {
+    const filteredEntries = recentVisitEntries.filter((entry) => {
       const haystack = `${entry.customer} ${entry.type} ${entry.next} ${entry.status}`.toLowerCase();
       return !query || haystack.includes(query);
     });
@@ -892,7 +952,7 @@ function App() {
           <span>Tap to continue</span>
         </div>
         {filteredEntries.length ? filteredEntries.map((entry) => (
-          <button className="entry-row entry-button" key={entry.customer} type="button" onClick={() => goToScreen(entry.type === 'Sales' ? 'sales' : 'service')}>
+          <button className="entry-row entry-button" key={entry.id} type="button" onClick={() => goToScreen(entry.type === 'Sales' ? 'sales' : 'service')}>
             <div>
               <strong>{entry.customer}</strong>
               <p>{entry.type} • Next: {entry.next} • Continue update</p>
@@ -900,7 +960,7 @@ function App() {
             <span className={toneClass[entry.tone]}>{entry.status}</span>
           </button>
         )) : (
-          <div className="empty-state">No matching visits found.</div>
+          <div className="empty-state">No saved visits yet. Start a Sales or Service update to create the first real entry.</div>
         )}
       </ScreenPanel>
     );
@@ -921,7 +981,7 @@ function App() {
         </div>
         <div className="form-card highlighted-card">
           <label>Current visit location</label>
-          <p>{isBackendConfigured ? 'Location permission is requested when this update is saved.' : 'Location is captured when this update is saved.'}</p>
+          <p>Phone GPS is captured when this update is saved.</p>
         </div>
         <label className="field-card">
           <span>Customer / lab name</span>
@@ -1041,8 +1101,8 @@ function App() {
             <small>Optional for Sales. Use only when a site, product, or visiting card photo is useful.</small>
           </div>
           <div className="photo-actions">
-            <button type="button" className="secondary-action photo-button" onClick={() => setScreenNotice('Camera capture is scheduled for device testing.')}>Camera</button>
-            <button type="button" className="secondary-action photo-button" onClick={() => setScreenNotice('File upload is scheduled for device testing.')}>Upload</button>
+            <label className="secondary-action photo-button">Camera<input className="visually-hidden" aria-label="Sales camera photo" type="file" accept="image/*" capture="environment" onChange={(event) => setSalesPhotoNote(event.target.files?.[0]?.name ? `Photo selected: ${event.target.files[0].name}` : salesPhotoNote)} /></label>
+            <label className="secondary-action photo-button">Upload<input className="visually-hidden" aria-label="Sales upload photo" type="file" accept="image/*" onChange={(event) => setSalesPhotoNote(event.target.files?.[0]?.name ? `File selected: ${event.target.files[0].name}` : salesPhotoNote)} /></label>
           </div>
           <textarea aria-label="Sales photo note" value={salesPhotoNote} onChange={(event) => setSalesPhotoNote(event.target.value)} placeholder="Optional note, e.g. visiting card photo added" rows={2} />
         </div>
@@ -1077,7 +1137,7 @@ function App() {
           </div>
           <div className="form-card highlighted-card">
             <label>Current visit location</label>
-            <p>{isBackendConfigured ? 'Location permission is requested when this update is saved.' : 'Location is captured when this update is saved.'}</p>
+            <p>Phone GPS is captured when this update is saved.</p>
           </div>
           <label className="field-card"><span>Customer / lab name</span><input aria-label="Service customer name" value={serviceCustomerName} onChange={(event) => setServiceCustomerName(event.target.value)} /></label>
           <label className="field-card"><span>Work done / issue checked</span><textarea aria-label="Service work done" value={serviceWorkDone} onChange={(event) => setServiceWorkDone(event.target.value)} placeholder="Issue checked, work done, customer update" rows={3} /></label>
@@ -1131,7 +1191,7 @@ function App() {
             <button type="button" onClick={() => { setServiceSupportRequired(true); setServiceSupportRequiredNote('Schedule next site visit with customer'); }}>Revisit</button>
             <button type="button" onClick={() => { setServiceSupportRequired(true); setServiceSupportRequiredNote('Escalate case to office/service lead'); }}>Escalate</button>
           </div>
-          <div className="field-card photo-action-card"><div><span>Service photos</span><small>Optional now. Use for machine, issue, part, or completed-work proof.</small></div><div className="photo-actions"><button type="button" className="secondary-action photo-button" onClick={() => setScreenNotice('Camera capture is scheduled for device testing.')}>Camera</button><button type="button" className="secondary-action photo-button" onClick={() => setScreenNotice('File upload is scheduled for device testing.')}>Upload</button></div><input aria-label="Service photo note" value={servicePhotoNote} onChange={(event) => setServicePhotoNote(event.target.value)} placeholder="Optional photo note" /></div>
+          <div className="field-card photo-action-card"><div><span>Service photos</span><small>Optional now. Use for machine, issue, part, or completed-work proof.</small></div><div className="photo-actions"><label className="secondary-action photo-button">Camera<input className="visually-hidden" aria-label="Service camera photo" type="file" accept="image/*" capture="environment" onChange={(event) => setServicePhotoNote(event.target.files?.[0]?.name ? `Photo selected: ${event.target.files[0].name}` : servicePhotoNote)} /></label><label className="secondary-action photo-button">Upload<input className="visually-hidden" aria-label="Service upload photo" type="file" accept="image/*" onChange={(event) => setServicePhotoNote(event.target.files?.[0]?.name ? `File selected: ${event.target.files[0].name}` : servicePhotoNote)} /></label></div><input aria-label="Service photo note" value={servicePhotoNote} onChange={(event) => setServicePhotoNote(event.target.value)} placeholder="Optional photo note" /></div>
           <label className="field-card"><span>Final remarks</span><textarea aria-label="Service final remarks" value={serviceFinalRemarks} onChange={(event) => setServiceFinalRemarks(event.target.value)} placeholder="Optional customer confirmation / remarks" rows={2} /></label>
           <label className="field-card"><span>Notes for office</span><textarea aria-label="Service office notes" value={serviceOfficeNotes} onChange={(event) => setServiceOfficeNotes(event.target.value)} placeholder="Optional office notes" rows={2} /></label>
           <button type="button" aria-label="Save Step 3" className={serviceSaveResult ? 'secondary-action step-save-action' : 'secondary-action step-save-action locked-step-action'} disabled={serviceAnySubmitting || !serviceSaveResult} onClick={handleServiceStep3Submit}>{isServiceStep3Submitting ? 'Saving…' : serviceSaveResult ? 'Save Step 3' : 'Complete Step 1 first'}</button>
@@ -1371,10 +1431,10 @@ function App() {
   };
 
   const renderProfile = () => {
-    const agentName = session?.agentName ?? 'Rahul Sales';
-    const agentId = session?.agentId ?? 'agent_2';
-    const agentPhone = session?.phone ?? '+91 98765 43210';
-    const agentEmail = session?.email ?? 'rahul.sales@crystalbio.in';
+    const agentName = session?.agentName ?? 'Not logged in';
+    const agentId = session?.agentId ?? 'Not available';
+    const agentPhone = session?.phone ?? 'Not added';
+    const agentEmail = session?.email ?? 'Not added';
 
     return (
       <ScreenPanel title="Profile" subtitle="Logged-in account details.">
@@ -1456,105 +1516,68 @@ function App() {
   };
 
   const renderAdmin = () => {
-    const adminPeriodData: Record<ReportPeriod, { label: string; active: string; summary: string; visits: string; checkedIn: string; leave: string; followUps: string }> = {
-      today: { label: 'Today', active: '3 agents active', summary: '1 service visit • 2 sales visits • 1 leave request pending', visits: '5', checkedIn: '3', leave: '1', followUps: '4' },
-      week: { label: 'This week', active: '8 agents active', summary: '9 service visits • 14 sales visits • 3 leave requests', visits: '23', checkedIn: '8', leave: '3', followUps: '11' },
-      month: { label: 'This month', active: '11 agents tracked', summary: '38 service visits • 61 sales visits • 7 leave requests', visits: '99', checkedIn: '11', leave: '7', followUps: '26' },
-      custom: { label: 'Custom range', active: '6 agents tracked', summary: `${adminReportFromDate} to ${adminReportToDate} • 12 service visits • 18 sales visits • 2 leave requests`, visits: '30', checkedIn: '6', leave: '2', followUps: '8' },
+    const backendRows: AdminActivityRow[] = (adminReport?.agentSummaries ?? []).map((summary) => {
+      const totalVisits = summary.salesVisitCount + summary.serviceVisitCount;
+      const needsReview = summary.attendanceStatus === 'not_checked_in' || summary.followUpsDue.length > 0;
+      const role = summary.salesVisitCount > 0 && summary.serviceVisitCount === 0 ? 'Sales agent' : summary.serviceVisitCount > 0 && summary.salesVisitCount === 0 ? 'Service agent' : 'Field agent';
+      return {
+        id: summary.agentId,
+        name: summary.agentName,
+        role,
+        attendance: summary.attendanceStatus.replace(/_/g, ' '),
+        visits: totalVisits ? `${summary.salesVisitCount} sales • ${summary.serviceVisitCount} service` : 'No visit update yet',
+        status: needsReview ? 'Needs check' : 'Ready',
+        chipClass: needsReview ? 'chip chip-warning' : 'chip chip-soft',
+        salesVisitCount: summary.salesVisitCount,
+        serviceVisitCount: summary.serviceVisitCount,
+        followUpsDue: summary.followUpsDue,
+      };
+    });
+    const adminRows = backendRows;
+    const totalVisits = adminRows.reduce((sum, row) => sum + row.salesVisitCount + row.serviceVisitCount, 0);
+    const checkedInCount = adminRows.filter((row) => row.attendance === 'checked in').length;
+    const needsReviewCount = adminRows.filter((row) => row.status !== 'Ready').length;
+    const followUpCount = adminRows.reduce((sum, row) => sum + row.followUpsDue.length, 0);
+    const period = {
+      label: adminPeriod === 'custom' ? `${adminReportFromDate} to ${adminReportToDate}` : adminPeriod === 'today' ? 'Today' : adminPeriod === 'week' ? 'This week' : 'This month',
+      active: `${adminRows.length} agents tracked`,
+      summary: adminRows.length ? `${totalVisits} visits • ${checkedInCount} checked in • ${needsReviewCount} need check` : 'No field activity has been saved yet.',
+      visits: String(totalVisits),
+      checkedIn: String(checkedInCount),
+      leave: String(adminLeaveRequests.filter((request) => request.status === 'pending').length),
+      followUps: String(followUpCount),
     };
-    const adminReportRows: Record<ReportPeriod, Array<{ name: string; role: string; attendance: string; visits: string; status: string; chipClass: string }>> = {
-      today: [
-        { name: 'Rahul Sales', role: 'Sales agent', attendance: 'Checked in', visits: '2 sales visits • 1 follow-up', status: 'Ready', chipClass: 'chip chip-soft' },
-        { name: 'Meera Service', role: 'Service agent', attendance: 'Checked in', visits: '1 service visit • parts required', status: 'Ready', chipClass: 'chip chip-info' },
-        { name: 'Anil Sales', role: 'Sales agent', attendance: 'Not checked in', visits: 'No visit update today', status: 'Missing', chipClass: 'chip chip-warning' },
-      ],
-      week: [
-        { name: 'Rahul Sales', role: 'Sales agent', attendance: '5 / 6 days', visits: '8 sales visits • 3 follow-ups', status: 'Ready', chipClass: 'chip chip-soft' },
-        { name: 'Meera Service', role: 'Service agent', attendance: '5 / 6 days', visits: '6 service visits • 2 pending parts', status: 'Ready', chipClass: 'chip chip-info' },
-        { name: 'Anil Sales', role: 'Sales agent', attendance: '4 / 6 days', visits: '6 sales visits • 1 missing day', status: 'Review', chipClass: 'chip chip-warning' },
-      ],
-      month: [
-        { name: 'Rahul Sales', role: 'Sales agent', attendance: '21 / 24 days', visits: '31 sales visits • 9 follow-ups', status: 'Ready', chipClass: 'chip chip-soft' },
-        { name: 'Meera Service', role: 'Service agent', attendance: '22 / 24 days', visits: '24 service visits • 5 open parts', status: 'Ready', chipClass: 'chip chip-info' },
-        { name: 'Anil Sales', role: 'Sales agent', attendance: '18 / 24 days', visits: '30 sales visits • 3 missing updates', status: 'Review', chipClass: 'chip chip-warning' },
-      ],
-      custom: [
-        { name: 'Rahul Sales', role: 'Sales agent', attendance: 'Selected range', visits: '10 sales visits • 4 follow-ups', status: 'Ready', chipClass: 'chip chip-soft' },
-        { name: 'Meera Service', role: 'Service agent', attendance: 'Selected range', visits: '8 service visits • 2 open parts', status: 'Ready', chipClass: 'chip chip-info' },
-        { name: 'Anil Sales', role: 'Sales agent', attendance: 'Selected range', visits: '8 sales visits • 2 missing updates', status: 'Review', chipClass: 'chip chip-warning' },
-      ],
-    };
-    const adminReportDetails: Record<string, { attendance: string[]; visits: string[]; missing: string[]; leave: string; officeAction: string }> = {
-      'Rahul Sales': {
-        attendance: ['Present 5/6 days', 'Check-in average 9:18 AM', 'All check-outs captured with GPS'],
-        visits: ['Apollo Diagnostics: biochemistry analyzer requirement confirmed', 'Quote submitted: No', 'Follow-up date: 17 Jun', 'Office note: share quotation and brochure'],
-        missing: ['Quote value not added yet'],
-        leave: 'No leave pending in this range',
-        officeAction: 'Send quote to Apollo Diagnostics',
-      },
-      'Meera Service': {
-        attendance: ['Present 5/6 days', 'One service day ended late', 'GPS captured for all visits'],
-        visits: ['Metro Lab: centrifuge noise checked', 'Parts required: bearing kit', 'Machine status: working with observation', 'Next visit needed after parts arrive'],
-        missing: ['Part availability confirmation pending'],
-        leave: 'Leave request: 12 Jun to 13 Jun • waiting approval',
-        officeAction: 'Arrange bearing kit and update Meera',
-      },
-      'Anil Sales': {
-        attendance: ['Present 4/6 days', 'One missed check-in', 'One visit saved without checkout'],
-        visits: ['6 sales visits logged', '2 follow-ups overdue', 'One Wednesday visit has only Step 1 saved'],
-        missing: ['Requirement details missing', 'Follow-up date missing', 'Customer contact not added'],
-        leave: 'No leave request submitted',
-        officeAction: 'Ask Anil to complete missing Wednesday visit update',
-      },
-    };
-    const adminOfficeActions = [
-      { title: 'Send quote', detail: 'Apollo Diagnostics • biochemistry analyzer', tone: 'warning' },
-      { title: 'Arrange parts', detail: 'Metro Lab • bearing kit required', tone: 'info' },
-      { title: 'Complete missing update', detail: 'Anil Sales • Wednesday visit fields missing', tone: 'warning' },
-    ];
-    const adminTodayPriorities = [
-      { label: 'Sales', title: 'Quote to send', detail: 'Apollo Diagnostics • biochemistry analyzer quote', tone: 'warning', target: 'reports' as const, scope: 'rahul' as AdminReportScope },
-      { label: 'Service', title: 'Parts to arrange', detail: 'Metro Lab • bearing kit before next service visit', tone: 'info', target: 'agents' as const, filter: 'service' as AdminAgentFilter },
-      { label: 'Missing', title: 'Check Anil update', detail: 'No check-in yet • Wednesday visit incomplete', tone: 'warning', target: 'agents' as const, filter: 'sales' as AdminAgentFilter },
-    ];
+    const overviewPeriod = period;
+    const adminReportDetails: Record<string, { attendance: string[]; visits: string[]; missing: string[]; leave: string; officeAction: string }> = Object.fromEntries(adminRows.map((row) => [row.name, {
+      attendance: [`Status: ${row.attendance}`],
+      visits: [row.visits],
+      missing: row.status === 'Ready' ? ['No missing item flagged.'] : ['Check attendance or pending follow-up.'],
+      leave: 'Leave details appear under Approvals when submitted.',
+      officeAction: row.followUpsDue.length ? row.followUpsDue.join(', ') : 'No office action recorded.',
+    }]));
+    const adminOfficeActions = adminRows.flatMap((row) => row.followUpsDue.map((detail) => ({ title: 'Follow-up due', detail: `${row.name} • ${detail}`, tone: 'warning' as const })));
+    const adminTodayPriorities = adminOfficeActions.slice(0, 3).map((action) => ({ ...action, label: 'Action', target: 'agents' as const, filter: 'all' as AdminAgentFilter }));
     const openTodayPriority = (item: (typeof adminTodayPriorities)[number]) => {
-      if (item.target === 'reports') {
-        setAdminReportScope(item.scope);
-        setAdminTab('adminReports');
-        setExpandedAdminReportId(item.scope === 'rahul' ? 'Rahul Sales' : item.scope === 'meera' ? 'Meera Service' : null);
-        setScreenNotice({ title: item.title, message: 'Opened the matching report view.', tone: item.tone === 'info' ? 'info' : 'warning' });
-        return;
-      }
       setAdminAgentFilter(item.filter);
-      setExpandedAgentActivityId(item.filter === 'service' ? 'Meera Service' : 'Anil Sales');
+      setExpandedAgentActivityId(null);
       setAdminTab('agents');
-      setScreenNotice({ title: item.title, message: 'Opened the matching agent list.', tone: item.tone === 'info' ? 'info' : 'warning' });
+      setScreenNotice({ title: item.title, message: 'Opened the live agent list.', tone: 'warning' });
     };
     const adminReportScopeLabels: Record<AdminReportScope, string> = {
       office: 'Whole office report',
       sales: 'All sales agents',
       service: 'All service agents',
-      rahul: 'Rahul Sales',
-      meera: 'Meera Service',
-      anil: 'Anil Sales',
+      agent: 'Selected agent',
     };
-    const adminReportScopeRows = adminReportRows[adminPeriod].filter((row) => {
+    const adminReportScopeRows = adminRows.filter((row) => {
       if (adminReportScope === 'office') return true;
-      if (adminReportScope === 'sales' || adminReportScope === 'service') return row.role.toLowerCase().startsWith(adminReportScope);
-      return row.name.toLowerCase().startsWith(adminReportScope);
+      if (adminReportScope === 'sales') return row.role.toLowerCase().includes('sales');
+      if (adminReportScope === 'service') return row.role.toLowerCase().includes('service');
+      return true;
     });
     const backendApprovalRequests = [...reviewedAdminLeaveRequests, ...adminLeaveRequests]
       .filter((request, index, all) => all.findIndex((candidate) => candidate.id === request.id) === index);
-    const fallbackApprovalRequests: FrontendLeaveRequest[] = [{
-      id: 'meera-leave',
-      agentId: 'agent_3',
-      agentName: 'Meera Service',
-      fromDate: '2026-06-12',
-      toDate: '2026-06-13',
-      reason: 'Sick leave',
-      status: 'pending',
-    }];
-    const approvalRequests = isBackendConfigured ? backendApprovalRequests : fallbackApprovalRequests;
+    const approvalRequests = backendApprovalRequests;
     const pendingApprovalRequests = approvalRequests.filter((request) => request.status === 'pending');
     const adminApprovals: Record<AdminApprovalId, { leaveRequestId: string; status: FrontendLeaveRequest['status']; label: string; chipClass: string; agent: string; title: string; summary: string; detail: string; meta: string; actionNote: string }> = Object.fromEntries(
       approvalRequests.map((request) => [
@@ -1596,19 +1619,17 @@ function App() {
         setScreenNotice({ title: 'Leave update failed', message: error instanceof Error ? error.message : 'Could not update leave approval.', tone: 'error' });
       }
     };
-    const visibleAgentActivityRows = adminReportRows.today.filter((row) => {
+    const visibleAgentActivityRows = adminRows.filter((row) => {
       if (adminAgentFilter === 'all') return true;
       return row.role.toLowerCase().startsWith(adminAgentFilter);
     });
-    const visibleCheckedInCount = visibleAgentActivityRows.filter((row) => row.attendance === 'Checked in').length;
+    const visibleCheckedInCount = visibleAgentActivityRows.filter((row) => row.attendance === 'checked in').length;
     const visibleMissingCount = visibleAgentActivityRows.filter((row) => row.status !== 'Ready').length;
-    const visibleFollowUpCount = visibleAgentActivityRows.filter((row) => row.visits.toLowerCase().includes('follow-up') || row.visits.toLowerCase().includes('parts')).length;
+    const visibleFollowUpCount = visibleAgentActivityRows.filter((row) => row.followUpsDue.length > 0).length;
     const selectedSeat = adminSeats.find((seat) => seat.id === selectedAdminSeatId) ?? adminSeats[0];
     const activeSeatCount = adminSeats.filter((seat) => seat.status === 'active').length;
     const invitedSeatCount = adminSeats.filter((seat) => seat.status === 'invited' || seat.status === 'expired').length;
     const inactiveSeatCount = adminSeats.filter((seat) => seat.status === 'inactive').length;
-    const period = adminPeriodData[adminPeriod];
-    const overviewPeriod = adminPeriodData.today;
     const generateAdminReport = () => {
       const rangeLabel = adminPeriod === 'custom' ? `${adminReportFromDate} to ${adminReportToDate}` : period.label.toLowerCase();
       setScreenNotice({
@@ -1624,10 +1645,6 @@ function App() {
       }
       try {
         const pdfUrl = await crystalBioFrontendApi.downloadAdminReportPdf(session, { fromDate: adminReportFromDate, toDate: adminReportToDate });
-        if (pdfUrl === '#demo-pdf-preview') {
-          setScreenNotice({ title: 'PDF ready in backend pilot', message: 'When the hosted backend URL is connected, this button downloads the real owner-ready PDF.', tone: 'info' });
-          return;
-        }
         window.open(pdfUrl, '_blank');
         setScreenNotice({ title: 'PDF opened', message: 'Owner-ready report PDF opened in a new tab.', tone: 'success' });
       } catch (error) {
@@ -1690,7 +1707,7 @@ function App() {
                   <div className="admin-priority-list">
                     {adminTodayPriorities.map((item) => (
                       <button key={item.title} type="button" className="admin-priority-row admin-click-row" onClick={() => openTodayPriority(item)}>
-                        <span className={item.tone === 'info' ? 'chip chip-info' : 'chip chip-warning'}>{item.label}</span>
+                        <span className="chip chip-warning">{item.label}</span>
                         <div><strong>{item.title}</strong><small>{item.detail}</small></div>
                         <em>Open</em>
                       </button>
@@ -1918,9 +1935,7 @@ function App() {
                     <option value="office">Whole office</option>
                     <option value="sales">All sales agents</option>
                     <option value="service">All service agents</option>
-                    <option value="rahul">Rahul Sales</option>
-                    <option value="meera">Meera Service</option>
-                    <option value="anil">Anil Sales</option>
+
                   </select>
                 </div>
                 <button type="button" className="primary-action single-report-generate" onClick={generateAdminReport}>Generate report</button>
@@ -1946,7 +1961,7 @@ function App() {
                   <div className="admin-report-heading"><label>Needs office action</label><span>{adminOfficeActions.length}</span></div>
                   {adminOfficeActions.map((action) => (
                     <div key={action.title} className="admin-office-action-row">
-                      <span className={action.tone === 'info' ? 'chip chip-info' : 'chip chip-warning'}>{action.tone === 'info' ? 'Service' : 'Action'}</span>
+                      <span className="chip chip-warning">Action</span>
                       <div><strong>{action.title}</strong><small>{action.detail}</small></div>
                     </div>
                   ))}
@@ -2017,7 +2032,7 @@ function App() {
 
   const activeNotice: ToastNotice | null = screenNotice
     ? typeof screenNotice === 'string'
-      ? { title: 'Saved', message: screenNotice, tone: 'success' }
+      ? { title: 'Notice', message: screenNotice, tone: 'info' }
       : screenNotice
     : null;
 
@@ -2037,7 +2052,7 @@ function App() {
             <div>
               {screen !== 'home' && screen !== 'login' && <button type="button" className="back-button" onClick={() => goToScreen('home')}><ChevronLeft size={17} /> Home</button>}
               <p className="muted">{screen === 'login' ? 'Welcome' : screen === 'admin' ? 'Owner access' : 'Good morning'}</p>
-              <h2>{screen === 'login' ? 'CrystalBio' : screen === 'admin' ? 'Admin' : session?.agentName ?? (screen === 'service' ? 'Meera Service' : 'Rahul Sales')}</h2>
+              <h2>{screen === 'login' ? 'CrystalBio' : screen === 'admin' ? 'Admin' : session?.agentName ?? 'Field agent'}</h2>
             </div>
             <button type="button" className="avatar avatar-button" aria-label={screen === 'admin' && adminTab === 'profiles' ? 'Admin profile selected' : screen === 'profile' ? 'Profile selected' : 'Open profile'} disabled={screen === 'login'} onClick={() => screen === 'admin' ? openAdminTab('profiles') : goToScreen('profile')}>{screen === 'admin' ? <UsersRound size={21} /> : <UserRound size={21} />}</button>
           </header>

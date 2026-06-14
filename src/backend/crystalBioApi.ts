@@ -69,12 +69,10 @@ export function createCrystalBioApi(backend: Backend) {
 
         if (request.method === 'POST' && pathname === '/auth/login') {
           const body = requireBody(request.body);
-          if (body.agentId) throw new ValidationError('Email and password login is required');
-          const loginInput: LoginInput = body.email || body.password
-            ? { email: String(body.email ?? ''), password: String(body.password ?? '') }
-            : body.loginCode || body.passcode
-              ? { loginCode: String(body.loginCode ?? ''), passcode: String(body.passcode ?? '') }
-              : { email: '', password: '' };
+          if (body.agentId || body.loginCode || body.passcode) throw new ValidationError('Email and password login is required');
+          if (!body.email || !String(body.email).trim()) throw new ValidationError('Email is required');
+          if (!body.password || !String(body.password).trim()) throw new ValidationError('Password is required');
+          const loginInput: LoginInput = { email: String(body.email), password: String(body.password) };
           const session = backend.login(loginInput);
           return ok({ session });
         }

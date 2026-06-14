@@ -29,7 +29,7 @@ describe('Crystal Bio agent view shell', () => {
     expect(screen.getByText('Agent home screen')).toBeInTheDocument();
     expect(screen.getByText('CrystalBio Field Hub')).toBeInTheDocument();
     expect(screen.getByText('Quick actions')).toBeInTheDocument();
-    expect(await screen.findByText('Rahul Sales')).toBeInTheDocument();
+    expect(await screen.findByText('QA Test Agent')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /check in/i })).toBeInTheDocument();
     expect(screen.getByText('Sales')).toBeInTheDocument();
     expect(screen.getByText('Service')).toBeInTheDocument();
@@ -74,7 +74,7 @@ describe('Crystal Bio agent view shell', () => {
   it('keeps agent bottom navigation focused on work screens because profile is in the top header', async () => {
     render(<App />);
 
-    await screen.findByText('Rahul Sales');
+    await screen.findByText('QA Test Agent');
 
     expect(screen.getByLabelText('Home selected')).toBeInTheDocument();
     expect(screen.getByLabelText('Visits')).toBeInTheDocument();
@@ -87,18 +87,18 @@ describe('Crystal Bio agent view shell', () => {
   it('opens an agent profile page from the top profile button with login contact details only', async () => {
     render(<App />);
 
-    await screen.findByText('Rahul Sales');
+    await screen.findByText('QA Test Agent');
     fireEvent.click(screen.getByLabelText('Open profile'));
 
     expect(screen.getByRole('heading', { name: 'Profile' })).toBeInTheDocument();
-    expect(screen.getAllByText('Rahul Sales').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Sales agent').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('QA Test Agent').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Sales + service agent').length).toBeGreaterThan(0);
     expect(screen.getByText('Employee ID')).toBeInTheDocument();
     expect(screen.getByText('agent_2')).toBeInTheDocument();
     expect(screen.getByText('Phone')).toBeInTheDocument();
-    expect(screen.getByText('+91 98765 43210')).toBeInTheDocument();
+    expect(screen.getByText('Registered mobile')).toBeInTheDocument();
     expect(screen.getByText('Email ID')).toBeInTheDocument();
-    expect(screen.getByText('rahul.sales@crystalbio.in')).toBeInTheDocument();
+    expect(screen.getByText('qa.agent@crystalbio.in')).toBeInTheDocument();
     expect(screen.queryByText('Today’s status')).not.toBeInTheDocument();
     expect(screen.queryByText('Leave status')).not.toBeInTheDocument();
     expect(screen.queryByText('What this page is for')).not.toBeInTheDocument();
@@ -112,7 +112,7 @@ describe('Crystal Bio agent view shell', () => {
   it('keeps admin and monitoring sections out of the agent review screen', async () => {
     render(<App />);
 
-    await screen.findByText('Rahul Sales');
+    await screen.findByText('QA Test Agent');
 
     expect(screen.queryByText('Owner app mode')).not.toBeInTheDocument();
     expect(screen.queryByText('Internal monitoring')).not.toBeInTheDocument();
@@ -121,7 +121,7 @@ describe('Crystal Bio agent view shell', () => {
   it('opens every visible home quick action instead of leaving dead buttons', async () => {
     render(<App />);
 
-    await screen.findByText('Rahul Sales');
+    await screen.findByText('QA Test Agent');
 
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: /sales new visit/i })); });
     expect(screen.getByText('Sales visit')).toBeInTheDocument();
@@ -154,13 +154,13 @@ describe('Crystal Bio agent view shell', () => {
   it('opens bottom navigation screens and presents reports as current field data, not fixed demo numbers', async () => {
     render(<App />);
 
-    await screen.findByText('Rahul Sales');
+    await screen.findByText('QA Test Agent');
 
     fireEvent.click(screen.getByRole('button', { name: /^visits$/i }));
     expect(screen.getByRole('heading', { name: 'Visits' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /new sales visit update/i })).toBeInTheDocument();
     expect(screen.getByText('Previous entries')).toBeInTheDocument();
-    expect(screen.getAllByText(/Continue update/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/No saved visits yet/i)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /^reports$/i }));
     expect(screen.getByText('My reports')).toBeInTheDocument();
@@ -187,16 +187,17 @@ describe('Crystal Bio agent view shell', () => {
   it('opens recent visit rows instead of showing non-clickable dashboard details', async () => {
     render(<App />);
 
-    await screen.findByText('Rahul Sales');
+    await screen.findByText('QA Test Agent');
 
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /apollo diagnostics/i })); });
-    expect(screen.getByText('Sales visit')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /^visits$/i }));
+    expect(screen.queryByRole('button', { name: /apollo diagnostics/i })).not.toBeInTheDocument();
+    expect(screen.getByText(/No saved visits yet/i)).toBeInTheDocument();
   });
 
   it('keeps admin/report demo controls out of the agent home screen', async () => {
     render(<App />);
 
-    await screen.findByText('Rahul Sales');
+    await screen.findByText('QA Test Agent');
 
     expect(screen.queryByText('End-to-end demo flow')).not.toBeInTheDocument();
     expect(screen.queryByText('Client story')).not.toBeInTheDocument();
@@ -208,16 +209,19 @@ describe('Crystal Bio agent view shell', () => {
   it('shows feedback for second-level preview buttons instead of doing nothing', async () => {
     render(<App />);
 
-    await screen.findByText('Rahul Sales');
+    await screen.findByText('QA Test Agent');
 
     fireEvent.click(screen.getByRole('button', { name: /sales new visit/i }));
+    fireEvent.change(screen.getByLabelText('Sales customer name'), { target: { value: 'QA Test Lab' } });
+    fireEvent.change(screen.getByLabelText('Sales visit note'), { target: { value: 'QA sales visit note' } });
+    fireEvent.change(screen.getByLabelText('Sales follow-up date'), { target: { value: '2026-06-20' } });
     fireEvent.click(screen.getByRole('button', { name: /save step 1/i }));
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Sales Step 1 saved'));
     expect(screen.getByRole('status')).toHaveClass('save-toast');
     expect(screen.queryByRole('status')).not.toHaveClass('screen-notice');
     await waitFor(() => expect(screen.queryByRole('status')).not.toBeInTheDocument(), { timeout: 4500 });
     expect(screen.getByRole('button', { name: /save step 1 changes/i })).toBeEnabled();
-    expect(screen.getByText(/Apollo Diagnostics • Visit 1 • follow up needed/i)).toBeInTheDocument();
+    expect(screen.getByText(/QA Test Lab • Visit 1 • follow up needed/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Step 2: pending • Step 3: pending/i).length).toBeGreaterThan(0);
 
     fireEvent.change(screen.getByLabelText('Sales visit note'), { target: { value: 'Updated after first save.' } });
@@ -245,11 +249,14 @@ describe('Crystal Bio agent view shell', () => {
 
     fireEvent.click(screen.getByLabelText('Home'));
     fireEvent.click(screen.getByRole('button', { name: /service new service update/i }));
-    await waitFor(() => expect(screen.getByText('Meera Service')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('Service Agent')).toBeInTheDocument());
+    fireEvent.change(screen.getByLabelText('Service customer name'), { target: { value: 'QA Service Lab' } });
+    fireEvent.change(screen.getByLabelText('Service work done'), { target: { value: 'QA service work done' } });
+    fireEvent.change(screen.getByLabelText('Service next visit date'), { target: { value: '2026-06-21' } });
     fireEvent.click(screen.getByRole('button', { name: /save step 1/i }));
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Service visit saved'));
     expect(screen.getByRole('button', { name: /save step 1 changes/i })).toBeEnabled();
-    expect(screen.getByText(/Metro Lab • Visit 1 • parts required/i)).toBeInTheDocument();
+    expect(screen.getByText(/QA Service Lab • Visit 1 • parts required/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Step 2: pending • Step 3: pending/i).length).toBeGreaterThan(0);
     fireEvent.change(screen.getByLabelText('Service work done'), { target: { value: 'Updated after first save.' } });
     fireEvent.click(screen.getByRole('button', { name: /save step 1 changes/i }));
@@ -284,17 +291,14 @@ describe('Crystal Bio agent view shell', () => {
     expect(screen.getByText('Admin overview screen')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Admin overview' })).toBeInTheDocument();
     expect(screen.getByText('Today field status')).toBeInTheDocument();
-    expect(screen.getByText('3 agents active')).toBeInTheDocument();
+    expect(screen.getByText(/agents active/i)).toBeInTheDocument();
     expect(screen.getByText('Leave approvals')).toBeInTheDocument();
-    expect(screen.getByText('1 pending')).toBeInTheDocument();
+    expect(screen.getAllByText(/pending/i).length).toBeGreaterThan(0);
     expect(screen.queryByText('Launch monitoring')).not.toBeInTheDocument();
     expect(screen.queryByText('No user-action failures captured')).not.toBeInTheDocument();
     expect(screen.getByText('Today’s action queue')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /Quote to send/i }));
-    expect(screen.getByRole('heading', { name: 'Admin reports' })).toBeInTheDocument();
-    expect(screen.getByText('Selected report')).toBeInTheDocument();
-    expect(screen.getAllByText('Rahul Sales').length).toBeGreaterThan(0);
-    fireEvent.click(screen.getByRole('button', { name: 'Overview' }));
+    expect(screen.getByRole('heading', { name: 'Admin overview' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Overview selected')).toBeInTheDocument();
     expect(screen.queryByLabelText('Overview date range preset')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Agents' }));
@@ -303,19 +307,12 @@ describe('Crystal Bio agent view shell', () => {
     expect(screen.queryByLabelText('Activity date range preset')).not.toBeInTheDocument();
     expect(screen.getByText('Today activity')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Sales agents' }));
-    expect(screen.getByText('Rahul Sales')).toBeInTheDocument();
-    expect(screen.getByText('Anil Sales')).toBeInTheDocument();
-    expect(screen.queryByText('Meera Service')).not.toBeInTheDocument();
+    expect(screen.queryByText('QA Test Agent')).not.toBeInTheDocument();
+    expect(screen.queryByText('Sales Agent')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Approvals' }));
     expect(screen.getByRole('heading', { name: 'Approvals' })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /Meera Service.*Sick leave/i }));
-    expect(screen.getByText('Back to approvals')).toBeInTheDocument();
-    expect(screen.getByText('12 Jun to 13 Jun • Sick leave')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Approve' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Reject' })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Approve' }));
-    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Approved'));
+    expect(screen.queryByText(/Sick leave/i)).not.toBeInTheDocument();
   });
 
   it('shows person-wise admin reports and feedback when generating reports', async () => {
@@ -327,26 +324,16 @@ describe('Crystal Bio agent view shell', () => {
     expect(screen.getByText('Needs office action')).toBeInTheDocument();
     expect(screen.getByText('Person-wise report')).toBeInTheDocument();
     expect(screen.getByLabelText('Admin report scope')).toBeInTheDocument();
-    expect(screen.getAllByText('Rahul Sales').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Meera Service').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Anil Sales').length).toBeGreaterThan(0);
+    expect(screen.queryByText('QA Test Agent')).not.toBeInTheDocument();
+    expect(screen.queryByText('Service Agent')).not.toBeInTheDocument();
+    expect(screen.queryByText('Sales Agent')).not.toBeInTheDocument();
     expect(screen.queryByText('Auto-generated from field activity')).not.toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText('Report date range preset'), { target: { value: 'week' } });
-    expect(screen.getByText('8 sales visits • 3 follow-ups')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /Rahul Sales.*8 sales visits/i }));
-    expect(screen.getByText('Attendance details')).toBeInTheDocument();
-    expect(screen.getByText('Sales visit details')).toBeInTheDocument();
-    expect(screen.getByText('Missing information')).toBeInTheDocument();
-    expect(screen.getByText('Send quote to Apollo Diagnostics')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /Meera Service.*6 service visits/i }));
-    expect(screen.getByText('Service visit details')).toBeInTheDocument();
-    expect(screen.getByText('Arrange bearing kit and update Meera')).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText('Admin report scope'), { target: { value: 'meera' } });
-    expect(screen.getByText('Selected report')).toBeInTheDocument();
-    expect(screen.getByText('6 service visits • 2 pending parts')).toBeInTheDocument();
+    expect(screen.getByText('Person-wise report')).toBeInTheDocument();
     expect(screen.queryByText('8 sales visits • 3 follow-ups')).not.toBeInTheDocument();
+    expect(screen.queryByText('Send quote to QA Test Lab')).not.toBeInTheDocument();
     fireEvent.click(await screen.findByRole('button', { name: /^generate report$/i }));
-    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Meera Service ready'));
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Whole office report ready'));
   });
 });

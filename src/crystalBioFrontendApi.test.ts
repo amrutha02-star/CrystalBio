@@ -6,14 +6,14 @@ describe('CrystalBio frontend API client', () => {
     const fetcher = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
       if (String(url).endsWith('/auth/login')) {
         return new Response(JSON.stringify({
-          session: { token: 'token-1', agentId: 'agent_2', agentName: 'Rahul Sales', role: 'sales' },
+          session: { token: 'token-1', agentId: 'agent_2', agentName: 'QA Test Agent', role: 'sales' },
         }), { status: 200, headers: { 'content-type': 'application/json' } });
       }
       return new Response(JSON.stringify({
         attendance: {
           id: 'attendance_1',
           agentId: 'agent_2',
-          agentName: 'Rahul Sales',
+          agentName: 'QA Test Agent',
           date: '2026-06-08',
           checkInTime: '2026-06-08T09:00:00.000Z',
           checkInGps: { latitude: 12.9716, longitude: 77.5946 },
@@ -32,7 +32,7 @@ describe('CrystalBio frontend API client', () => {
     const session = await api.login('agent_2');
     const attendance = await api.checkIn(session);
 
-    expect(session.agentName).toBe('Rahul Sales');
+    expect(session.agentName).toBe('QA Test Agent');
     expect(attendance.status).toBe('checked_in');
     expect(fetcher).toHaveBeenCalledWith('http://127.0.0.1:8787/auth/login', expect.objectContaining({ method: 'POST' }));
     expect(fetcher).toHaveBeenCalledWith(
@@ -46,13 +46,13 @@ describe('CrystalBio frontend API client', () => {
 
   it('sends registered email and password credentials to configured backend URL', async () => {
     const fetcher = vi.fn(async () => new Response(JSON.stringify({
-      session: { token: 'token-1', agentId: 'agent_2', agentName: 'Rahul Sales', role: 'sales' },
+      session: { token: 'token-1', agentId: 'agent_2', agentName: 'QA Test Agent', role: 'sales' },
     }), { status: 200, headers: { 'content-type': 'application/json' } })) as unknown as typeof fetch;
     const api = createCrystalBioFrontendApi({ baseUrl: 'http://127.0.0.1:8787/', fetcher });
 
     const session = await api.login({ email: 'rahul.sales@crystalbio.in', password: 'pilot-test-password' });
 
-    expect(session.agentName).toBe('Rahul Sales');
+    expect(session.agentName).toBe('QA Test Agent');
     expect(fetcher).toHaveBeenCalledWith(
       'http://127.0.0.1:8787/auth/login',
       expect.objectContaining({
@@ -102,7 +102,7 @@ describe('CrystalBio frontend API client', () => {
     const api = createCrystalBioFrontendApi({ baseUrl: 'http://127.0.0.1:8787', fetcher });
 
     await expect(api.downloadAdminReportPdf(
-      { token: 'agent-token', agentId: 'agent_2', agentName: 'Rahul Sales', role: 'sales' },
+      { token: 'agent-token', agentId: 'agent_2', agentName: 'QA Test Agent', role: 'sales' },
       { fromDate: '2026-06-01', toDate: '2026-06-30' },
     )).rejects.toThrow('Admin access required');
   });
@@ -111,14 +111,14 @@ describe('CrystalBio frontend API client', () => {
     const fetcher = vi.fn(async (url: RequestInfo | URL) => {
       if (String(url).endsWith('/auth/login')) {
         return new Response(JSON.stringify({
-          session: { token: 'token-1', agentId: 'agent_2', agentName: 'Rahul Sales', role: 'sales' },
+          session: { token: 'token-1', agentId: 'agent_2', agentName: 'QA Test Agent', role: 'sales' },
         }), { status: 200, headers: { 'content-type': 'application/json' } });
       }
       return new Response(JSON.stringify({
         attendance: {
           id: 'attendance_1',
           agentId: 'agent_2',
-          agentName: 'Rahul Sales',
+          agentName: 'QA Test Agent',
           date: '2026-06-08',
           checkInAt: '2026-06-08T09:00:00.000Z',
           checkInGps: { latitude: 12.9716, longitude: 77.5946 },
@@ -157,7 +157,7 @@ describe('CrystalBio frontend API client', () => {
     const session = await api.login();
     const attendance = await api.checkIn(session);
 
-    expect(session.agentName).toBe('Rahul Sales');
+    expect(session.agentName).toBe('QA Test Agent');
     expect(attendance.status).toBe('checked_in');
     expect(api.isDemoCheckedIn()).toBe(true);
   });
@@ -176,14 +176,14 @@ describe('CrystalBio frontend API client', () => {
     const fetcher = vi.fn(async (url: RequestInfo | URL) => {
       if (String(url).endsWith('/auth/login')) {
         return new Response(JSON.stringify({
-          session: { token: 'token-1', agentId: 'agent_2', agentName: 'Rahul Sales', role: 'sales' },
+          session: { token: 'token-1', agentId: 'agent_2', agentName: 'QA Test Agent', role: 'sales' },
         }), { status: 200, headers: { 'content-type': 'application/json' } });
       }
       return new Response(JSON.stringify({
         leaveRequest: {
           id: 'leave_1',
           agentId: 'agent_2',
-          agentName: 'Rahul Sales',
+          agentName: 'QA Test Agent',
           fromDate: '2026-06-10',
           toDate: '2026-06-11',
           reason: 'Personal work',
@@ -228,7 +228,7 @@ describe('CrystalBio frontend API client', () => {
           leaveRequest: {
             id: 'leave_1',
             agentId: 'agent_2',
-            agentName: 'Rahul Sales',
+            agentName: 'QA Test Agent',
             fromDate: '2026-06-10',
             toDate: '2026-06-11',
             reason: 'Personal work',
@@ -290,7 +290,7 @@ describe('CrystalBio frontend API client', () => {
 
   it('loads admin leave approvals through configured backend with admin authorization', async () => {
     const fetcher = vi.fn(async () => new Response(JSON.stringify({
-      leaveRequests: [{ id: 'leave_1', agentId: 'agent_2', agentName: 'Rahul Sales', fromDate: '2026-06-10', toDate: '2026-06-11', reason: 'Personal work', status: 'pending' }],
+      leaveRequests: [{ id: 'leave_1', agentId: 'agent_2', agentName: 'QA Test Agent', fromDate: '2026-06-10', toDate: '2026-06-11', reason: 'Personal work', status: 'pending' }],
     }), { status: 200, headers: { 'content-type': 'application/json' } })) as unknown as typeof fetch;
     const api = createCrystalBioFrontendApi({ baseUrl: 'http://127.0.0.1:8787', fetcher });
     const session = { token: 'admin-token', agentId: 'agent_1', agentName: 'Admin User', role: 'admin' as const };
@@ -318,8 +318,8 @@ describe('CrystalBio frontend API client', () => {
     });
 
     expect(leaveRequest).toMatchObject({
-      id: 'demo-leave-1780909200000',
-      agentName: 'Rahul Sales',
+      id: 'local-leave-1780909200000',
+      agentName: 'QA Test Agent',
       fromDate: '2026-06-12',
       toDate: '2026-06-12',
       reason: 'Sick leave',
@@ -331,7 +331,7 @@ describe('CrystalBio frontend API client', () => {
     const fetcher = vi.fn(async (url: RequestInfo | URL) => {
       if (String(url).endsWith('/auth/login')) {
         return new Response(JSON.stringify({
-          session: { token: 'token-1', agentId: 'agent_2', agentName: 'Rahul Sales', role: 'sales' },
+          session: { token: 'token-1', agentId: 'agent_2', agentName: 'QA Test Agent', role: 'sales' },
         }), { status: 200, headers: { 'content-type': 'application/json' } });
       }
       if (String(url).endsWith('/sales-opportunities')) {
@@ -344,7 +344,7 @@ describe('CrystalBio frontend API client', () => {
           id: 'sales_visit_1',
           opportunityId: 'sales_1',
           agentId: 'agent_2',
-          agentName: 'Rahul Sales',
+          agentName: 'QA Test Agent',
           visitNumber: 1,
           visitDate: '2026-06-08',
           visitTime: '11:18',
@@ -373,7 +373,7 @@ describe('CrystalBio frontend API client', () => {
       followUpDate: '2026-06-10',
     });
 
-    expect(saved.visit.agentName).toBe('Rahul Sales');
+    expect(saved.visit.agentName).toBe('QA Test Agent');
     expect(saved.visit.visitNumber).toBe(1);
     expect(fetcher).toHaveBeenCalledWith(
       'http://127.0.0.1:8787/sales-opportunities',
@@ -410,7 +410,7 @@ describe('CrystalBio frontend API client', () => {
     const fetcher = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
       if (String(url).endsWith('/auth/login')) {
         return new Response(JSON.stringify({
-          session: { token: 'token-1', agentId: 'agent_2', agentName: 'Rahul Sales', role: 'sales' },
+          session: { token: 'token-1', agentId: 'agent_2', agentName: 'QA Test Agent', role: 'sales' },
         }), { status: 200, headers: { 'content-type': 'application/json' } });
       }
       if (String(url).endsWith('/sales-opportunities/sales_1')) {
@@ -459,8 +459,8 @@ describe('CrystalBio frontend API client', () => {
 
     expect(saved.opportunity.accountName).toBe('Apollo Diagnostics');
     expect(saved.visit).toMatchObject({
-      id: 'demo-sales-visit-1780917480000',
-      agentName: 'Rahul Sales',
+      id: 'local-sales-visit-1780917480000',
+      agentName: 'QA Test Agent',
       visitNumber: 1,
       visitDate: '2026-06-08',
       visitTime: '11:18',
@@ -471,7 +471,7 @@ describe('CrystalBio frontend API client', () => {
 
   it('requires real browser location in configured backend mode when no GPS provider is injected', async () => {
     const fetcher = vi.fn(async () => new Response(JSON.stringify({
-      session: { token: 'token-1', agentId: 'agent_2', agentName: 'Rahul Sales', role: 'sales' },
+      session: { token: 'token-1', agentId: 'agent_2', agentName: 'QA Test Agent', role: 'sales' },
     }), { status: 200, headers: { 'content-type': 'application/json' } })) as unknown as typeof fetch;
     const api = createCrystalBioFrontendApi({ baseUrl: 'http://127.0.0.1:8787', fetcher });
 
@@ -487,7 +487,7 @@ describe('CrystalBio frontend API client', () => {
     const fetcher = vi.fn(async (url: RequestInfo | URL) => {
       if (String(url).endsWith('/auth/login')) {
         return new Response(JSON.stringify({
-          session: { token: 'token-1', agentId: 'agent_3', agentName: 'Meera Service', role: 'service' },
+          session: { token: 'token-1', agentId: 'agent_3', agentName: 'Service Agent', role: 'service' },
         }), { status: 200, headers: { 'content-type': 'application/json' } });
       }
       if (String(url).endsWith('/service-records')) {
@@ -500,7 +500,7 @@ describe('CrystalBio frontend API client', () => {
           id: 'service_visit_1',
           serviceRecordId: 'service_1',
           agentId: 'agent_3',
-          agentName: 'Meera Service',
+          agentName: 'Service Agent',
           visitNumber: 1,
           visitDate: '2026-06-08',
           visitTime: '14:20',
@@ -535,7 +535,7 @@ describe('CrystalBio frontend API client', () => {
       officeNotes: 'Share parts availability with office.',
     });
 
-    expect(saved.visit.agentName).toBe('Meera Service');
+    expect(saved.visit.agentName).toBe('Service Agent');
     expect(saved.visit.visitNumber).toBe(1);
     expect(fetcher).toHaveBeenCalledWith(
       'http://127.0.0.1:8787/service-records',
@@ -591,8 +591,8 @@ describe('CrystalBio frontend API client', () => {
 
     expect(saved.serviceRecord.customerName).toBe('Metro Lab');
     expect(saved.visit).toMatchObject({
-      id: 'demo-service-visit-1780928400000',
-      agentName: 'Meera Service',
+      id: 'local-service-visit-1780928400000',
+      agentName: 'Service Agent',
       visitNumber: 1,
       visitDate: '2026-06-08',
       visitTime: '14:20',
