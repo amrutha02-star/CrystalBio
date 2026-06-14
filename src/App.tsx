@@ -65,6 +65,7 @@ const sampleAttendanceLogs = [
 const screenOptions: AppScreen[] = ['login', 'home', 'visits', 'sales', 'service', 'checkin', 'attendance', 'leave', 'reports', 'profile', 'admin'];
 const sessionStorageKey = 'crystalbio.session.v1';
 const screenStorageKey = 'crystalbio.screen.v1';
+const appBuildVersion = '20260614142806';
 
 const isFrontendSession = (value: unknown): value is FrontendSession => {
   const candidate = value as Partial<FrontendSession> | null;
@@ -311,6 +312,31 @@ function App() {
     const message = error instanceof Error ? error.message : String(error || 'Unknown issue');
     setLaunchIssues((current) => [{ area, message, when: 'Just now' }, ...current].slice(0, 5));
   };
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    let cancelled = false;
+    const checkForUpdate = async () => {
+      try {
+        const response = await fetch(`./version.json?v=${Date.now()}`, { cache: 'no-store' });
+        if (!response.ok) return;
+        const version = await response.json() as { version?: string };
+        if (!cancelled && version.version && version.version !== appBuildVersion) {
+          window.location.reload();
+        }
+      } catch {
+        // Home-screen app can continue working if the update check is offline.
+      }
+    };
+    void checkForUpdate();
+    window.addEventListener('focus', checkForUpdate);
+    document.addEventListener('visibilitychange', checkForUpdate);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('focus', checkForUpdate);
+      document.removeEventListener('visibilitychange', checkForUpdate);
+    };
+  }, []);
 
   const refreshAdminData = async (adminSession = session) => {
     if (!adminSession || adminSession.role !== 'admin') return;
@@ -731,6 +757,40 @@ function App() {
     );
   };
 
+  const PhotoCaptureCard = ({
+    area,
+    title,
+    helpText,
+    note,
+    setNote,
+    photo,
+  }: {
+    area: 'sales' | 'service';
+    title: string;
+    helpText: string;
+    note: string;
+    setNote: (value: string) => void;
+    photo: StoredPhoto | null;
+  }) => (
+    <div className="field-card photo-action-card">
+      <div>
+        <span>{title}</span>
+        <small>{helpText}</small>
+      </div>
+      <div className="photo-actions">
+        <label className="secondary-action photo-button">Camera<input className="visually-hidden" aria-label={`${area === 'sales' ? 'Sales' : 'Service'} camera photo`} type="file" accept="image/*" capture="environment" onChange={(event) => void handlePhotoSelection(event, 'camera', area)} /></label>
+        <label className="secondary-action photo-button">Upload<input className="visually-hidden" aria-label={`${area === 'sales' ? 'Sales' : 'Service'} upload photo`} type="file" accept="image/*" onChange={(event) => void handlePhotoSelection(event, 'upload', area)} /></label>
+      </div>
+      <textarea aria-label={`${area === 'sales' ? 'Sales' : 'Service'} photo note`} value={note} onChange={(event) => setNote(event.target.value)} placeholder="Optional photo note" rows={2} />
+      {photo && (
+        <div className="selected-photo-preview">
+          <small>Ready to save: {photo.fileName} • {Math.ceil(photo.sizeBytes / 1024)} KB</small>
+          <img src={photo.dataUrl} alt={`Selected ${area} photo ${photo.fileName}`} />
+        </div>
+      )}
+    </div>
+  );
+
   const handleAgentLogin = async () => {
     setIsAdminSignedIn(false);
     setScreenNotice(null);
@@ -880,12 +940,17 @@ function App() {
     setScreenNotice(salesSaveResult ? 'Updating Sales Step 1 details…' : 'Saving Sales Step 1 with location…');
     try {
       if (salesSaveResult) {
-        const opportunity = await crystalBioFrontendApi.submitSalesStep2(session, salesSaveResult.opportunity.id, {
+        let opportunity = await crystalBioFrontendApi.submitSalesStep2(session, salesSaveResult.opportunity.id, {
           accountName: salesAccountName.trim(),
           ...(salesContactPerson.trim() ? { contactPerson: salesContactPerson.trim() } : {}),
           ...(salesPhone.trim() ? { phone: salesPhone.trim() } : {}),
           ...(salesRequirement.trim() ? { requirement: salesRequirement.trim() } : {}),
         });
+        const salesPhotoPayload = storedPhotoPayload(salesPhotoNote, salesPhotoAttachment);
+        if (salesPhotoPayload) {
+          opportunity = await crystalBioFrontendApi.submitSalesStep3(session, salesSaveResult.opportunity.id, { sitePhoto: salesPhotoPayload });
+          setSalesStep3Saved(true);
+        }
         setSalesSaveResult({
           opportunity: { ...salesSaveResult.opportunity, ...opportunity },
           visit: {
@@ -913,6 +978,7 @@ function App() {
         nextAction: salesNextAction,
         gps,
         ...(salesNextAction === 'follow_up_needed' ? { followUpDate: salesFollowUpDate } : {}),
+        photos: salesPhotoAttachment ? [salesPhotoAttachment] : [],
       });
       setSalesSaveResult(savedSalesVisit);
       setBackendRecentVisitEntries((current) => [
@@ -924,7 +990,7 @@ function App() {
           next: savedSalesVisit.visit.followUpDate ? formatShortDate(savedSalesVisit.visit.followUpDate) : 'No date set',
           tone: savedSalesVisit.visit.nextAction === 'follow_up_needed' ? 'warning' as const : 'soft' as const,
           agentName: savedSalesVisit.visit.agentName,
-          photoPayload: savedSalesVisit.opportunity.sitePhoto,
+          photoPayload: savedSalesVisit.opportunity.sitePhoto ?? storedPhotoPayload(salesPhotoNote, salesPhotoAttachment),
         },
         ...current,
       ].filter((entry, index, all) => all.findIndex((candidate) => candidate.id === entry.id) === index));
@@ -1034,7 +1100,7 @@ function App() {
       if (serviceSession !== session) setSession(serviceSession);
 
       if (serviceSaveResult) {
-        const serviceRecord = await crystalBioFrontendApi.submitServiceStep2(serviceSession, serviceSaveResult.serviceRecord.id, {
+        let serviceRecord = await crystalBioFrontendApi.submitServiceStep2(serviceSession, serviceSaveResult.serviceRecord.id, {
           customerName: serviceCustomerName.trim(),
           ...(servicePhone.trim() ? { phone: servicePhone.trim() } : {}),
           ...(serviceContactPerson.trim() ? { contactPerson: serviceContactPerson.trim() } : {}),
@@ -1048,6 +1114,11 @@ function App() {
           ...(serviceIssueDescription.trim() ? { issueDescription: serviceIssueDescription.trim() } : {}),
           ...(serviceWarrantyAmc.trim() ? { warrantyAmc: serviceWarrantyAmc.trim() } : {}),
         });
+        const servicePhotoPayload = storedPhotoPayload(servicePhotoNote, servicePhotoAttachment);
+        if (servicePhotoPayload) {
+          serviceRecord = await crystalBioFrontendApi.submitServiceStep3(serviceSession, serviceSaveResult.serviceRecord.id, { photoNote: servicePhotoPayload });
+          setServiceStep3Saved(true);
+        }
         setServiceSaveResult({
           serviceRecord: { ...serviceSaveResult.serviceRecord, ...serviceRecord },
           visit: {
@@ -1088,6 +1159,7 @@ function App() {
         nextAction: serviceNextAction,
         gps,
         ...(serviceNextAction === 'parts_required' || serviceNextAction === 'next_visit_needed' ? { nextVisitDate: serviceNextVisitDate } : {}),
+        photos: servicePhotoAttachment ? [servicePhotoAttachment] : [],
         ...(serviceOfficeNotes.trim() ? { officeNotes: serviceOfficeNotes.trim() } : {}),
       });
       setServiceSaveResult(savedServiceVisit);
@@ -1100,7 +1172,7 @@ function App() {
           next: savedServiceVisit.visit.nextVisitDate ? formatShortDate(savedServiceVisit.visit.nextVisitDate) : 'No date set',
           tone: savedServiceVisit.visit.nextAction === 'closed' ? 'soft' as const : 'info' as const,
           agentName: savedServiceVisit.visit.agentName,
-          photoPayload: savedServiceVisit.serviceRecord.photoNote,
+          photoPayload: savedServiceVisit.serviceRecord.photoNote ?? storedPhotoPayload(servicePhotoNote, servicePhotoAttachment),
         },
         ...current,
       ].filter((entry, index, all) => all.findIndex((candidate) => candidate.id === entry.id) === index));
@@ -1410,6 +1482,14 @@ function App() {
             </label>
           )}
         </div>
+        <PhotoCaptureCard
+          area="sales"
+          title="Add photo"
+          helpText="Optional. Camera or upload can be saved with this visit before tapping Save Step 1."
+          note={salesPhotoNote}
+          setNote={setSalesPhotoNote}
+          photo={salesPhotoAttachment}
+        />
         <button type="button" className="primary-action" disabled={salesAnySubmitting || !session} onClick={handleSalesSubmit}>{isSalesSubmitting ? 'Saving…' : salesSaveResult ? 'Save Step 1 changes' : 'Save Step 1'}</button>
       </section>
 
@@ -1543,6 +1623,14 @@ function App() {
             <label className="field-card"><span>Next action</span><select aria-label="Service next action" value={serviceNextAction} onChange={(event) => setServiceNextAction(event.target.value as FrontendServiceNextAction)}><option value="parts_required">Parts required</option><option value="next_visit_needed">Next visit needed</option><option value="no_follow_up">No follow-up</option><option value="closed">Closed</option></select></label>
           </div>
           {(serviceNextAction === 'parts_required' || serviceNextAction === 'next_visit_needed') && <label className="field-card compact-date-card"><span>Next visit date</span><input aria-label="Service next visit date" type="date" value={serviceNextVisitDate} onChange={(event) => setServiceNextVisitDate(event.target.value)} /></label>}
+          <PhotoCaptureCard
+            area="service"
+            title="Add service photo"
+            helpText="Optional. Take a machine, issue, part, or completed-work photo before saving Step 1."
+            note={servicePhotoNote}
+            setNote={setServicePhotoNote}
+            photo={servicePhotoAttachment}
+          />
           <button type="button" className="primary-action" disabled={serviceAnySubmitting || !session} onClick={handleServiceSubmit}>{isServiceSubmitting ? 'Saving…' : serviceSaveResult ? 'Save Step 1 changes' : 'Save Step 1'}</button>
         </section>
 

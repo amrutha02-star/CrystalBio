@@ -89,6 +89,14 @@ export type FrontendSalesNextAction = 'follow_up_needed' | 'no_follow_up' | 'clo
 export type FrontendServiceType = 'installation' | 'preventive_maintenance' | 'breakdown' | 'repair' | 'calibration' | 'demo' | 'training' | 'other';
 export type FrontendServiceNextAction = 'parts_required' | 'next_visit_needed' | 'no_follow_up' | 'closed';
 
+export type FrontendPhotoAttachment = {
+  source: 'camera' | 'upload';
+  fileName: string;
+  contentType?: string;
+  sizeBytes?: number;
+  dataUrl?: string;
+};
+
 export type FrontendSalesVisitInput = {
   accountName: string;
   contactPerson?: string;
@@ -98,6 +106,7 @@ export type FrontendSalesVisitInput = {
   nextAction: FrontendSalesNextAction;
   followUpDate?: string;
   gps?: FrontendGps;
+  photos?: FrontendPhotoAttachment[];
 };
 
 export type FrontendSalesStep2Input = {
@@ -143,6 +152,7 @@ export type FrontendSalesVisit = {
   note: string;
   nextAction: FrontendSalesNextAction;
   followUpDate?: string;
+  photos?: FrontendPhotoAttachment[];
 };
 
 export type FrontendSalesSaveResult = {
@@ -205,6 +215,7 @@ export type FrontendServiceVisitInput = {
   finalRemarks?: string;
   photoNote?: string;
   gps?: FrontendGps;
+  photos?: FrontendPhotoAttachment[];
 };
 
 export type FrontendServiceVisit = {
@@ -222,6 +233,7 @@ export type FrontendServiceVisit = {
   nextAction: FrontendServiceNextAction;
   nextVisitDate?: string;
   officeNotes?: string;
+  photos?: FrontendPhotoAttachment[];
 };
 
 export type FrontendServiceSaveResult = {
@@ -580,6 +592,7 @@ export function createCrystalBioFrontendApi(options: ApiClientOptions = {}) {
             note: input.note,
             nextAction: input.nextAction,
             ...(input.followUpDate ? { followUpDate: input.followUpDate } : {}),
+            photos: input.photos ?? [],
           },
         };
       }
@@ -603,7 +616,7 @@ export function createCrystalBioFrontendApi(options: ApiClientOptions = {}) {
           note: input.note,
           nextAction: input.nextAction,
           ...(input.followUpDate ? { followUpDate: input.followUpDate } : {}),
-          photos: [],
+          photos: input.photos ?? [],
         },
         session.token,
       );
@@ -683,6 +696,7 @@ export function createCrystalBioFrontendApi(options: ApiClientOptions = {}) {
             supportRequired: input.supportRequired,
             nextAction: input.nextAction,
             ...(input.nextVisitDate ? { nextVisitDate: input.nextVisitDate } : {}),
+            photos: input.photos ?? [],
             ...(input.officeNotes ? { officeNotes: input.officeNotes } : {}),
           },
         };
@@ -717,7 +731,7 @@ export function createCrystalBioFrontendApi(options: ApiClientOptions = {}) {
           supportRequired: input.supportRequired,
           nextAction: input.nextAction,
           ...(input.nextVisitDate ? { nextVisitDate: input.nextVisitDate } : {}),
-          photos: [],
+          photos: input.photos ?? [],
           ...(input.officeNotes ? { officeNotes: input.officeNotes } : {}),
         },
         session.token,

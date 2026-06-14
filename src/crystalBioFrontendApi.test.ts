@@ -371,6 +371,7 @@ describe('CrystalBio frontend API client', () => {
       note: 'Requirement confirmed',
       nextAction: 'follow_up_needed',
       followUpDate: '2026-06-10',
+      photos: [{ source: 'camera', fileName: 'visit.jpg', contentType: 'image/jpeg', sizeBytes: 1200, dataUrl: 'data:image/jpeg;base64,abc' }],
     });
 
     expect(saved.visit.agentName).toBe('QA Test Agent');
@@ -400,7 +401,7 @@ describe('CrystalBio frontend API client', () => {
           note: 'Requirement confirmed',
           nextAction: 'follow_up_needed',
           followUpDate: '2026-06-10',
-          photos: [],
+          photos: [{ source: 'camera', fileName: 'visit.jpg', contentType: 'image/jpeg', sizeBytes: 1200, dataUrl: 'data:image/jpeg;base64,abc' }],
         }),
       }),
     );
@@ -533,6 +534,7 @@ describe('CrystalBio frontend API client', () => {
       nextAction: 'parts_required',
       nextVisitDate: '2026-06-09',
       officeNotes: 'Share parts availability with office.',
+      photos: [{ source: 'upload', fileName: 'machine.jpg', contentType: 'image/jpeg', sizeBytes: 1800, dataUrl: 'data:image/jpeg;base64,def' }],
     });
 
     expect(saved.visit.agentName).toBe('Service Agent');
@@ -564,7 +566,7 @@ describe('CrystalBio frontend API client', () => {
           supportRequired: true,
           nextAction: 'parts_required',
           nextVisitDate: '2026-06-09',
-          photos: [],
+          photos: [{ source: 'upload', fileName: 'machine.jpg', contentType: 'image/jpeg', sizeBytes: 1800, dataUrl: 'data:image/jpeg;base64,def' }],
           officeNotes: 'Share parts availability with office.',
         }),
       }),

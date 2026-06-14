@@ -60,6 +60,11 @@ const requireLeaveReviewStatus = (status: unknown) => {
 
 const shortDateLabel = (value?: string) => value || 'No date set';
 
+const photoPayloadFromVisit = (photos?: Array<{ source: 'camera' | 'upload'; fileName: string; contentType?: string; sizeBytes?: number; dataUrl?: string }>) => {
+  const photo = photos?.[0];
+  return photo ? JSON.stringify({ note: 'Photo saved with visit update', photo }) : undefined;
+};
+
 const salesVisitStatus = (nextAction: string) => {
   if (nextAction === 'closed') return 'Closed';
   if (nextAction === 'no_follow_up') return 'No follow-up';
@@ -265,7 +270,7 @@ export function createCrystalBioApi(backend: Backend, options: { mailer?: Crysta
                 next: shortDateLabel(visit.followUpDate),
                 tone: visit.nextAction === 'follow_up_needed' ? 'warning' as const : 'soft' as const,
                 agentName: visit.agentName,
-                photoPayload: opportunity.sitePhoto,
+                photoPayload: opportunity.sitePhoto ?? photoPayloadFromVisit(visit.photos),
                 sortDate: `${visit.visitDate}T${visit.visitTime}`,
               }))),
             ...state.service.flatMap((record) => record.visits
@@ -278,7 +283,7 @@ export function createCrystalBioApi(backend: Backend, options: { mailer?: Crysta
                 next: shortDateLabel(visit.nextVisitDate),
                 tone: visit.nextAction === 'closed' ? 'soft' as const : 'info' as const,
                 agentName: visit.agentName,
-                photoPayload: record.photoNote,
+                photoPayload: record.photoNote ?? photoPayloadFromVisit(visit.photos),
                 sortDate: `${visit.visitDate}T${visit.visitTime}`,
               }))),
           ]
