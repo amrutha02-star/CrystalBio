@@ -79,8 +79,10 @@ const getInitialAdminApproval = (): AdminApprovalId | null => {
 };
 
 function App() {
-  const [screen, setScreen] = useState<AppScreen>(getInitialScreen);
-  const [isAdminSignedIn, setIsAdminSignedIn] = useState(() => getInitialScreen() === 'admin');
+  const initialScreen = getInitialScreen();
+  const hasConfiguredBackend = crystalBioFrontendApi.isBackendConfigured();
+  const [screen, setScreen] = useState<AppScreen>(() => hasConfiguredBackend && initialScreen === 'admin' ? 'login' : initialScreen);
+  const [isAdminSignedIn, setIsAdminSignedIn] = useState(() => !hasConfiguredBackend && initialScreen === 'admin');
   const [session, setSession] = useState<FrontendSession | null>(null);
   const [attendance, setAttendance] = useState<FrontendAttendance | null>(null);
   const [isAttendanceBusy, setIsAttendanceBusy] = useState(false);
@@ -415,7 +417,7 @@ function App() {
         isBackendConfigured ? { email: loginEmail.trim(), password } : 'agent_2',
       );
       if (isBackendConfigured && nextSession.role !== 'admin') {
-        throw new Error('Use an admin login code to open admin access.');
+        throw new Error('Use an admin email and password to open admin access.');
       }
       setIsAdminSignedIn(true);
       setSession(nextSession);
