@@ -739,7 +739,7 @@ export function createCrystalBioBackend(initialState?: CrystalBioBackendState) {
       requireText(input.toDate, 'Report to date is required');
       if (input.fromDate > input.toDate) throw new ValidationError('Report from date must be before to date');
 
-      const nonAdminAgents = [...agents.values()].filter((agent) => agent.role !== 'admin');
+      const reportAgents = [...agents.values()];
       const attendanceInRange = [...attendance.values()].filter((record) =>
         isInRange(record.date, input.fromDate, input.toDate),
       );
@@ -750,7 +750,7 @@ export function createCrystalBioBackend(initialState?: CrystalBioBackendState) {
         .flatMap((record) => record.visits)
         .filter((visit) => isInRange(visit.visitDate, input.fromDate, input.toDate));
 
-      const agentSummaries = nonAdminAgents.map((agent) => {
+      const agentSummaries = reportAgents.map((agent) => {
         const agentAttendance = attendanceInRange.filter((record) => record.agentId === agent.id);
         const agentSalesVisits = salesVisits.filter((visit) => visit.agentId === agent.id);
         const agentServiceVisits = serviceVisits.filter((visit) => visit.agentId === agent.id);

@@ -58,6 +58,21 @@ const requireLeaveReviewStatus = (status: unknown) => {
   return status;
 };
 
+const shortDateLabel = (value?: string) => value || 'No date set';
+
+const salesVisitStatus = (nextAction: string) => {
+  if (nextAction === 'closed') return 'Closed';
+  if (nextAction === 'no_follow_up') return 'No follow-up';
+  return 'Follow-up needed';
+};
+
+const serviceVisitStatus = (nextAction: string) => {
+  if (nextAction === 'closed') return 'Closed';
+  if (nextAction === 'no_follow_up') return 'No follow-up';
+  if (nextAction === 'parts_required') return 'Parts required';
+  return 'Next visit needed';
+};
+
 export function createCrystalBioApi(backend: Backend, options: { mailer?: CrystalBioMailer; appBaseUrl?: string } = {}) {
   const mailer = options.mailer;
   const appBaseUrl = options.appBaseUrl ?? 'https://work.convogenie.ai';
@@ -233,6 +248,44 @@ export function createCrystalBioApi(backend: Backend, options: { mailer?: Crysta
             toDate: query.toDate ?? '',
           });
           return ok({ report });
+        }
+
+        if (request.method === 'GET' && pathname === '/field-visits') {
+          const session = sessionFor(request);
+          const state = backend.exportState();
+          const canSeeAll = session.role === 'admin';
+          const entries = [
+            ...state.sales.flatMap((opportunity) => opportunity.visits
+              .filter((visit) => canSeeAll || visit.agentId === session.agentId || opportunity.ownerAgentId === session.agentId)
+              .map((visit) => ({
+                id: visit.id,
+                customer: opportunity.accountName,
+                type: 'Sales' as const,
+                status: salesVisitStatus(visit.nextAction),
+                next: shortDateLabel(visit.followUpDate),
+                tone: visit.nextAction === 'follow_up_needed' ? 'warning' as const : 'soft' as const,
+                agentName: visit.agentName,
+                photoPayload: opportunity.sitePhoto,
+                sortDate: `${visit.visitDate}T${visit.visitTime}`,
+              }))),
+            ...state.service.flatMap((record) => record.visits
+              .filter((visit) => canSeeAll || visit.agentId === session.agentId || record.ownerAgentId === session.agentId)
+              .map((visit) => ({
+                id: visit.id,
+                customer: record.customerName,
+                type: 'Service' as const,
+                status: serviceVisitStatus(visit.nextAction),
+                next: shortDateLabel(visit.nextVisitDate),
+                tone: visit.nextAction === 'closed' ? 'soft' as const : 'info' as const,
+                agentName: visit.agentName,
+                photoPayload: record.photoNote,
+                sortDate: `${visit.visitDate}T${visit.visitTime}`,
+              }))),
+          ]
+            .sort((first, second) => second.sortDate.localeCompare(first.sortDate))
+            .slice(0, 30)
+            .map(({ sortDate, ...entry }) => entry);
+          return ok({ entries });
         }
 
         return { status: 404, body: { error: 'Route not found' } };

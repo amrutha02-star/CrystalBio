@@ -1,6 +1,6 @@
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { CalendarCheck, CheckCircle2, ChevronLeft, ClipboardList, Clock3, FileText, Home, MapPin, Plus, Search, UserRound, UsersRound, X } from 'lucide-react';
-import { crystalBioFrontendApi, type FrontendAdminReport, type FrontendAdminSeatInvite, type FrontendAttendance, type FrontendGps, type FrontendLeaveRequest, type FrontendLoginInput, type FrontendSalesSaveResult, type FrontendSalesNextAction, type FrontendServiceSaveResult, type FrontendServiceNextAction, type FrontendServiceType, type FrontendSession } from './crystalBioFrontendApi';
+import { crystalBioFrontendApi, type FrontendAdminReport, type FrontendAdminSeatInvite, type FrontendAttendance, type FrontendGps, type FrontendLeaveRequest, type FrontendLoginInput, type FrontendRecentVisitEntry, type FrontendSalesSaveResult, type FrontendSalesNextAction, type FrontendServiceSaveResult, type FrontendServiceNextAction, type FrontendServiceType, type FrontendSession } from './crystalBioFrontendApi';
 
 type AppScreen = 'login' | 'home' | 'visits' | 'sales' | 'service' | 'checkin' | 'attendance' | 'leave' | 'reports' | 'profile' | 'admin';
 type ReportPeriod = 'today' | 'week' | 'month' | 'custom';
@@ -300,6 +300,7 @@ function App() {
   const [isServiceStep2Open, setIsServiceStep2Open] = useState(false);
   const [isServiceStep3Open, setIsServiceStep3Open] = useState(false);
   const [serviceSaveResult, setServiceSaveResult] = useState<FrontendServiceSaveResult | null>(null);
+  const [backendRecentVisitEntries, setBackendRecentVisitEntries] = useState<FrontendRecentVisitEntry[]>([]);
   const [isServiceSubmitting, setIsServiceSubmitting] = useState(false);
   const [isServiceStep2Submitting, setIsServiceStep2Submitting] = useState(false);
   const [isServiceStep3Submitting, setIsServiceStep3Submitting] = useState(false);
@@ -376,6 +377,19 @@ function App() {
   }, [session?.token, session?.role, adminReportFromDate, adminReportToDate]);
 
   useEffect(() => {
+    if (!session || !isBackendConfigured) return;
+    let isMounted = true;
+    crystalBioFrontendApi.getRecentVisits(session)
+      .then((entries) => {
+        if (isMounted) setBackendRecentVisitEntries(entries);
+      })
+      .catch((error) => rememberLaunchIssue('Recent visits refresh', error));
+    return () => {
+      isMounted = false;
+    };
+  }, [session?.token, isBackendConfigured]);
+
+  useEffect(() => {
     if (!screenNotice) return undefined;
     const timer = window.setTimeout(() => setScreenNotice(null), 3200);
     return () => window.clearTimeout(timer);
@@ -395,14 +409,15 @@ function App() {
     [attendanceAction, attendanceHint],
   );
 
-  const recentVisitEntries = [
+  const latestVisitEntries: FrontendRecentVisitEntry[] = [
     ...(salesSaveResult ? [{
       id: salesSaveResult.visit.id,
       customer: salesSaveResult.opportunity.accountName,
       type: 'Sales' as const,
       status: salesSaveResult.visit.nextAction === 'closed' ? 'Closed' : salesSaveResult.visit.nextAction === 'no_follow_up' ? 'No follow-up' : 'Follow-up needed',
       next: salesSaveResult.visit.followUpDate ? formatShortDate(salesSaveResult.visit.followUpDate) : 'No date set',
-      tone: salesSaveResult.visit.nextAction === 'follow_up_needed' ? 'warning' : 'soft',
+      tone: salesSaveResult.visit.nextAction === 'follow_up_needed' ? 'warning' as const : 'soft' as const,
+      agentName: salesSaveResult.visit.agentName,
       photoPayload: salesSaveResult.opportunity.sitePhoto,
     }] : []),
     ...(serviceSaveResult ? [{
@@ -411,10 +426,13 @@ function App() {
       type: 'Service' as const,
       status: serviceSaveResult.visit.nextAction === 'closed' ? 'Closed' : serviceSaveResult.visit.nextAction === 'no_follow_up' ? 'No follow-up' : 'Follow-up needed',
       next: serviceSaveResult.visit.nextVisitDate ? formatShortDate(serviceSaveResult.visit.nextVisitDate) : 'No date set',
-      tone: serviceSaveResult.visit.nextAction === 'closed' ? 'soft' : 'info',
+      tone: serviceSaveResult.visit.nextAction === 'closed' ? 'soft' as const : 'info' as const,
+      agentName: serviceSaveResult.visit.agentName,
       photoPayload: serviceSaveResult.serviceRecord.photoNote,
     }] : []),
   ];
+  const recentVisitEntries = [...latestVisitEntries, ...backendRecentVisitEntries]
+    .filter((entry, index, all) => all.findIndex((candidate) => candidate.id === entry.id) === index);
 
   const toggleWorkType = (type: string) => {
     setWorkTypes((current) => current.includes(type) ? current.filter((item) => item !== type) : [...current, type]);
@@ -897,6 +915,20 @@ function App() {
         ...(salesNextAction === 'follow_up_needed' ? { followUpDate: salesFollowUpDate } : {}),
       });
       setSalesSaveResult(savedSalesVisit);
+      setBackendRecentVisitEntries((current) => [
+        {
+          id: savedSalesVisit.visit.id,
+          customer: savedSalesVisit.opportunity.accountName,
+          type: 'Sales' as const,
+          status: savedSalesVisit.visit.nextAction === 'closed' ? 'Closed' : savedSalesVisit.visit.nextAction === 'no_follow_up' ? 'No follow-up' : 'Follow-up needed',
+          next: savedSalesVisit.visit.followUpDate ? formatShortDate(savedSalesVisit.visit.followUpDate) : 'No date set',
+          tone: savedSalesVisit.visit.nextAction === 'follow_up_needed' ? 'warning' as const : 'soft' as const,
+          agentName: savedSalesVisit.visit.agentName,
+          photoPayload: savedSalesVisit.opportunity.sitePhoto,
+        },
+        ...current,
+      ].filter((entry, index, all) => all.findIndex((candidate) => candidate.id === entry.id) === index));
+      if (session.role === 'admin') void refreshAdminData(session);
       setSalesStep2Saved(false);
       setSalesStep3Saved(false);
       setScreenNotice(
@@ -1059,6 +1091,20 @@ function App() {
         ...(serviceOfficeNotes.trim() ? { officeNotes: serviceOfficeNotes.trim() } : {}),
       });
       setServiceSaveResult(savedServiceVisit);
+      setBackendRecentVisitEntries((current) => [
+        {
+          id: savedServiceVisit.visit.id,
+          customer: savedServiceVisit.serviceRecord.customerName,
+          type: 'Service' as const,
+          status: savedServiceVisit.visit.nextAction === 'closed' ? 'Closed' : savedServiceVisit.visit.nextAction === 'no_follow_up' ? 'No follow-up' : savedServiceVisit.visit.nextAction === 'parts_required' ? 'Parts required' : 'Next visit needed',
+          next: savedServiceVisit.visit.nextVisitDate ? formatShortDate(savedServiceVisit.visit.nextVisitDate) : 'No date set',
+          tone: savedServiceVisit.visit.nextAction === 'closed' ? 'soft' as const : 'info' as const,
+          agentName: savedServiceVisit.visit.agentName,
+          photoPayload: savedServiceVisit.serviceRecord.photoNote,
+        },
+        ...current,
+      ].filter((entry, index, all) => all.findIndex((candidate) => candidate.id === entry.id) === index));
+      if (serviceSession.role === 'admin') void refreshAdminData(serviceSession);
       setServiceStep2Saved(false);
       setServiceStep3Saved(false);
       setScreenNotice(
@@ -1253,7 +1299,7 @@ function App() {
           <button className="entry-row entry-button" key={entry.id} type="button" onClick={() => goToScreen(entry.type === 'Sales' ? 'sales' : 'service')}>
             <div>
               <strong>{entry.customer}</strong>
-              <p>{entry.type} • Next: {entry.next}</p>
+              <p>{entry.type} • {entry.agentName} • Next: {entry.next}</p>
             </div>
             <span className={toneClass[entry.tone]}>{entry.status}</span>
           </button>
@@ -1301,7 +1347,7 @@ function App() {
           <button className="entry-row entry-button" key={entry.id} type="button" onClick={() => goToScreen(entry.type === 'Sales' ? 'sales' : 'service')}>
             <div>
               <strong>{entry.customer}</strong>
-              <p>{entry.type} • Next: {entry.next} • Continue update</p>
+              <p>{entry.type} • {entry.agentName} • Next: {entry.next} • Continue update</p>
             </div>
             <span className={toneClass[entry.tone]}>{entry.status}</span>
           </button>
@@ -2158,9 +2204,9 @@ function App() {
         {showFieldEntry && (
           <>
             <section className="admin-action-card admin-field-entry-card">
-              <label>Back-office field entry</label>
-              <strong>Submit a field update for an agent</strong>
-              <p>Use this only when the office team needs to enter a report on behalf of a sales or service agent.</p>
+              <label>Field entry</label>
+              <strong>Submit your own field update or help an agent</strong>
+              <p>Admins like Raghavendra and Praveen can also save Sales or Service visits from here. Saved entries stay visible in Visits and Admin Reports.</p>
               <div className="visit-action-grid admin-field-entry-grid">
                 <button type="button" className="visit-action-card" onClick={() => goToScreen('sales', { newSalesVisit: true })}><span className="visit-action-icon"><Plus size={19} /></span><strong>Sales entry</strong><small>Customer visit, quote, follow-up</small></button>
                 <button type="button" className="visit-action-card" onClick={() => goToScreen('service', { newServiceVisit: true })}><span className="visit-action-icon service-icon"><ClipboardList size={18} /></span><strong>Service entry</strong><small>Machine issue, parts, closure</small></button>

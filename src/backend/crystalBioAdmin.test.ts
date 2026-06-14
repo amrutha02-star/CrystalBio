@@ -94,7 +94,8 @@ describe('CrystalBio backend auth leave and admin reports', () => {
 
     const report = backend.getAdminReport(admin.id, { fromDate: '2026-06-07', toDate: '2026-06-07' });
 
-    expect(report.agentSummaries).toHaveLength(2);
+    expect(report.agentSummaries).toHaveLength(3);
+    expect(report.agentSummaries.find((summary) => summary.agentName === 'Admin User')?.salesVisitCount).toBe(0);
     expect(report.totals.salesVisits).toBe(1);
     expect(report.totals.serviceVisits).toBe(1);
     expect(report.totals.checkedInAgents).toBe(2);

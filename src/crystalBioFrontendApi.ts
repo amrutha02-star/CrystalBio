@@ -251,6 +251,17 @@ export type FrontendServiceSaveResult = {
   visit: FrontendServiceVisit;
 };
 
+export type FrontendRecentVisitEntry = {
+  id: string;
+  customer: string;
+  type: 'Sales' | 'Service';
+  status: string;
+  next: string;
+  tone: 'warning' | 'info' | 'soft';
+  agentName: string;
+  photoPayload?: string;
+};
+
 type BackendAttendance = Omit<FrontendAttendance, 'checkInTime' | 'checkOutTime'> & {
   checkInAt?: string;
   checkInTime?: string;
@@ -405,6 +416,12 @@ export function createCrystalBioFrontendApi(options: ApiClientOptions = {}) {
       const query = new URLSearchParams({ fromDate: input.fromDate, toDate: input.toDate }).toString();
       const result = await get<{ report: FrontendAdminReport }>(`/admin/reports?${query}`, session.token);
       return result.report;
+    },
+
+    async getRecentVisits(session: FrontendSession): Promise<FrontendRecentVisitEntry[]> {
+      if (!baseUrl) return [];
+      const result = await get<{ entries: FrontendRecentVisitEntry[] }>('/field-visits', session.token);
+      return result.entries;
     },
 
     async getAdminLeaveRequests(session: FrontendSession): Promise<FrontendLeaveRequest[]> {

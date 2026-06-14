@@ -344,4 +344,51 @@ describe('CrystalBio API layer', () => {
     expect(allowed.status).toBe(200);
     expect(allowed.body.report.totals.salesVisits).toBe(0);
   });
+
+  it('keeps admin-submitted field visits visible after refresh', () => {
+    const backend = createCrystalBioBackend();
+    const admin = createLoginAgent(backend, { name: 'Raghavendra', role: 'admin', email: 'raghavendra@crystalbio.in' });
+    const api = createCrystalBioApi(backend);
+    const adminToken = loginToken(api, admin.email!);
+
+    const opportunity = api.handle({
+      method: 'POST',
+      path: '/sales-opportunities',
+      headers: { authorization: `Bearer ${adminToken}` },
+      body: { accountName: 'Admin Field Customer' },
+    });
+    const visit = api.handle({
+      method: 'POST',
+      path: `/sales-opportunities/${opportunity.body.opportunity.id}/visits`,
+      headers: { authorization: `Bearer ${adminToken}` },
+      body: {
+        visitDate: '2026-06-07',
+        visitTime: '16:10',
+        gps,
+        note: 'Admin did field visit',
+        nextAction: 'no_follow_up',
+        photos: [],
+      },
+    });
+    expect(visit.status).toBe(201);
+
+    const recentVisits = api.handle({
+      method: 'GET',
+      path: '/field-visits',
+      headers: { authorization: `Bearer ${adminToken}` },
+    });
+    expect(recentVisits.status).toBe(200);
+    expect(recentVisits.body.entries[0]).toMatchObject({
+      customer: 'Admin Field Customer',
+      type: 'Sales',
+      agentName: 'Raghavendra',
+    });
+
+    const report = api.handle({
+      method: 'GET',
+      path: '/admin/reports?fromDate=2026-06-07&toDate=2026-06-07',
+      headers: { authorization: `Bearer ${adminToken}` },
+    });
+    expect(report.body.report.agentSummaries.find((summary: { agentName: string }) => summary.agentName === 'Raghavendra').salesVisitCount).toBe(1);
+  });
 });
