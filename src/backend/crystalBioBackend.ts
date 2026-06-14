@@ -355,6 +355,18 @@ export function createCrystalBioBackend(initialState?: CrystalBioBackendState) {
       return agent;
     },
 
+    requestPasswordSetupLink(email: string): Agent | null {
+      requireText(email, 'Registered email is required');
+      const agent = [...agents.values()].find((candidate) => candidate.email?.toLowerCase() === email.trim().toLowerCase());
+      if (!agent) return null;
+      agent.active = false;
+      delete agent.password;
+      delete agent.passcode;
+      agent.inviteToken = createInviteToken(agent.id);
+      agent.inviteStatus = 'pending';
+      return agent;
+    },
+
     updateAdminAgentStatus(adminAgentId: string, agentId: string, input: { active: boolean }): Agent {
       requireAdmin(adminAgentId);
       const agent = agents.get(agentId);

@@ -21,6 +21,8 @@ type AdminSeat = {
   territory: string;
   status: AdminSeatStatus;
   lastActive: string;
+  setupLink?: string;
+  emailDelivery?: 'queued' | 'not_configured';
 };
 
 type AdminActivityRow = {
@@ -196,6 +198,11 @@ function App() {
   const [screenNotice, setScreenNotice] = useState<ToastNotice | string | null>(null);
   const [loginEmail, setLoginEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [setupToken, setSetupToken] = useState(() => typeof window === 'undefined' ? '' : new URLSearchParams(window.location.search).get('setupToken') ?? '');
+  const [setupPassword, setSetupPassword] = useState('');
+  const [setupConfirmPassword, setSetupConfirmPassword] = useState('');
+  const [isLoginLinkSending, setIsLoginLinkSending] = useState(false);
+  const [isPasswordSetupSubmitting, setIsPasswordSetupSubmitting] = useState(false);
   const [reportPeriod, setReportPeriod] = useState<ReportPeriod>('week');
   const [reportKind, setReportKind] = useState<AgentReportKind>('combined');
   const [reportFromDate, setReportFromDate] = useState(startOfCurrentMonthInput);
@@ -327,6 +334,8 @@ function App() {
           territory: 'CrystalBio team',
           status: agent.active ? 'active' : agent.inviteStatus === 'pending' ? 'invited' : 'inactive',
           lastActive: summary ? (summary.attendanceStatus === 'not_checked_in' ? 'Not checked in today' : summary.attendanceStatus.replace(/_/g, ' ')) : 'No field activity yet',
+          setupLink: agent.setupLink,
+          emailDelivery: agent.emailDelivery,
         };
       }));
     } catch (error) {
@@ -674,6 +683,60 @@ function App() {
       const message = error instanceof Error ? error.message : 'Login failed';
       setStatusMessage(message);
       setScreenNotice({ title: 'Login failed', message, tone: 'error' });
+    }
+  };
+
+  const handleRequestSignInLink = async () => {
+    if (!loginEmail.trim()) {
+      setScreenNotice({ title: 'Registered email needed', message: 'Enter your registered email first.', tone: 'warning' });
+      return;
+    }
+    setIsLoginLinkSending(true);
+    try {
+      const result = await crystalBioFrontendApi.requestSignInLink(loginEmail.trim());
+      setScreenNotice({
+        title: result.emailDelivery === 'queued' ? 'Email link sent' : 'Email setup needed',
+        message: result.emailDelivery === 'queued'
+          ? 'Check your registered email for the sign-in/password setup link.'
+          : 'Email delivery is not configured yet. Ask admin to share a setup link from Profile.',
+        tone: result.emailDelivery === 'queued' ? 'success' : 'warning',
+      });
+    } catch (error) {
+      rememberLaunchIssue('Sign-in link', error);
+      setScreenNotice({ title: 'Could not request link', message: error instanceof Error ? error.message : 'Try again or ask admin for help.', tone: 'error' });
+    } finally {
+      setIsLoginLinkSending(false);
+    }
+  };
+
+  const handleSetupPasswordSubmit = async () => {
+    if (!setupToken.trim()) {
+      setScreenNotice({ title: 'Setup link missing', message: 'Open the setup link from your email, or ask admin for a fresh link.', tone: 'warning' });
+      return;
+    }
+    if (setupPassword.length < 8) {
+      setScreenNotice({ title: 'Password too short', message: 'Use at least 8 characters.', tone: 'warning' });
+      return;
+    }
+    if (setupPassword !== setupConfirmPassword) {
+      setScreenNotice({ title: 'Passwords do not match', message: 'Re-enter the same password in both boxes.', tone: 'warning' });
+      return;
+    }
+    setIsPasswordSetupSubmitting(true);
+    try {
+      const agent = await crystalBioFrontendApi.setupPassword({ inviteToken: setupToken.trim(), password: setupPassword });
+      setLoginEmail(agent.email);
+      setPassword('');
+      setSetupToken('');
+      setSetupPassword('');
+      setSetupConfirmPassword('');
+      if (typeof window !== 'undefined') window.history.replaceState(null, '', window.location.pathname);
+      setScreenNotice({ title: 'Password set', message: 'You can now sign in with your registered email and new password.', tone: 'success' });
+    } catch (error) {
+      rememberLaunchIssue('Password setup', error);
+      setScreenNotice({ title: 'Setup failed', message: error instanceof Error ? error.message : 'Ask admin for a fresh setup link.', tone: 'error' });
+    } finally {
+      setIsPasswordSetupSubmitting(false);
     }
   };
 
@@ -1050,6 +1113,15 @@ function App() {
         </div>
       </section>
       <section className="clean-login-card" aria-label="Login form">
+        {setupToken && (
+          <div className="form-card highlighted-card">
+            <label>Set password from email link</label>
+            <p>Create your password, then use the same email/password login below.</p>
+            <input aria-label="New password" value={setupPassword} type="password" autoComplete="new-password" placeholder="New password" onChange={(event) => setSetupPassword(event.target.value)} />
+            <input aria-label="Confirm new password" value={setupConfirmPassword} type="password" autoComplete="new-password" placeholder="Confirm password" onChange={(event) => setSetupConfirmPassword(event.target.value)} />
+            <button type="button" className="primary-action" disabled={isPasswordSetupSubmitting} onClick={handleSetupPasswordSubmit}>{isPasswordSetupSubmitting ? 'Setting password…' : 'Set password'}</button>
+          </div>
+        )}
         <label className="field-card login-field-card">
           <span>Registered email</span>
           <input aria-label="Registered email" value={loginEmail} inputMode="email" autoComplete="email" placeholder="name@crystalbio.in" onChange={(event) => setLoginEmail(event.target.value)} />
@@ -1059,6 +1131,10 @@ function App() {
           <input aria-label="Password" value={password} type="password" autoComplete="current-password" placeholder="Enter password" onChange={(event) => setPassword(event.target.value)} />
         </label>
         <button type="button" className="primary-action login-main-button" onClick={handleAgentLogin}>Login</button>
+        <div className="login-help-actions">
+          <button type="button" className="text-link" disabled={isLoginLinkSending} onClick={handleRequestSignInLink}>{isLoginLinkSending ? 'Sending link…' : 'Email me a sign-in link'}</button>
+          <button type="button" className="text-link" disabled={isLoginLinkSending} onClick={handleRequestSignInLink}>Forgot password?</button>
+        </div>
       </section>
     </ScreenPanel>
   );
@@ -1719,11 +1795,13 @@ function App() {
         territory: newSeatTerritory.trim() || 'Not assigned',
         status: invitedSeat.active ? 'active' : 'invited',
         lastActive: 'Invite created just now',
+        setupLink: invitedSeat.setupLink,
+        emailDelivery: invitedSeat.emailDelivery,
       };
       setAdminSeats((current) => [nextSeat, ...current.filter((seat) => seat.email !== nextSeat.email)]);
       setSelectedAdminSeatId(nextSeat.id);
       setAdminAgentsView('invite');
-      setScreenNotice({ title: 'Invite ready', message: `Profile created for ${nextSeat.name}. Email sending is not connected yet, so share the setup link from this screen.`, tone: 'info' });
+      setScreenNotice({ title: invitedSeat.emailDelivery === 'queued' ? 'Invite email sent' : 'Invite ready', message: invitedSeat.emailDelivery === 'queued' ? `Setup email queued for ${nextSeat.name}.` : `Profile created for ${nextSeat.name}. Email is not configured yet, so share the setup link from this screen.`, tone: invitedSeat.emailDelivery === 'queued' ? 'success' : 'info' });
     } catch (error) {
       rememberLaunchIssue('Admin invite', error);
       setScreenNotice({ title: 'Invite failed', message: error instanceof Error ? error.message : 'Could not create the employee invite.', tone: 'error' });
@@ -1741,6 +1819,8 @@ function App() {
       territory: fallback?.territory || 'CrystalBio team',
       status: agent.active ? 'active' : agent.inviteStatus === 'pending' ? 'invited' : 'inactive',
       lastActive: agent.active ? (fallback?.lastActive || 'Active') : agent.inviteStatus === 'pending' ? 'Invite pending' : 'Inactive',
+      setupLink: agent.setupLink || fallback?.setupLink,
+      emailDelivery: agent.emailDelivery || fallback?.emailDelivery,
     };
     setAdminSeats((current) => current.map((seat) => seat.id === nextSeat.id ? nextSeat : seat));
     setSelectedAdminSeatId(nextSeat.id);
@@ -1756,7 +1836,7 @@ function App() {
       const agent = await crystalBioFrontendApi.resetAdminInvite(session, seat.id);
       const nextSeat = updateSeatFromBackend(agent, seat);
       setAdminAgentsView('invite');
-      setScreenNotice({ title: 'Invite ready', message: `${nextSeat.name} has a fresh setup link. Email sending is not connected yet, so share it manually from this screen.`, tone: 'info' });
+      setScreenNotice({ title: agent.emailDelivery === 'queued' ? 'Reset email sent' : 'Invite ready', message: agent.emailDelivery === 'queued' ? `${nextSeat.name} has been emailed a fresh sign-in/setup link.` : `${nextSeat.name} has a fresh setup link. Email is not configured yet, so share it manually from this screen.`, tone: agent.emailDelivery === 'queued' ? 'success' : 'info' });
     } catch (error) {
       rememberLaunchIssue('Reset invite', error);
       setScreenNotice({ title: 'Invite reset failed', message: error instanceof Error ? error.message : 'Could not reset this invite.', tone: 'error' });
@@ -2145,8 +2225,9 @@ function App() {
                 <div className="admin-invite-mail">
                   <p>For: {selectedSeat.email}</p>
                   <strong>Set up CrystalBio Field App account</strong>
-                  <span>Email delivery is not connected yet. For the pilot, copy this setup link/message and send it to the employee manually.</span>
-                  <button type="button" className="primary-action" onClick={() => setScreenNotice({ title: 'Setup link copied', message: `${selectedSeat.name}'s setup link is ready to share manually.`, tone: 'info' })}>Copy setup message</button>
+                  <span>{selectedSeat.emailDelivery === 'queued' ? 'Email has been queued to the registered email. If they do not receive it, copy the setup link/message and send manually.' : 'Email delivery is not configured yet. For the pilot, copy this setup link/message and send it to the employee manually.'}</span>
+                  {selectedSeat.setupLink && <input aria-label="Setup link" readOnly value={selectedSeat.setupLink} />}
+                  <button type="button" className="primary-action" onClick={() => setScreenNotice({ title: 'Setup message ready', message: `${selectedSeat.name}'s setup link is ready to share.`, tone: 'info' })}>Copy setup message</button>
                 </div>
                 <div className="admin-seat-meta-row"><span>Manual share for now</span><span>No public signup</span></div>
               </section>

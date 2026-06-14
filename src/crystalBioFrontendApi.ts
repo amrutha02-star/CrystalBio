@@ -58,6 +58,8 @@ export type FrontendAdminSeatInvite = FrontendAdminSeatInput & {
   active: boolean;
   inviteStatus?: 'pending' | 'accepted';
   inviteToken?: string;
+  setupLink?: string;
+  emailDelivery?: 'queued' | 'not_configured';
 };
 
 export type FrontendAdminReport = {
@@ -357,6 +359,19 @@ export function createCrystalBioFrontendApi(options: ApiClientOptions = {}) {
       return result.session;
     },
 
+    async requestSignInLink(email: string): Promise<{ emailDelivery: 'queued' | 'not_configured'; message: string }> {
+      if (!baseUrl) return { emailDelivery: 'not_configured', message: 'Demo mode only.' };
+      return post<{ emailDelivery: 'queued' | 'not_configured'; message: string }>('/auth/request-link', { email });
+    },
+
+    async setupPassword(input: { inviteToken: string; password: string }): Promise<FrontendAdminSeatInvite> {
+      if (!baseUrl) {
+        return { id: 'local-setup', name: 'Demo Agent', role: 'both', employeeId: 'LOCAL', email: 'demo@crystalbio.in', active: true, inviteStatus: 'accepted' };
+      }
+      const result = await post<{ agent: FrontendAdminSeatInvite }>('/auth/setup-password', input);
+      return result.agent;
+    },
+
     async downloadAdminReportPdf(session: FrontendSession, input: { fromDate: string; toDate: string }): Promise<string> {
       if (!baseUrl) return '#demo-pdf-preview';
       const query = new URLSearchParams({ fromDate: input.fromDate, toDate: input.toDate }).toString();
@@ -427,8 +442,8 @@ export function createCrystalBioFrontendApi(options: ApiClientOptions = {}) {
           inviteStatus: 'pending',
         };
       }
-      const result = await post<{ agent: FrontendAdminSeatInvite; emailDelivery?: 'not_configured' }>('/admin/agents', input, session.token);
-      return result.agent;
+      const result = await post<{ agent: FrontendAdminSeatInvite; setupLink?: string; emailDelivery?: 'queued' | 'not_configured' }>('/admin/agents', input, session.token);
+      return { ...result.agent, setupLink: result.setupLink, emailDelivery: result.emailDelivery };
     },
 
     async getAdminAgents(session: FrontendSession): Promise<FrontendAdminSeatInvite[]> {
@@ -439,8 +454,8 @@ export function createCrystalBioFrontendApi(options: ApiClientOptions = {}) {
 
     async resetAdminInvite(session: FrontendSession, agentId: string): Promise<FrontendAdminSeatInvite> {
       if (!baseUrl) throw new Error('Backend URL is not configured');
-      const result = await post<{ agent: FrontendAdminSeatInvite; emailDelivery?: 'not_configured' }>(`/admin/agents/${agentId}/reset-invite`, {}, session.token);
-      return result.agent;
+      const result = await post<{ agent: FrontendAdminSeatInvite; setupLink?: string; emailDelivery?: 'queued' | 'not_configured' }>(`/admin/agents/${agentId}/reset-invite`, {}, session.token);
+      return { ...result.agent, setupLink: result.setupLink, emailDelivery: result.emailDelivery };
     },
 
     async updateAdminAgentStatus(session: FrontendSession, agentId: string, active: boolean): Promise<FrontendAdminSeatInvite> {

@@ -1,6 +1,7 @@
 import { mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { createCrystalBioPersistentHttpApp } from './crystalBioPersistentHttpApp';
+import { createCrystalBioMailerFromEnv } from './crystalBioMailer';
 import { JsonFileCrystalBioStore } from './crystalBioPersistence';
 
 const main = async () => {
@@ -11,11 +12,13 @@ const main = async () => {
   const seedDemoUsers = process.env.CRYSTALBIO_SEED_DEMO === 'true';
   const requestLimitBytes = Number(process.env.CRYSTALBIO_REQUEST_LIMIT_BYTES ?? 1024 * 1024);
   const demoPassword = process.env.CRYSTALBIO_DEMO_PASSWORD ?? `Pilot-${Math.random().toString(36).slice(2, 10)}!`;
+  const appBaseUrl = process.env.CRYSTALBIO_APP_BASE_URL ?? 'https://work.convogenie.ai';
+  const mailer = createCrystalBioMailerFromEnv(process.env);
 
   mkdirSync(dirname(databasePath), { recursive: true });
 
   const store = new JsonFileCrystalBioStore(databasePath);
-  const app = createCrystalBioPersistentHttpApp(store, { allowedOrigin, host, requestLimitBytes });
+  const app = createCrystalBioPersistentHttpApp(store, { allowedOrigin, host, requestLimitBytes, mailer, appBaseUrl });
 
   if (seedDemoUsers && app.backend.exportState().agents.length === 0) {
     [

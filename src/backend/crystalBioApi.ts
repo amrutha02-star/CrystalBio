@@ -1,4 +1,5 @@
-import { ValidationError, type LoginInput, type createCrystalBioBackend } from './crystalBioBackend';
+import { ValidationError, type Agent, type LoginInput, type createCrystalBioBackend } from './crystalBioBackend';
+import type { CrystalBioMailer } from './crystalBioMailer';
 
 type Backend = ReturnType<typeof createCrystalBioBackend>;
 
@@ -57,7 +58,23 @@ const requireLeaveReviewStatus = (status: unknown) => {
   return status;
 };
 
-export function createCrystalBioApi(backend: Backend) {
+export function createCrystalBioApi(backend: Backend, options: { mailer?: CrystalBioMailer; appBaseUrl?: string } = {}) {
+  const mailer = options.mailer;
+  const appBaseUrl = options.appBaseUrl ?? 'https://work.convogenie.ai';
+  const setupLinkFor = (agent: Agent) => agent.inviteToken ? `${appBaseUrl}/?setupToken=${encodeURIComponent(agent.inviteToken)}` : appBaseUrl;
+  const sendSetupEmail = (agent: Agent, reason: 'invite' | 'reset' | 'login') => {
+    if (!mailer?.isConfigured || !agent.email) return 'not_configured';
+    const setupLink = setupLinkFor(agent);
+    const subject = reason === 'invite' ? 'Set up your CrystalBio Field App account' : reason === 'reset' ? 'Reset your CrystalBio Field App password' : 'Your CrystalBio Field App sign-in link';
+    const text = `Hello ${agent.name},\n\nOpen this secure link to set your CrystalBio Field App password and sign in:\n${setupLink}\n\nIf you did not request this, please ignore this message.`;
+    void mailer.send({
+      to: agent.email,
+      subject,
+      text,
+      html: `<p>Hello ${agent.name},</p><p>Open this secure link to set your CrystalBio Field App password and sign in:</p><p><a href="${setupLink}">${setupLink}</a></p><p>If you did not request this, please ignore this message.</p>`,
+    }).catch((error) => console.error('CrystalBio email failed:', error));
+    return 'queued';
+  };
   const sessionFor = (request: ApiRequest) => {
     const token = parseBearerToken(request.headers);
     if (!token) throw new ValidationError('Login session is required');
@@ -90,6 +107,14 @@ export function createCrystalBioApi(backend: Backend) {
           const loginInput: LoginInput = { email: String(body.email), password: String(body.password) };
           const session = backend.login(loginInput);
           return ok({ session });
+        }
+
+        if (request.method === 'POST' && pathname === '/auth/request-link') {
+          const body = requireBody(request.body);
+          if (!body.email || !String(body.email).trim()) throw new ValidationError('Registered email is required');
+          const agent = backend.requestPasswordSetupLink(String(body.email));
+          const emailDelivery = agent ? sendSetupEmail(agent, 'login') : (mailer?.isConfigured ? 'queued' : 'not_configured');
+          return ok({ emailDelivery, message: 'If this email is registered, a sign-in/setup link will be sent.' });
         }
 
         if (request.method === 'POST' && pathname === '/auth/setup-password') {
@@ -176,7 +201,7 @@ export function createCrystalBioApi(backend: Backend) {
         if (request.method === 'POST' && pathname === '/admin/agents') {
           const session = sessionFor(request);
           const agent = backend.createAdminInvite(session.agentId, requireBody(request.body) as any);
-          return ok({ agent: publicAgent(agent, true), emailDelivery: 'not_configured' }, 201);
+          return ok({ agent: publicAgent(agent, true), setupLink: setupLinkFor(agent), emailDelivery: sendSetupEmail(agent, 'invite') }, 201);
         }
 
         const adminAgentStatusMatch = pathname.match(/^\/admin\/agents\/([^/]+)\/status$/);
@@ -192,7 +217,7 @@ export function createCrystalBioApi(backend: Backend) {
         if (request.method === 'POST' && adminAgentInviteMatch) {
           const session = sessionFor(request);
           const agent = backend.resetAdminInvite(session.agentId, adminAgentInviteMatch[1]);
-          return ok({ agent: publicAgent(agent, true), emailDelivery: 'not_configured' });
+          return ok({ agent: publicAgent(agent, true), setupLink: setupLinkFor(agent), emailDelivery: sendSetupEmail(agent, 'reset') });
         }
 
         if (request.method === 'GET' && pathname === '/admin/leave-requests') {
