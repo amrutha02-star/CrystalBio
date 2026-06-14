@@ -65,7 +65,7 @@ const sampleAttendanceLogs = [
 const screenOptions: AppScreen[] = ['login', 'home', 'visits', 'sales', 'service', 'checkin', 'attendance', 'leave', 'reports', 'profile', 'admin'];
 const sessionStorageKey = 'crystalbio.session.v1';
 const screenStorageKey = 'crystalbio.screen.v1';
-const appBuildVersion = '20260614163500';
+const appBuildVersion = '20260614165500';
 
 const isFrontendSession = (value: unknown): value is FrontendSession => {
   const candidate = value as Partial<FrontendSession> | null;
@@ -84,7 +84,13 @@ const readStoredSession = (): FrontendSession | null => {
     const rawSession = window.localStorage.getItem(sessionStorageKey);
     if (!rawSession) return null;
     const parsed = JSON.parse(rawSession) as unknown;
-    return isFrontendSession(parsed) ? parsed : null;
+    if (!isFrontendSession(parsed)) return null;
+    const liveBackendUrl = (import.meta as unknown as { env?: { VITE_CRYSTALBIO_API_URL?: string } }).env?.VITE_CRYSTALBIO_API_URL;
+    if (liveBackendUrl && (parsed.email === 'qa.agent@crystalbio.in' || parsed.agentName === 'QA Test Agent')) {
+      forgetSession();
+      return null;
+    }
+    return parsed;
   } catch {
     return null;
   }
