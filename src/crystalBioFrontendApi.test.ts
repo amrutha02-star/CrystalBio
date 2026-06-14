@@ -94,6 +94,19 @@ describe('CrystalBio frontend API client', () => {
     );
   });
 
+  it('surfaces JSON error messages when admin PDF download fails', async () => {
+    const fetcher = vi.fn(async () => new Response(JSON.stringify({ error: 'Admin access required' }), {
+      status: 403,
+      headers: { 'content-type': 'application/json' },
+    })) as unknown as typeof fetch;
+    const api = createCrystalBioFrontendApi({ baseUrl: 'http://127.0.0.1:8787', fetcher });
+
+    await expect(api.downloadAdminReportPdf(
+      { token: 'agent-token', agentId: 'agent_2', agentName: 'Rahul Sales', role: 'sales' },
+      { fromDate: '2026-06-01', toDate: '2026-06-30' },
+    )).rejects.toThrow('Admin access required');
+  });
+
   it('checks out against configured backend URL and normalizes backend timestamp fields', async () => {
     const fetcher = vi.fn(async (url: RequestInfo | URL) => {
       if (String(url).endsWith('/auth/login')) {

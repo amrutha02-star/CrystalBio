@@ -9,12 +9,13 @@ const main = async () => {
   const allowedOrigin = process.env.CRYSTALBIO_ALLOWED_ORIGIN ?? 'http://localhost:5173';
   const databasePath = resolve(process.env.CRYSTALBIO_DB_PATH ?? 'data/crystalbio-db.json');
   const seedDemoUsers = process.env.CRYSTALBIO_SEED_DEMO === 'true';
+  const requestLimitBytes = Number(process.env.CRYSTALBIO_REQUEST_LIMIT_BYTES ?? 1024 * 1024);
   const demoPassword = process.env.CRYSTALBIO_DEMO_PASSWORD ?? `Pilot-${Math.random().toString(36).slice(2, 10)}!`;
 
   mkdirSync(dirname(databasePath), { recursive: true });
 
   const store = new JsonFileCrystalBioStore(databasePath);
-  const app = createCrystalBioPersistentHttpApp(store, { allowedOrigin, host });
+  const app = createCrystalBioPersistentHttpApp(store, { allowedOrigin, host, requestLimitBytes });
 
   if (seedDemoUsers && app.backend.exportState().agents.length === 0) {
     [

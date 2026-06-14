@@ -10,17 +10,34 @@ export type CrystalBioApiHandler = {
 export type CrystalBioHttpServerOptions = {
   allowedOrigin?: string;
   host?: string;
+  requestLimitBytes?: number;
 };
 
-const readJsonBody = async (request: IncomingMessage) => {
+const DEFAULT_REQUEST_LIMIT_BYTES = 1024 * 1024;
+
+class RequestBodyError extends Error {
+  constructor(message: string, readonly status: number) {
+    super(message);
+  }
+}
+
+const readJsonBody = async (request: IncomingMessage, limitBytes: number) => {
   const chunks: Buffer[] = [];
-  for await (const chunk of request) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  let totalBytes = 0;
+  for await (const chunk of request) {
+    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    totalBytes += buffer.byteLength;
+    if (totalBytes > limitBytes) {
+      throw new RequestBodyError('Request body is too large', 413);
+    }
+    chunks.push(buffer);
+  }
   const raw = Buffer.concat(chunks).toString('utf8');
   if (!raw.trim()) return undefined;
   try {
     return JSON.parse(raw);
   } catch {
-    throw new Error('Malformed JSON body');
+    throw new RequestBodyError('Malformed JSON body', 400);
   }
 };
 
@@ -54,6 +71,7 @@ const writeCorsPreflight = (response: ServerResponse, allowedOrigin: string) => 
 export function createCrystalBioHttpServer(api: CrystalBioApiHandler, options: CrystalBioHttpServerOptions = {}) {
   const allowedOrigin = options.allowedOrigin ?? '*';
   const host = options.host ?? '127.0.0.1';
+  const requestLimitBytes = options.requestLimitBytes ?? DEFAULT_REQUEST_LIMIT_BYTES;
   const server: Server = createServer(async (request, response) => {
     try {
       if (request.method === 'OPTIONS') {
@@ -81,7 +99,7 @@ export function createCrystalBioHttpServer(api: CrystalBioApiHandler, options: C
         writePdf(response, `crystalbio-report-${report.fromDate}-to-${report.toDate}.pdf`, pdf, allowedOrigin);
         return;
       }
-      const body = await readJsonBody(request);
+      const body = await readJsonBody(request, requestLimitBytes);
       const apiResponse = api.handle({
         method: (request.method ?? 'GET') as ApiRequest['method'],
         path: request.url ?? '/',
@@ -92,8 +110,8 @@ export function createCrystalBioHttpServer(api: CrystalBioApiHandler, options: C
       });
       writeJson(response, apiResponse.status, apiResponse.body, allowedOrigin);
     } catch (error) {
-      if (error instanceof Error && error.message === 'Malformed JSON body') {
-        writeJson(response, 400, { error: 'Malformed JSON body' }, allowedOrigin);
+      if (error instanceof RequestBodyError) {
+        writeJson(response, error.status, { error: error.message }, allowedOrigin);
         return;
       }
       writeJson(response, 500, { error: 'Unexpected server error' }, allowedOrigin);

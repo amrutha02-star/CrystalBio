@@ -80,6 +80,24 @@ describe('CrystalBio HTTP server adapter', () => {
     expect(body.error).toBe('Malformed JSON body');
   });
 
+  it('rejects oversized request bodies before they reach the app', async () => {
+    const backend = createCrystalBioBackend();
+    const server = createCrystalBioHttpServer(createCrystalBioApi(backend), { requestLimitBytes: 32 });
+    servers.push(server);
+    await server.listen(0);
+    const address = server.address() as AddressInfo;
+
+    const response = await fetch(`http://127.0.0.1:${address.port}/auth/login`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email: 'rahul@crystalbio.in', password: 'x'.repeat(80) }),
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(413);
+    expect(body.error).toBe('Request body is too large');
+  });
+
   it('handles browser CORS preflight requests', async () => {
     const backend = createCrystalBioBackend();
     const server = createCrystalBioHttpServer(createCrystalBioApi(backend), {

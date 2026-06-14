@@ -117,11 +117,14 @@ Added tests:
 - `src/backend/crystalBioHttpServer.test.ts`
 - `src/backend/crystalBioPersistentHttpApp.test.ts`
 
-Current verification:
+Production-readiness hardening now covered by tests:
 
-- Test files: 8 passed
-- Tests: 35 passed
-- Build: passed
+- malformed JSON returns a clean `400`
+- oversized API bodies return `413` before reaching app logic
+- `/health` remains available for uptime monitoring
+- admin report PDF download returns a real PDF for valid admin sessions
+
+Current verification: run `npm test` and `npm run build` before pilot deployment.
 
 ## Important limitations before production
 
@@ -135,7 +138,7 @@ Before client production use, still needed:
 - real password/OTP authentication
 - file/object storage for photos
 - backup/recovery strategy
-- request size limits
+- request size limits for pilot API calls
 - CORS policy
 - server logs and monitoring
 - atomic database writes or migration to a real database

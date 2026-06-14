@@ -347,6 +347,11 @@ export function createCrystalBioFrontendApi(options: ApiClientOptions = {}) {
         headers: { authorization: `Bearer ${session.token}` },
       });
       if (!response.ok) {
+        const contentType = response.headers.get('content-type') ?? '';
+        if (contentType.includes('application/json')) {
+          const body = await response.json() as { error?: string };
+          throw new Error(body.error || 'PDF download failed');
+        }
         const text = await response.text();
         throw new Error(text || 'PDF download failed');
       }

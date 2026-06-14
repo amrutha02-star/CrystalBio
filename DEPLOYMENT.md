@@ -16,6 +16,7 @@ This is the approved short path for a free/low-cost pilot link. It is for a cont
 - `CRYSTALBIO_ALLOWED_ORIGIN=https://your-frontend-domain`
 - `CRYSTALBIO_SEED_DEMO=false` for real client use.
 - `CRYSTALBIO_DEMO_PASSWORD=<temporary pilot password>` only for a controlled demo seed, never a public/default password.
+- `CRYSTALBIO_REQUEST_LIMIT_BYTES=1048576` keeps browser/API request bodies capped for pilot safety; increase only after photo upload/object storage is designed.
 
 ## Required frontend environment variable
 
