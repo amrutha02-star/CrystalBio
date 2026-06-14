@@ -105,6 +105,7 @@ function App() {
   const [adminReportToDate, setAdminReportToDate] = useState('2026-06-08');
   const [adminReportScope, setAdminReportScope] = useState<AdminReportScope>('office');
   const [expandedAdminReportId, setExpandedAdminReportId] = useState<string | null>(null);
+  const [expandedAgentActivityId, setExpandedAgentActivityId] = useState<string | null>(null);
   const [adminAgentFilter, setAdminAgentFilter] = useState<AdminAgentFilter>('all');
   const [adminTab, setAdminTab] = useState<AdminTab>(getInitialAdminTab);
   const [selectedAdminApproval, setSelectedAdminApproval] = useState<AdminApprovalId | null>(getInitialAdminApproval);
@@ -1543,10 +1544,23 @@ function App() {
       { title: 'Complete missing update', detail: 'Anil Sales • Wednesday visit fields missing', tone: 'warning' },
     ];
     const adminTodayPriorities = [
-      { label: 'Sales', title: 'Quote to send', detail: 'Apollo Diagnostics needs biochemistry analyzer quote today', tone: 'warning' },
-      { label: 'Service', title: 'Parts to arrange', detail: 'Metro Lab bearing kit needed before next service visit', tone: 'info' },
-      { label: 'Missing', title: 'Check Anil update', detail: 'No check-in yet and Wednesday visit details are incomplete', tone: 'warning' },
+      { label: 'Sales', title: 'Quote to send', detail: 'Apollo Diagnostics • biochemistry analyzer quote', tone: 'warning', target: 'reports' as const, scope: 'rahul' as AdminReportScope },
+      { label: 'Service', title: 'Parts to arrange', detail: 'Metro Lab • bearing kit before next service visit', tone: 'info', target: 'agents' as const, filter: 'service' as AdminAgentFilter },
+      { label: 'Missing', title: 'Check Anil update', detail: 'No check-in yet • Wednesday visit incomplete', tone: 'warning', target: 'agents' as const, filter: 'sales' as AdminAgentFilter },
     ];
+    const openTodayPriority = (item: (typeof adminTodayPriorities)[number]) => {
+      if (item.target === 'reports') {
+        setAdminReportScope(item.scope);
+        setAdminTab('adminReports');
+        setExpandedAdminReportId(item.scope === 'rahul' ? 'Rahul Sales' : item.scope === 'meera' ? 'Meera Service' : null);
+        setScreenNotice({ title: item.title, message: 'Opened the matching report view.', tone: item.tone === 'info' ? 'info' : 'warning' });
+        return;
+      }
+      setAdminAgentFilter(item.filter);
+      setExpandedAgentActivityId(item.filter === 'service' ? 'Meera Service' : 'Anil Sales');
+      setAdminTab('agents');
+      setScreenNotice({ title: item.title, message: 'Opened the matching agent list.', tone: item.tone === 'info' ? 'info' : 'warning' });
+    };
     const adminReportScopeLabels: Record<AdminReportScope, string> = {
       office: 'Whole office report',
       sales: 'All sales agents',
@@ -1702,20 +1716,17 @@ function App() {
                   <div className="metric-card admin-metric-card"><strong>{overviewPeriod.leave}</strong><span>Leave</span><small>Needs review</small></div>
                   <div className="metric-card admin-metric-card"><strong>{overviewPeriod.followUps}</strong><span>Follow-ups</span><small>Need action</small></div>
                 </div>
-                <section className="admin-office-actions-card launch-monitor-card">
-                  <div className="admin-report-heading"><label>Launch monitoring</label><span>{launchIssues.length ? `${launchIssues.length} issue${launchIssues.length === 1 ? '' : 's'}` : 'Clear'}</span></div>
-                  {launchIssues.length ? launchIssues.map((issue) => (
-                    <div key={`${issue.area}-${issue.message}-${issue.when}`} className="admin-office-action-row"><span className="chip chip-warning">Issue</span><div><strong>{issue.area}</strong><small>{issue.message} • {issue.when}</small></div></div>
-                  )) : <div className="admin-office-action-row"><span className="chip chip-soft">OK</span><div><strong>No user-action failures captured</strong><small>Login, save, sync, and report errors will show here during pilot monitoring.</small></div></div>}
-                </section>
                 <section className="admin-office-actions-card admin-today-priority-card">
-                  <div className="admin-report-heading"><label>Today’s action queue</label><span>{adminTodayPriorities.length} items</span></div>
-                  {adminTodayPriorities.map((item) => (
-                    <button key={item.title} type="button" className="admin-office-action-row admin-priority-row admin-click-row" onClick={() => setScreenNotice({ title: item.title, message: item.detail, tone: item.tone === 'info' ? 'info' : 'warning' })}>
-                      <span className={item.tone === 'info' ? 'chip chip-info' : 'chip chip-warning'}>{item.label}</span>
-                      <div><strong>{item.title}</strong><small>{item.detail}</small></div>
-                    </button>
-                  ))}
+                  <div className="admin-report-heading"><label>Today’s action queue</label><span>{adminTodayPriorities.length} actions</span></div>
+                  <div className="admin-priority-list">
+                    {adminTodayPriorities.map((item) => (
+                      <button key={item.title} type="button" className="admin-priority-row admin-click-row" onClick={() => openTodayPriority(item)}>
+                        <span className={item.tone === 'info' ? 'chip chip-info' : 'chip chip-warning'}>{item.label}</span>
+                        <div><strong>{item.title}</strong><small>{item.detail}</small></div>
+                        <em>Open</em>
+                      </button>
+                    ))}
+                  </div>
                 </section>
               </>
             )}
@@ -1767,16 +1778,16 @@ function App() {
             </section>
           ) : (
             <>
-              <section className="admin-approval-summary-card">
-                <div><strong>{pendingApprovalRequests.length}</strong><span>Pending approval</span></div>
-                <div><strong>Leave</strong><span>{pendingApprovalRequests.length ? 'Decision needed today' : 'No pending decisions'}</span></div>
-              </section>
-              <section className="admin-action-card admin-approval-list-card">
-                <label>Leave approvals</label>
+              <section className="admin-action-card admin-approval-list-card admin-leave-decision-card">
+                <div className="admin-report-heading admin-leave-heading"><label>Leave approvals</label><span>{pendingApprovalRequests.length ? `${pendingApprovalRequests.length} pending` : 'Clear'}</span></div>
+                <div className="admin-leave-summary-line">
+                  <strong>{pendingApprovalRequests.length}</strong>
+                  <span>{pendingApprovalRequests.length ? 'Decision needed today' : 'No leave decisions pending'}</span>
+                </div>
                 {approvalRequests.length ? approvalRequests.map((request) => (
-                  <button key={request.id} type="button" className="admin-alert-row admin-click-row" onClick={() => openApproval(request.id)}>
-                    <span className={request.status === 'pending' ? 'chip chip-warning' : request.status === 'approved' ? 'chip chip-soft' : 'chip chip-info'}>{request.status === 'pending' ? 'Leave' : request.status}</span>
-                    <div><strong>{request.agentName}</strong><p>{formatShortDate(request.fromDate)} to {formatShortDate(request.toDate)} • {request.reason}</p><small>Tap to approve/reject or review recorded status.</small></div>
+                  <button key={request.id} type="button" className="admin-alert-row admin-click-row admin-leave-row" onClick={() => openApproval(request.id)}>
+                    <span className={request.status === 'pending' ? 'chip chip-warning' : request.status === 'approved' ? 'chip chip-soft' : 'chip chip-info'}>{request.status === 'pending' ? 'Review' : request.status}</span>
+                    <div><strong>{request.agentName}</strong><p>{formatShortDate(request.fromDate)} to {formatShortDate(request.toDate)} • {request.reason}</p><small>{request.status === 'pending' ? 'Open to approve or reject.' : 'Open to review recorded status.'}</small></div>
                   </button>
                 )) : (
                   <div className="admin-alert-row"><span className="chip chip-soft">Clear</span><div><strong>No leave approvals pending</strong><p>New agent requests will appear here from the backend.</p></div></div>
@@ -1798,7 +1809,7 @@ function App() {
                 </section>
                 <div className="admin-filter-row admin-agent-filter-row" aria-label="Agent type filters">
                   {(['all', 'sales', 'service'] as AdminAgentFilter[]).map((filter) => (
-                    <button key={filter} type="button" className={adminAgentFilter === filter ? 'admin-filter-active' : ''} onClick={() => setAdminAgentFilter(filter)}>
+                    <button key={filter} type="button" className={adminAgentFilter === filter ? 'admin-filter-active' : ''} onClick={() => { setAdminAgentFilter(filter); setExpandedAgentActivityId(null); }}>
                       {filter === 'all' ? 'All' : filter === 'sales' ? 'Sales agents' : 'Service agents'}
                     </button>
                   ))}
@@ -1813,16 +1824,29 @@ function App() {
                     <label>Today activity</label>
                     <span>{visibleAgentActivityRows.length} shown</span>
                   </div>
-                  {visibleAgentActivityRows.map((row) => (
-                    <button key={`${adminPeriod}-${row.name}`} type="button" className="admin-report-row admin-click-row" onClick={() => setScreenNotice({ title: `${row.name} activity opened`, message: `${row.role}: ${row.attendance}. ${row.visits}.`, tone: 'info' })}>
-                      <div className="admin-report-row-main">
-                        <strong>{row.name}</strong>
-                        <p>{row.role} • {row.attendance}</p>
-                        <small>{row.visits}</small>
-                      </div>
-                      <span className={row.chipClass}>{row.status}</span>
-                    </button>
-                  ))}
+                  {visibleAgentActivityRows.map((row) => {
+                    const detail = adminReportDetails[row.name];
+                    const isExpanded = expandedAgentActivityId === row.name;
+                    return (
+                      <article key={`${adminPeriod}-${row.name}`} className={isExpanded ? 'admin-report-row-card admin-agent-row-expanded' : 'admin-report-row-card'}>
+                        <button type="button" className="admin-report-row admin-click-row" aria-expanded={isExpanded} onClick={() => setExpandedAgentActivityId(isExpanded ? null : row.name)}>
+                          <div className="admin-report-row-main">
+                            <strong>{row.name}</strong>
+                            <p>{row.role} • {row.attendance}</p>
+                            <small>{row.visits}</small>
+                          </div>
+                          <span className={row.chipClass}>{row.status}</span>
+                        </button>
+                        {isExpanded && detail && (
+                          <div className="admin-report-expanded-panel admin-agent-expanded-panel">
+                            <div><strong>Today’s visits</strong>{detail.visits.slice(0, 2).map((item) => <span key={item}>{item}</span>)}</div>
+                            <div><strong>Needs action</strong><span>{detail.officeAction}</span></div>
+                            <div><strong>Missing / risk</strong>{detail.missing.map((item) => <span key={item}>{item}</span>)}</div>
+                          </div>
+                        )}
+                      </article>
+                    );
+                  })}
                 </section>
               </>
             )}

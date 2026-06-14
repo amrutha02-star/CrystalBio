@@ -287,7 +287,15 @@ describe('Crystal Bio agent view shell', () => {
     expect(screen.getByText('Today field status')).toBeInTheDocument();
     expect(screen.getByText('3 agents active')).toBeInTheDocument();
     expect(screen.getByText('Leave approvals')).toBeInTheDocument();
-    expect(screen.queryByText('Apollo Diagnostics')).not.toBeInTheDocument();
+    expect(screen.getByText('1 pending')).toBeInTheDocument();
+    expect(screen.queryByText('Launch monitoring')).not.toBeInTheDocument();
+    expect(screen.queryByText('No user-action failures captured')).not.toBeInTheDocument();
+    expect(screen.getByText('Today’s action queue')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Quote to send/i }));
+    expect(screen.getByRole('heading', { name: 'Admin reports' })).toBeInTheDocument();
+    expect(screen.getByText('Selected report')).toBeInTheDocument();
+    expect(screen.getAllByText('Rahul Sales').length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole('button', { name: 'Overview' }));
     expect(screen.queryByLabelText('Overview date range preset')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Agents' }));
