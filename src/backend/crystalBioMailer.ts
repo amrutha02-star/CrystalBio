@@ -34,6 +34,9 @@ export function createCrystalBioMailerFromEnv(env: NodeJS.ProcessEnv = process.e
     port,
     secure,
     auth: user && pass ? { user, pass } : undefined,
+    connectionTimeout: Number(env.CRYSTALBIO_SMTP_CONNECTION_TIMEOUT_MS ?? 10_000),
+    greetingTimeout: Number(env.CRYSTALBIO_SMTP_GREETING_TIMEOUT_MS ?? 10_000),
+    socketTimeout: Number(env.CRYSTALBIO_SMTP_SOCKET_TIMEOUT_MS ?? 15_000),
   });
 
   return {
