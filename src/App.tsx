@@ -1547,6 +1547,9 @@ function App() {
     const visibleMissingCount = visibleAgentActivityRows.filter((row) => row.status !== 'Ready').length;
     const visibleFollowUpCount = visibleAgentActivityRows.filter((row) => row.visits.toLowerCase().includes('follow-up') || row.visits.toLowerCase().includes('parts')).length;
     const selectedSeat = adminSeats.find((seat) => seat.id === selectedAdminSeatId) ?? adminSeats[0];
+    const activeSeatCount = adminSeats.filter((seat) => seat.status === 'active').length;
+    const invitedSeatCount = adminSeats.filter((seat) => seat.status === 'invited' || seat.status === 'expired').length;
+    const inactiveSeatCount = adminSeats.filter((seat) => seat.status === 'inactive').length;
     const period = adminPeriodData[adminPeriod];
     const overviewPeriod = adminPeriodData.today;
     const generateAdminReport = () => {
@@ -1689,13 +1692,19 @@ function App() {
               </div>
             </section>
           ) : (
-            <section className="admin-action-card admin-approval-list-card">
-              <label>Leave approvals</label>
-              <button type="button" className="admin-alert-row admin-click-row" onClick={() => openApproval('meera-leave')}>
-                <span className="chip chip-warning">Leave</span>
-                <div><strong>Meera Service</strong><p>12 Jun to 13 Jun • Sick leave</p><small>Waiting for admin decision</small></div>
-              </button>
-            </section>
+            <>
+              <section className="admin-approval-summary-card">
+                <div><strong>1</strong><span>Pending approval</span></div>
+                <div><strong>Leave</strong><span>Decision needed today</span></div>
+              </section>
+              <section className="admin-action-card admin-approval-list-card">
+                <label>Leave approvals</label>
+                <button type="button" className="admin-alert-row admin-click-row" onClick={() => openApproval('meera-leave')}>
+                  <span className="chip chip-warning">Leave</span>
+                  <div><strong>Meera Service</strong><p>12 Jun to 13 Jun • Sick leave</p><small>Tap to approve or reject. Status reflects in the agent app.</small></div>
+                </button>
+              </section>
+            </>
           )
         )}
 
@@ -1805,6 +1814,11 @@ function App() {
                     <small className="profile-access-note">Invite only • Public signup off • Email OTP backup on</small>
                   </div>
                 </section>
+                <section className="admin-profile-access-summary" aria-label="Profile access summary">
+                  <div><strong>{activeSeatCount}</strong><span>Active</span></div>
+                  <div><strong>{invitedSeatCount}</strong><span>Invited</span></div>
+                  <div><strong>{inactiveSeatCount}</strong><span>Inactive</span></div>
+                </section>
                 <section className="admin-report-list-card admin-agent-activity-list">
                   <div className="admin-report-heading profile-list-heading"><label>Team profiles</label><button type="button" className="profile-add-button" onClick={() => setAdminAgentsView('add')}><Plus size={16} /> Add profile</button></div>
                   {adminSeats.map((seat) => (
@@ -1823,6 +1837,10 @@ function App() {
           <>
             {adminTab === 'adminReports' && (
               <section className="admin-report-list-card admin-report-setup-card">
+                <div className="admin-report-intro-note">
+                  <strong>One report flow</strong>
+                  <span>Choose dates, choose who it is for, then generate the same summary-first view and PDF.</span>
+                </div>
                 <div className="admin-report-scope-row">
                   <label>Report for</label>
                   <select aria-label="Admin report scope" value={adminReportScope} onChange={(event) => { setAdminReportScope(event.target.value as AdminReportScope); setExpandedAdminReportId(null); }}>
