@@ -29,7 +29,7 @@ type AdminActivityRow = {
   id: string;
   name: string;
   role: string;
-  roleKey: 'sales' | 'service' | 'both';
+  roleKey: 'sales' | 'service' | 'both' | 'admin';
   attendance: string;
   visits: string;
   status: string;
@@ -65,7 +65,7 @@ const sampleAttendanceLogs = [
 const screenOptions: AppScreen[] = ['login', 'home', 'visits', 'sales', 'service', 'checkin', 'attendance', 'leave', 'reports', 'profile', 'admin'];
 const sessionStorageKey = 'crystalbio.session.v1';
 const screenStorageKey = 'crystalbio.screen.v1';
-const appBuildVersion = '20260614165500';
+const appBuildVersion = '20260614172000';
 
 const isFrontendSession = (value: unknown): value is FrontendSession => {
   const candidate = value as Partial<FrontendSession> | null;
@@ -172,13 +172,16 @@ const timeGreeting = () => {
 };
 
 const adminRoleKeyForSummary = (summary: { role?: FrontendSession['role']; salesVisitCount: number; serviceVisitCount: number }): AdminActivityRow['roleKey'] => {
-  if (summary.role === 'both' || (summary.salesVisitCount > 0 && summary.serviceVisitCount > 0)) return 'both';
-  if (summary.role === 'sales' || (summary.salesVisitCount > 0 && summary.serviceVisitCount === 0)) return 'sales';
-  if (summary.role === 'service' || (summary.serviceVisitCount > 0 && summary.salesVisitCount === 0)) return 'service';
+  if (summary.role === 'admin') return 'admin';
+  if (summary.role === 'sales' || summary.role === 'service' || summary.role === 'both') return summary.role;
+  if (summary.salesVisitCount > 0 && summary.serviceVisitCount > 0) return 'both';
+  if (summary.salesVisitCount > 0) return 'sales';
+  if (summary.serviceVisitCount > 0) return 'service';
   return 'both';
 };
 
 const adminRoleLabel = (roleKey: AdminActivityRow['roleKey']) => {
+  if (roleKey === 'admin') return 'Admin';
   if (roleKey === 'sales') return 'Sales agent';
   if (roleKey === 'service') return 'Service agent';
   return 'Sales + service agent';
@@ -186,8 +189,8 @@ const adminRoleLabel = (roleKey: AdminActivityRow['roleKey']) => {
 
 const matchesAdminAgentFilter = (row: Pick<AdminActivityRow, 'roleKey' | 'salesVisitCount' | 'serviceVisitCount'>, filter: AdminAgentFilter) => {
   if (filter === 'all') return true;
-  if (filter === 'sales') return row.roleKey === 'sales' || row.roleKey === 'both' || row.salesVisitCount > 0;
-  return row.roleKey === 'service' || row.roleKey === 'both' || row.serviceVisitCount > 0;
+  if (filter === 'sales') return row.roleKey === 'sales' || row.roleKey === 'both';
+  return row.roleKey === 'service' || row.roleKey === 'both';
 };
 
 function App() {
@@ -2640,7 +2643,18 @@ function App() {
 
           <header className="phone-header">
             <div>
-              {screen !== 'home' && screen !== 'login' && <button type="button" className="back-button" onClick={() => goToScreen('home')}><ChevronLeft size={17} /> Home</button>}
+              {screen === 'admin' && adminTab !== 'overview' && <button type="button" className="back-button" onClick={() => openAdminTab('overview')}><ChevronLeft size={17} /> Overview</button>}
+              {screen !== 'home' && screen !== 'login' && screen !== 'admin' && (
+                <button type="button" className="back-button" onClick={() => {
+                  if (isAdminSignedIn && (screen === 'sales' || screen === 'service')) {
+                    setScreen('admin');
+                    setAdminTab('fieldEntry');
+                    rememberScreen('admin');
+                    return;
+                  }
+                  goToScreen('home');
+                }}><ChevronLeft size={17} /> {isAdminSignedIn && (screen === 'sales' || screen === 'service') ? 'Field entry' : 'Home'}</button>
+              )}
               <p className="muted">{screen === 'login' ? 'Welcome' : screen === 'admin' ? 'Owner access' : timeGreeting()}</p>
               <h2>{screen === 'login' ? 'CrystalBio' : screen === 'admin' ? 'Admin' : session?.agentName ?? 'Field agent'}</h2>
             </div>
