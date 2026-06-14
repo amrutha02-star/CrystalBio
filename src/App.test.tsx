@@ -321,6 +321,13 @@ describe('Crystal Bio agent view shell', () => {
     expect(screen.getByLabelText('Overview selected')).toBeInTheDocument();
     expect(screen.queryByLabelText('Overview date range preset')).not.toBeInTheDocument();
 
+    fireEvent.click(screen.getByRole('button', { name: 'Field entry' }));
+    expect(screen.getByText('Agent home screen')).toBeInTheDocument();
+    expect(screen.getByText('Ready for field work')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /attendance logs & leave/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /back to admin dashboard/i })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /back to admin dashboard/i }));
+
     fireEvent.click(screen.getByRole('button', { name: 'Agents' }));
     expect(screen.getByRole('heading', { name: 'Agents' })).toBeInTheDocument();
     expect(screen.getByText('Live agent status')).toBeInTheDocument();

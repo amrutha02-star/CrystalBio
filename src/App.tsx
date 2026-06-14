@@ -65,7 +65,7 @@ const sampleAttendanceLogs = [
 const screenOptions: AppScreen[] = ['login', 'home', 'visits', 'sales', 'service', 'checkin', 'attendance', 'leave', 'reports', 'profile', 'admin'];
 const sessionStorageKey = 'crystalbio.session.v1';
 const screenStorageKey = 'crystalbio.screen.v1';
-const appBuildVersion = '20260614172000';
+const appBuildVersion = '20260614173500';
 
 const isFrontendSession = (value: unknown): value is FrontendSession => {
   const candidate = value as Partial<FrontendSession> | null;
@@ -665,6 +665,10 @@ function App() {
   };
 
   const openAdminTab = (nextTab: AdminTab) => {
+    if (nextTab === 'fieldEntry') {
+      goToScreen('home');
+      return;
+    }
     setAdminTab(nextTab);
     if (nextTab !== 'approvals') setSelectedAdminApproval(null);
     if (nextTab !== 'agents' && nextTab !== 'profiles') setAdminAgentsView('list');
@@ -2645,15 +2649,7 @@ function App() {
             <div>
               {screen === 'admin' && adminTab !== 'overview' && <button type="button" className="back-button" onClick={() => openAdminTab('overview')}><ChevronLeft size={17} /> Overview</button>}
               {screen !== 'home' && screen !== 'login' && screen !== 'admin' && (
-                <button type="button" className="back-button" onClick={() => {
-                  if (isAdminSignedIn && (screen === 'sales' || screen === 'service')) {
-                    setScreen('admin');
-                    setAdminTab('fieldEntry');
-                    rememberScreen('admin');
-                    return;
-                  }
-                  goToScreen('home');
-                }}><ChevronLeft size={17} /> {isAdminSignedIn && (screen === 'sales' || screen === 'service') ? 'Field entry' : 'Home'}</button>
+                <button type="button" className="back-button" onClick={() => goToScreen('home')}><ChevronLeft size={17} /> Home</button>
               )}
               <p className="muted">{screen === 'login' ? 'Welcome' : screen === 'admin' ? 'Owner access' : timeGreeting()}</p>
               <h2>{screen === 'login' ? 'CrystalBio' : screen === 'admin' ? 'Admin' : session?.agentName ?? 'Field agent'}</h2>
