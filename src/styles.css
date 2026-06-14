@@ -1385,6 +1385,23 @@ p { color: var(--muted); line-height: 1.5; }
 .admin-seat-form-heading span,
 .admin-seat-profile-head span,
 .admin-invite-mail span { margin-top: 5px; color: var(--muted); font-size: 12px; line-height: 1.4; }
+.admin-agent-snapshot-card {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 7px;
+  margin: -1px 0 10px;
+}
+.admin-agent-snapshot-card div {
+  padding: 8px 5px;
+  border-radius: 15px;
+  border: 1px solid rgba(123, 139, 111, 0.14);
+  background: rgba(255, 254, 248, 0.9);
+  text-align: center;
+}
+.admin-agent-snapshot-card strong,
+.admin-agent-snapshot-card span { display: block; margin: 0; }
+.admin-agent-snapshot-card strong { color: var(--ink); font-size: 16px; font-weight: 620; }
+.admin-agent-snapshot-card span { margin-top: 2px; color: var(--muted); font-size: 10.4px; line-height: 1.15; }
 .admin-icon-add-button {
   width: 42px;
   height: 42px;

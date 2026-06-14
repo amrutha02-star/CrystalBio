@@ -1543,6 +1543,9 @@ function App() {
       if (adminAgentFilter === 'all') return true;
       return row.role.toLowerCase().startsWith(adminAgentFilter);
     });
+    const visibleCheckedInCount = visibleAgentActivityRows.filter((row) => row.attendance === 'Checked in').length;
+    const visibleMissingCount = visibleAgentActivityRows.filter((row) => row.status !== 'Ready').length;
+    const visibleFollowUpCount = visibleAgentActivityRows.filter((row) => row.visits.toLowerCase().includes('follow-up') || row.visits.toLowerCase().includes('parts')).length;
     const selectedSeat = adminSeats.find((seat) => seat.id === selectedAdminSeatId) ?? adminSeats[0];
     const period = adminPeriodData[adminPeriod];
     const overviewPeriod = adminPeriodData.today;
@@ -1713,6 +1716,11 @@ function App() {
                     </button>
                   ))}
                 </div>
+                <section className="admin-agent-snapshot-card" aria-label="Visible agent snapshot">
+                  <div><strong>{visibleCheckedInCount}</strong><span>Checked in</span></div>
+                  <div><strong>{visibleMissingCount}</strong><span>Needs check</span></div>
+                  <div><strong>{visibleFollowUpCount}</strong><span>Follow-up/parts</span></div>
+                </section>
                 <section className="admin-report-list-card admin-agent-activity-list">
                   <div className="admin-report-heading">
                     <label>Today activity</label>
