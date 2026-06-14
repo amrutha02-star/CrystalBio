@@ -403,6 +403,7 @@ function App() {
       status: salesSaveResult.visit.nextAction === 'closed' ? 'Closed' : salesSaveResult.visit.nextAction === 'no_follow_up' ? 'No follow-up' : 'Follow-up needed',
       next: salesSaveResult.visit.followUpDate ? formatShortDate(salesSaveResult.visit.followUpDate) : 'No date set',
       tone: salesSaveResult.visit.nextAction === 'follow_up_needed' ? 'warning' : 'soft',
+      photoPayload: salesSaveResult.opportunity.sitePhoto,
     }] : []),
     ...(serviceSaveResult ? [{
       id: serviceSaveResult.visit.id,
@@ -411,6 +412,7 @@ function App() {
       status: serviceSaveResult.visit.nextAction === 'closed' ? 'Closed' : serviceSaveResult.visit.nextAction === 'no_follow_up' ? 'No follow-up' : 'Follow-up needed',
       next: serviceSaveResult.visit.nextVisitDate ? formatShortDate(serviceSaveResult.visit.nextVisitDate) : 'No date set',
       tone: serviceSaveResult.visit.nextAction === 'closed' ? 'soft' : 'info',
+      photoPayload: serviceSaveResult.serviceRecord.photoNote,
     }] : []),
   ];
 
@@ -606,20 +608,52 @@ function App() {
   };
 
   const readPhotoFile = (file: File, source: StoredPhoto['source']) => new Promise<StoredPhoto>((resolve, reject) => {
-    if (file.size > 750_000) {
-      reject(new Error('Photo is too large for pilot upload. Please choose a smaller/compressed photo under 750 KB.'));
+    if (!file.type.startsWith('image/')) {
+      reject(new Error('Please choose a photo/image file.'));
       return;
     }
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error('Could not read selected photo.'));
-    reader.onload = () => resolve({
-      source,
-      fileName: file.name,
-      contentType: file.type || 'image/*',
-      sizeBytes: file.size,
-      dataUrl: String(reader.result || ''),
-    });
-    reader.readAsDataURL(file);
+
+    const objectUrl = URL.createObjectURL(file);
+    const image = new Image();
+    image.onload = () => {
+      try {
+        const maxEdge = 1280;
+        const targetBytes = 420_000;
+        const sourceWidth = image.naturalWidth || image.width;
+        const sourceHeight = image.naturalHeight || image.height;
+        const ratio = Math.min(1, maxEdge / Math.max(sourceWidth, sourceHeight));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(sourceWidth * ratio));
+        canvas.height = Math.max(1, Math.round(sourceHeight * ratio));
+        const context = canvas.getContext('2d');
+        if (!context) throw new Error('Could not prepare selected photo.');
+        context.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+        let dataUrl = '';
+        for (const quality of [0.72, 0.62, 0.52, 0.42]) {
+          dataUrl = canvas.toDataURL('image/jpeg', quality);
+          if (dataUrl.length * 0.75 <= targetBytes) break;
+        }
+
+        URL.revokeObjectURL(objectUrl);
+        const compressedBytes = Math.round(dataUrl.length * 0.75);
+        resolve({
+          source,
+          fileName: file.name.replace(/\.[^.]+$/, '') + '-field-photo.jpg',
+          contentType: 'image/jpeg',
+          sizeBytes: compressedBytes,
+          dataUrl,
+        });
+      } catch (error) {
+        URL.revokeObjectURL(objectUrl);
+        reject(error instanceof Error ? error : new Error('Could not compress selected photo.'));
+      }
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error('Could not read selected photo.'));
+    };
+    image.src = objectUrl;
   });
 
   const handlePhotoSelection = async (event: React.ChangeEvent<HTMLInputElement>, source: StoredPhoto['source'], area: 'sales' | 'service') => {
@@ -647,6 +681,36 @@ function App() {
   const storedPhotoPayload = (note: string, photo: StoredPhoto | null) => {
     if (!photo && !note.trim()) return undefined;
     return JSON.stringify({ note: note.trim(), photo });
+  };
+
+  const parseStoredPhotoPayload = (payload?: string): { note: string; photo: StoredPhoto | null } => {
+    if (!payload) return { note: '', photo: null };
+    try {
+      const parsed = JSON.parse(payload) as { note?: string; photo?: StoredPhoto | null };
+      return { note: parsed.note ?? '', photo: parsed.photo ?? null };
+    } catch {
+      return { note: payload, photo: null };
+    }
+  };
+
+  const PhotoViewer = ({ payload, label }: { payload?: string; label: string }) => {
+    const { note, photo } = parseStoredPhotoPayload(payload);
+    if (!photo?.dataUrl) {
+      if (!note) return null;
+      return <small>{note}</small>;
+    }
+    return (
+      <div className="saved-photo-viewer">
+        <button type="button" className="photo-preview-button" onClick={() => window.open(photo.dataUrl, '_blank')} aria-label={`View ${label} photo`}>
+          <img src={photo.dataUrl} alt={`${label}: ${photo.fileName}`} />
+        </button>
+        <div>
+          <strong>{photo.fileName}</strong>
+          <span>{Math.ceil(photo.sizeBytes / 1024)} KB{note ? ` • ${note}` : ''}</span>
+          <a href={photo.dataUrl} target="_blank" rel="noreferrer" download={photo.fileName}>Open full photo</a>
+        </div>
+      </div>
+    );
   };
 
   const handleAgentLogin = async () => {
@@ -1384,7 +1448,12 @@ function App() {
             <label className="secondary-action photo-button">Upload<input className="visually-hidden" aria-label="Sales upload photo" type="file" accept="image/*" onChange={(event) => void handlePhotoSelection(event, 'upload', 'sales')} /></label>
           </div>
           <textarea aria-label="Sales photo note" value={salesPhotoNote} onChange={(event) => setSalesPhotoNote(event.target.value)} placeholder="Optional note, e.g. visiting card photo added" rows={2} />
-          {salesPhotoAttachment && <small>Stored photo: {salesPhotoAttachment.fileName} • {Math.ceil(salesPhotoAttachment.sizeBytes / 1024)} KB</small>}
+          {salesPhotoAttachment && (
+            <div className="selected-photo-preview">
+              <small>Ready to save: {salesPhotoAttachment.fileName} • {Math.ceil(salesPhotoAttachment.sizeBytes / 1024)} KB</small>
+              <img src={salesPhotoAttachment.dataUrl} alt={`Selected sales photo ${salesPhotoAttachment.fileName}`} />
+            </div>
+          )}
         </div>
         <button type="button" aria-label="Save Step 3" className={salesSaveResult ? 'secondary-action step-save-action' : 'secondary-action step-save-action locked-step-action'} disabled={salesAnySubmitting || !salesSaveResult} onClick={handleSalesStep3Submit}>{isSalesStep3Submitting ? 'Saving…' : salesSaveResult ? 'Save Step 3' : 'Complete Step 1 first'}</button>
         </div>}
@@ -1395,6 +1464,7 @@ function App() {
           <label>Latest saved sales entry</label>
           <span>{salesSaveResult.opportunity.accountName} • Visit {salesSaveResult.visit.visitNumber} • {salesSaveResult.visit.nextAction.split('_').join(' ')}</span>
           <span>Step 2: {salesStep2Saved ? 'saved' : 'pending'} • Step 3: {salesStep3Saved ? 'saved' : 'pending'}</span>
+          <PhotoViewer payload={salesSaveResult.opportunity.sitePhoto} label="saved sales" />
         </div>
       )}
     </ScreenPanel>
@@ -1475,7 +1545,12 @@ function App() {
               <label className="secondary-action photo-button">Upload<input className="visually-hidden" aria-label="Service upload photo" type="file" accept="image/*" onChange={(event) => void handlePhotoSelection(event, 'upload', 'service')} /></label>
             </div>
             <input aria-label="Service photo note" value={servicePhotoNote} onChange={(event) => setServicePhotoNote(event.target.value)} placeholder="Optional photo note" />
-            {servicePhotoAttachment && <small>Stored photo: {servicePhotoAttachment.fileName} • {Math.ceil(servicePhotoAttachment.sizeBytes / 1024)} KB</small>}
+            {servicePhotoAttachment && (
+              <div className="selected-photo-preview">
+                <small>Ready to save: {servicePhotoAttachment.fileName} • {Math.ceil(servicePhotoAttachment.sizeBytes / 1024)} KB</small>
+                <img src={servicePhotoAttachment.dataUrl} alt={`Selected service photo ${servicePhotoAttachment.fileName}`} />
+              </div>
+            )}
           </div>
           <label className="field-card"><span>Final remarks</span><textarea aria-label="Service final remarks" value={serviceFinalRemarks} onChange={(event) => setServiceFinalRemarks(event.target.value)} placeholder="Optional customer confirmation / remarks" rows={2} /></label>
           <label className="field-card"><span>Notes for office</span><textarea aria-label="Service office notes" value={serviceOfficeNotes} onChange={(event) => setServiceOfficeNotes(event.target.value)} placeholder="Optional office notes" rows={2} /></label>
@@ -1483,7 +1558,7 @@ function App() {
           </div>}
         </section>
 
-        {serviceSaveResult && <div className="form-card highlighted-card"><label>Latest saved service visit</label><span>{serviceSaveResult.serviceRecord.customerName} • Visit {serviceSaveResult.visit.visitNumber} • {serviceSaveResult.visit.nextAction.split('_').join(' ')}</span><span>Step 2: {serviceStep2Saved ? 'saved' : 'pending'} • Step 3: {serviceStep3Saved ? 'saved' : 'pending'}</span></div>}
+        {serviceSaveResult && <div className="form-card highlighted-card"><label>Latest saved service visit</label><span>{serviceSaveResult.serviceRecord.customerName} • Visit {serviceSaveResult.visit.visitNumber} • {serviceSaveResult.visit.nextAction.split('_').join(' ')}</span><span>Step 2: {serviceStep2Saved ? 'saved' : 'pending'} • Step 3: {serviceStep3Saved ? 'saved' : 'pending'}</span><PhotoViewer payload={serviceSaveResult.serviceRecord.photoNote} label="saved service" /></div>}
       </ScreenPanel>
     );
   };
