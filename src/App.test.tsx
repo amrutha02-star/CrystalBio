@@ -6,6 +6,7 @@ import App from './App';
 
 describe('Crystal Bio agent view shell', () => {
   beforeEach(() => {
+    window.localStorage.clear();
     window.history.pushState({}, '', '/?screen=home');
   });
 
@@ -21,6 +22,25 @@ describe('Crystal Bio agent view shell', () => {
     expect(screen.queryByText('Field work login')).not.toBeInTheDocument();
     expect(screen.queryByText(/invite-only access/i)).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /admin access/i })).not.toBeInTheDocument();
+  });
+
+  it('keeps a saved logged-in session after a browser refresh without returning to login', async () => {
+    window.history.pushState({}, '', '/');
+    window.localStorage.setItem('crystalbio.session.v1', JSON.stringify({
+      token: 'saved-token',
+      agentId: 'agent_qa',
+      agentName: 'QA Test Agent',
+      role: 'both',
+      phone: 'Registered mobile',
+      email: 'qa.agent@crystalbio.in',
+    }));
+
+    render(<App />);
+
+    expect(screen.getByText('Agent home screen')).toBeInTheDocument();
+    expect(screen.queryByText('Login screen')).not.toBeInTheDocument();
+    expect(screen.getByText('QA Test Agent')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /check in/i })).toBeInTheDocument();
   });
 
   it('renders the connected agent home with compact quick actions', async () => {

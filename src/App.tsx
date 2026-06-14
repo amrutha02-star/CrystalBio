@@ -59,6 +59,47 @@ const sampleAttendanceLogs = [
 ];
 
 const screenOptions: AppScreen[] = ['login', 'home', 'visits', 'sales', 'service', 'checkin', 'attendance', 'leave', 'reports', 'profile', 'admin'];
+const sessionStorageKey = 'crystalbio.session.v1';
+const screenStorageKey = 'crystalbio.screen.v1';
+
+const isFrontendSession = (value: unknown): value is FrontendSession => {
+  const candidate = value as Partial<FrontendSession> | null;
+  return Boolean(
+    candidate
+      && typeof candidate.token === 'string'
+      && typeof candidate.agentId === 'string'
+      && typeof candidate.agentName === 'string'
+      && ['sales', 'service', 'both', 'admin'].includes(String(candidate.role)),
+  );
+};
+
+const readStoredSession = (): FrontendSession | null => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const rawSession = window.localStorage.getItem(sessionStorageKey);
+    if (!rawSession) return null;
+    const parsed = JSON.parse(rawSession) as unknown;
+    return isFrontendSession(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+};
+
+const rememberSession = (nextSession: FrontendSession) => {
+  if (typeof window === 'undefined') return;
+  window.localStorage.setItem(sessionStorageKey, JSON.stringify(nextSession));
+};
+
+const forgetSession = () => {
+  if (typeof window === 'undefined') return;
+  window.localStorage.removeItem(sessionStorageKey);
+  window.localStorage.removeItem(screenStorageKey);
+};
+
+const rememberScreen = (nextScreen: AppScreen) => {
+  if (typeof window === 'undefined' || nextScreen === 'login') return;
+  window.localStorage.setItem(screenStorageKey, nextScreen);
+};
 
 const agentIdForScreen = (nextScreen: AppScreen) => (nextScreen === 'service' ? 'agent_3' : 'agent_2');
 const loginInputForScreen = (nextScreen: AppScreen): FrontendLoginInput => {
@@ -67,10 +108,14 @@ const loginInputForScreen = (nextScreen: AppScreen): FrontendLoginInput => {
   return { email: 'rahul.sales@crystalbio.in', password: '' };
 };
 
-const getInitialScreen = (): AppScreen => {
+const getInitialScreen = (storedSession: FrontendSession | null = readStoredSession()): AppScreen => {
   if (typeof window === 'undefined') return 'login';
   const requestedScreen = new URLSearchParams(window.location.search).get('screen') as AppScreen | null;
-  return requestedScreen && screenOptions.includes(requestedScreen) ? requestedScreen : 'login';
+  if (requestedScreen && screenOptions.includes(requestedScreen)) return requestedScreen;
+  const storedScreen = window.localStorage.getItem(screenStorageKey) as AppScreen | null;
+  if (storedSession && storedScreen && screenOptions.includes(storedScreen) && storedScreen !== 'login') return storedScreen;
+  if (storedSession) return storedSession.role === 'admin' ? 'admin' : 'home';
+  return 'login';
 };
 
 const getInitialAdminTab = (): AdminTab => {
@@ -92,11 +137,12 @@ const formatShortDate = (value: string) => {
 };
 
 function App() {
-  const initialScreen = getInitialScreen();
+  const initialStoredSession = readStoredSession();
+  const initialScreen = getInitialScreen(initialStoredSession);
   const hasConfiguredBackend = crystalBioFrontendApi.isBackendConfigured();
-  const [screen, setScreen] = useState<AppScreen>(() => hasConfiguredBackend && initialScreen === 'admin' ? 'login' : initialScreen);
-  const [isAdminSignedIn, setIsAdminSignedIn] = useState(() => !hasConfiguredBackend && initialScreen === 'admin');
-  const [session, setSession] = useState<FrontendSession | null>(null);
+  const [screen, setScreen] = useState<AppScreen>(() => hasConfiguredBackend && initialScreen === 'admin' && initialStoredSession?.role !== 'admin' ? 'login' : initialScreen);
+  const [isAdminSignedIn, setIsAdminSignedIn] = useState(() => initialStoredSession?.role === 'admin' || (!hasConfiguredBackend && initialScreen === 'admin'));
+  const [session, setSession] = useState<FrontendSession | null>(initialStoredSession);
   const [attendance, setAttendance] = useState<FrontendAttendance | null>(null);
   const [isAttendanceBusy, setIsAttendanceBusy] = useState(false);
   const [statusMessage, setStatusMessage] = useState('Loading logged-in agent…');
@@ -235,6 +281,10 @@ function App() {
   };
 
   useEffect(() => {
+    if (session) {
+      setStatusMessage(session.role === 'admin' ? 'Admin logged in.' : 'Logged in. Check in to start field work.');
+      return undefined;
+    }
     if (isBackendConfigured) {
       setStatusMessage('Use the registered email and password from the admin invite.');
       return undefined;
@@ -245,6 +295,7 @@ function App() {
       .then((nextSession) => {
         if (!isMounted) return;
         setSession(nextSession);
+        rememberSession(nextSession);
         setStatusMessage('Logged in. Check in to start field work.');
       })
       .catch((error: Error) => {
@@ -433,6 +484,7 @@ function App() {
       }
     }
     setScreen(nextScreen);
+    rememberScreen(nextScreen);
   };
 
   const openAdminTab = (nextTab: AdminTab) => {
@@ -457,17 +509,20 @@ function App() {
         isBackendConfigured ? { email: loginEmail.trim(), password } : 'agent_2',
       );
       setSession(nextSession);
+      rememberSession(nextSession);
       if (nextSession.role === 'admin') {
         setIsAdminSignedIn(true);
         setAdminTab('overview');
         setSelectedAdminApproval(null);
         setStatusMessage('Admin logged in.');
         setScreen('admin');
+        rememberScreen('admin');
         void refreshAdminData(nextSession);
         return;
       }
       setStatusMessage('Logged in. Check in to start field work.');
       setScreen('home');
+      rememberScreen('home');
     } catch (error) {
       rememberLaunchIssue('Login', error);
       const message = error instanceof Error ? error.message : 'Login failed';
@@ -826,10 +881,11 @@ function App() {
   };
 
   const handleLogout = () => {
+    forgetSession();
     setSession(null);
     setAttendance(null);
     setIsAdminSignedIn(false);
-    setStatusMessage('Logged out. Enter login code and passcode.');
+    setStatusMessage('Logged out. Use your registered email and password.');
     setScreenNotice({ title: 'Logged out', message: 'You are back on the login screen.', tone: 'info' });
     setScreen('login');
   };
