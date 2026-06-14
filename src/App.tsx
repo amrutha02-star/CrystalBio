@@ -38,6 +38,7 @@ type AdminActivityRow = {
 };
 type ToastNotice = { title: string; message: string; tone?: 'success' | 'info' | 'warning' | 'error' };
 type LaunchIssue = { area: string; message: string; when: string };
+type StoredPhoto = { source: 'camera' | 'upload'; fileName: string; contentType: string; sizeBytes: number; dataUrl: string };
 
 const toneClass: Record<string, string> = {
   warning: 'chip chip-warning',
@@ -253,6 +254,7 @@ function App() {
   const [salesRemarksTimeline, setSalesRemarksTimeline] = useState('');
   const [salesOfficeNotes, setSalesOfficeNotes] = useState('');
   const [salesPhotoNote, setSalesPhotoNote] = useState('');
+  const [salesPhotoAttachment, setSalesPhotoAttachment] = useState<StoredPhoto | null>(null);
   const [salesStep2Saved, setSalesStep2Saved] = useState(false);
   const [salesStep3Saved, setSalesStep3Saved] = useState(false);
   const [isSalesStep2Open, setIsSalesStep2Open] = useState(false);
@@ -284,6 +286,7 @@ function App() {
   const [serviceSupportRequiredNote, setServiceSupportRequiredNote] = useState('');
   const [serviceFinalRemarks, setServiceFinalRemarks] = useState('');
   const [servicePhotoNote, setServicePhotoNote] = useState('');
+  const [servicePhotoAttachment, setServicePhotoAttachment] = useState<StoredPhoto | null>(null);
   const [serviceOfficeNotes, setServiceOfficeNotes] = useState('');
   const [serviceStep2Saved, setServiceStep2Saved] = useState(false);
   const [serviceStep3Saved, setServiceStep3Saved] = useState(false);
@@ -304,23 +307,28 @@ function App() {
   const refreshAdminData = async (adminSession = session) => {
     if (!adminSession || adminSession.role !== 'admin') return;
     try {
-      const [requests, report] = await Promise.all([
+      const [requests, report, agents] = await Promise.all([
         crystalBioFrontendApi.getAdminLeaveRequests(adminSession),
         crystalBioFrontendApi.getAdminReport(adminSession, { fromDate: adminReportFromDate, toDate: adminReportToDate }),
+        crystalBioFrontendApi.getAdminAgents(adminSession),
       ]);
       setAdminLeaveRequests(requests);
       setAdminReport(report);
-      setAdminSeats(report.agentSummaries.map((summary) => ({
-        id: summary.agentId,
-        name: summary.agentName,
-        employeeId: summary.agentId,
-        email: 'Registered email',
-        mobile: 'Registered mobile',
-        role: adminRoleKeyForSummary(summary),
-        territory: 'CrystalBio team',
-        status: 'active',
-        lastActive: summary.attendanceStatus === 'not_checked_in' ? 'Not checked in today' : summary.attendanceStatus.replace(/_/g, ' '),
-      })));
+      const activityByAgentId = new Map(report.agentSummaries.map((summary) => [summary.agentId, summary]));
+      setAdminSeats(agents.map((agent) => {
+        const summary = activityByAgentId.get(agent.id);
+        return {
+          id: agent.id,
+          name: agent.name,
+          employeeId: agent.employeeId || agent.id,
+          email: agent.email || 'Email not added',
+          mobile: agent.mobile || 'Not added',
+          role: agent.role,
+          territory: 'CrystalBio team',
+          status: agent.active ? 'active' : agent.inviteStatus === 'pending' ? 'invited' : 'inactive',
+          lastActive: summary ? (summary.attendanceStatus === 'not_checked_in' ? 'Not checked in today' : summary.attendanceStatus.replace(/_/g, ' ')) : 'No field activity yet',
+        };
+      }));
     } catch (error) {
       rememberLaunchIssue('Admin data refresh', error);
     }
@@ -519,6 +527,7 @@ function App() {
     setSalesRemarksTimeline('');
     setSalesOfficeNotes('');
     setSalesPhotoNote('');
+    setSalesPhotoAttachment(null);
     setSalesStep2Saved(false);
     setSalesStep3Saved(false);
     setIsSalesStep2Open(false);
@@ -550,6 +559,7 @@ function App() {
     setServiceSupportRequiredNote('');
     setServiceFinalRemarks('');
     setServicePhotoNote('');
+    setServicePhotoAttachment(null);
     setServiceOfficeNotes('');
     setServiceStep2Saved(false);
     setServiceStep3Saved(false);
@@ -584,6 +594,50 @@ function App() {
     if (nextTab !== 'approvals') setSelectedAdminApproval(null);
     if (nextTab !== 'agents' && nextTab !== 'profiles') setAdminAgentsView('list');
     setScreenNotice(null);
+  };
+
+  const readPhotoFile = (file: File, source: StoredPhoto['source']) => new Promise<StoredPhoto>((resolve, reject) => {
+    if (file.size > 750_000) {
+      reject(new Error('Photo is too large for pilot upload. Please choose a smaller/compressed photo under 750 KB.'));
+      return;
+    }
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Could not read selected photo.'));
+    reader.onload = () => resolve({
+      source,
+      fileName: file.name,
+      contentType: file.type || 'image/*',
+      sizeBytes: file.size,
+      dataUrl: String(reader.result || ''),
+    });
+    reader.readAsDataURL(file);
+  });
+
+  const handlePhotoSelection = async (event: React.ChangeEvent<HTMLInputElement>, source: StoredPhoto['source'], area: 'sales' | 'service') => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      const storedPhoto = await readPhotoFile(file, source);
+      const note = `Photo attached: ${storedPhoto.fileName} (${Math.ceil(storedPhoto.sizeBytes / 1024)} KB)`;
+      if (area === 'sales') {
+        setSalesPhotoAttachment(storedPhoto);
+        setSalesPhotoNote((current) => current.trim() || note);
+      } else {
+        setServicePhotoAttachment(storedPhoto);
+        setServicePhotoNote((current) => current.trim() || note);
+      }
+      setScreenNotice({ title: 'Photo attached', message: `${storedPhoto.fileName} will be saved with this record.`, tone: 'success' });
+    } catch (error) {
+      rememberLaunchIssue(`${area} photo`, error);
+      setScreenNotice({ title: 'Photo not attached', message: error instanceof Error ? error.message : 'Could not attach selected photo.', tone: 'error' });
+    } finally {
+      event.target.value = '';
+    }
+  };
+
+  const storedPhotoPayload = (note: string, photo: StoredPhoto | null) => {
+    if (!photo && !note.trim()) return undefined;
+    return JSON.stringify({ note: note.trim(), photo });
   };
 
   const handleAgentLogin = async () => {
@@ -788,7 +842,7 @@ function App() {
         ...(salesSupportRequired.trim() ? { supportRequired: salesSupportRequired.trim() } : {}),
         ...(salesRemarksTimeline.trim() ? { remarksTimeline: salesRemarksTimeline.trim() } : {}),
         ...(salesOfficeNotes.trim() ? { officeNotes: salesOfficeNotes.trim() } : {}),
-        ...(salesPhotoNote.trim() ? { sitePhoto: salesPhotoNote.trim() } : {}),
+        ...(storedPhotoPayload(salesPhotoNote, salesPhotoAttachment) ? { sitePhoto: storedPhotoPayload(salesPhotoNote, salesPhotoAttachment) } : {}),
       });
       setSalesSaveResult({ ...salesSaveResult, opportunity: { ...salesSaveResult.opportunity, ...opportunity } });
       setSalesStep3Saved(true);
@@ -943,7 +997,7 @@ function App() {
         ...(serviceMachineStatus.trim() ? { machineStatus: serviceMachineStatus.trim() } : {}),
         ...(serviceSupportRequiredNote.trim() ? { supportRequiredNote: serviceSupportRequiredNote.trim() } : {}),
         ...(serviceFinalRemarks.trim() ? { finalRemarks: serviceFinalRemarks.trim() } : {}),
-        ...(servicePhotoNote.trim() ? { photoNote: servicePhotoNote.trim() } : {}),
+        ...(storedPhotoPayload(servicePhotoNote, servicePhotoAttachment) ? { photoNote: storedPhotoPayload(servicePhotoNote, servicePhotoAttachment) } : {}),
         ...(serviceOfficeNotes.trim() ? { officeNotes: serviceOfficeNotes.trim() } : {}),
       });
       setServiceSaveResult({ ...serviceSaveResult, serviceRecord: { ...serviceSaveResult.serviceRecord, ...serviceRecord } });
@@ -1250,10 +1304,11 @@ function App() {
             <small>Optional for Sales. Use only when a site, product, or visiting card photo is useful.</small>
           </div>
           <div className="photo-actions">
-            <label className="secondary-action photo-button">Camera<input className="visually-hidden" aria-label="Sales camera photo" type="file" accept="image/*" capture="environment" onChange={(event) => setSalesPhotoNote(event.target.files?.[0]?.name ? `Photo selected: ${event.target.files[0].name}` : salesPhotoNote)} /></label>
-            <label className="secondary-action photo-button">Upload<input className="visually-hidden" aria-label="Sales upload photo" type="file" accept="image/*" onChange={(event) => setSalesPhotoNote(event.target.files?.[0]?.name ? `File selected: ${event.target.files[0].name}` : salesPhotoNote)} /></label>
+            <label className="secondary-action photo-button">Camera<input className="visually-hidden" aria-label="Sales camera photo" type="file" accept="image/*" capture="environment" onChange={(event) => void handlePhotoSelection(event, 'camera', 'sales')} /></label>
+            <label className="secondary-action photo-button">Upload<input className="visually-hidden" aria-label="Sales upload photo" type="file" accept="image/*" onChange={(event) => void handlePhotoSelection(event, 'upload', 'sales')} /></label>
           </div>
           <textarea aria-label="Sales photo note" value={salesPhotoNote} onChange={(event) => setSalesPhotoNote(event.target.value)} placeholder="Optional note, e.g. visiting card photo added" rows={2} />
+          {salesPhotoAttachment && <small>Stored photo: {salesPhotoAttachment.fileName} • {Math.ceil(salesPhotoAttachment.sizeBytes / 1024)} KB</small>}
         </div>
         <button type="button" aria-label="Save Step 3" className={salesSaveResult ? 'secondary-action step-save-action' : 'secondary-action step-save-action locked-step-action'} disabled={salesAnySubmitting || !salesSaveResult} onClick={handleSalesStep3Submit}>{isSalesStep3Submitting ? 'Saving…' : salesSaveResult ? 'Save Step 3' : 'Complete Step 1 first'}</button>
         </div>}
@@ -1337,7 +1392,15 @@ function App() {
             <button type="button" onClick={() => { setServiceSupportRequired(true); setServiceSupportRequiredNote('Schedule next site visit with customer'); }}>Revisit</button>
             <button type="button" onClick={() => { setServiceSupportRequired(true); setServiceSupportRequiredNote('Escalate case to office/service lead'); }}>Escalate</button>
           </div>
-          <div className="field-card photo-action-card"><div><span>Service photos</span><small>Optional now. Use for machine, issue, part, or completed-work proof.</small></div><div className="photo-actions"><label className="secondary-action photo-button">Camera<input className="visually-hidden" aria-label="Service camera photo" type="file" accept="image/*" capture="environment" onChange={(event) => setServicePhotoNote(event.target.files?.[0]?.name ? `Photo selected: ${event.target.files[0].name}` : servicePhotoNote)} /></label><label className="secondary-action photo-button">Upload<input className="visually-hidden" aria-label="Service upload photo" type="file" accept="image/*" onChange={(event) => setServicePhotoNote(event.target.files?.[0]?.name ? `File selected: ${event.target.files[0].name}` : servicePhotoNote)} /></label></div><input aria-label="Service photo note" value={servicePhotoNote} onChange={(event) => setServicePhotoNote(event.target.value)} placeholder="Optional photo note" /></div>
+          <div className="field-card photo-action-card">
+            <div><span>Service photos</span><small>Optional now. Use for machine, issue, part, or completed-work proof.</small></div>
+            <div className="photo-actions">
+              <label className="secondary-action photo-button">Camera<input className="visually-hidden" aria-label="Service camera photo" type="file" accept="image/*" capture="environment" onChange={(event) => void handlePhotoSelection(event, 'camera', 'service')} /></label>
+              <label className="secondary-action photo-button">Upload<input className="visually-hidden" aria-label="Service upload photo" type="file" accept="image/*" onChange={(event) => void handlePhotoSelection(event, 'upload', 'service')} /></label>
+            </div>
+            <input aria-label="Service photo note" value={servicePhotoNote} onChange={(event) => setServicePhotoNote(event.target.value)} placeholder="Optional photo note" />
+            {servicePhotoAttachment && <small>Stored photo: {servicePhotoAttachment.fileName} • {Math.ceil(servicePhotoAttachment.sizeBytes / 1024)} KB</small>}
+          </div>
           <label className="field-card"><span>Final remarks</span><textarea aria-label="Service final remarks" value={serviceFinalRemarks} onChange={(event) => setServiceFinalRemarks(event.target.value)} placeholder="Optional customer confirmation / remarks" rows={2} /></label>
           <label className="field-card"><span>Notes for office</span><textarea aria-label="Service office notes" value={serviceOfficeNotes} onChange={(event) => setServiceOfficeNotes(event.target.value)} placeholder="Optional office notes" rows={2} /></label>
           <button type="button" aria-label="Save Step 3" className={serviceSaveResult ? 'secondary-action step-save-action' : 'secondary-action step-save-action locked-step-action'} disabled={serviceAnySubmitting || !serviceSaveResult} onClick={handleServiceStep3Submit}>{isServiceStep3Submitting ? 'Saving…' : serviceSaveResult ? 'Save Step 3' : 'Complete Step 1 first'}</button>
@@ -1652,18 +1715,66 @@ function App() {
         employeeId: invitedSeat.employeeId,
         email: invitedSeat.email,
         mobile: invitedSeat.mobile || 'Not added',
-        role: invitedSeat.role === 'both' ? 'sales' : invitedSeat.role,
+        role: invitedSeat.role,
         territory: newSeatTerritory.trim() || 'Not assigned',
         status: invitedSeat.active ? 'active' : 'invited',
-        lastActive: 'Invite sent just now',
+        lastActive: 'Invite created just now',
       };
       setAdminSeats((current) => [nextSeat, ...current.filter((seat) => seat.email !== nextSeat.email)]);
       setSelectedAdminSeatId(nextSeat.id);
       setAdminAgentsView('invite');
-      setScreenNotice({ title: 'Invite sent', message: `${nextSeat.name} can set password from the registered email invite.`, tone: 'success' });
+      setScreenNotice({ title: 'Invite ready', message: `Profile created for ${nextSeat.name}. Email sending is not connected yet, so share the setup link from this screen.`, tone: 'info' });
     } catch (error) {
       rememberLaunchIssue('Admin invite', error);
       setScreenNotice({ title: 'Invite failed', message: error instanceof Error ? error.message : 'Could not create the employee invite.', tone: 'error' });
+    }
+  };
+
+  const updateSeatFromBackend = (agent: FrontendAdminSeatInvite, fallback?: AdminSeat) => {
+    const nextSeat: AdminSeat = {
+      id: agent.id,
+      name: agent.name,
+      employeeId: agent.employeeId || fallback?.employeeId || agent.id,
+      email: agent.email || fallback?.email || 'Email not added',
+      mobile: agent.mobile || fallback?.mobile || 'Not added',
+      role: agent.role,
+      territory: fallback?.territory || 'CrystalBio team',
+      status: agent.active ? 'active' : agent.inviteStatus === 'pending' ? 'invited' : 'inactive',
+      lastActive: agent.active ? (fallback?.lastActive || 'Active') : agent.inviteStatus === 'pending' ? 'Invite pending' : 'Inactive',
+    };
+    setAdminSeats((current) => current.map((seat) => seat.id === nextSeat.id ? nextSeat : seat));
+    setSelectedAdminSeatId(nextSeat.id);
+    return nextSeat;
+  };
+
+  const handleResetSeatInvite = async (seat: AdminSeat) => {
+    if (!session || session.role !== 'admin') {
+      setScreenNotice({ title: 'Admin login needed', message: 'Login as admin before resetting an invite.', tone: 'warning' });
+      return;
+    }
+    try {
+      const agent = await crystalBioFrontendApi.resetAdminInvite(session, seat.id);
+      const nextSeat = updateSeatFromBackend(agent, seat);
+      setAdminAgentsView('invite');
+      setScreenNotice({ title: 'Invite ready', message: `${nextSeat.name} has a fresh setup link. Email sending is not connected yet, so share it manually from this screen.`, tone: 'info' });
+    } catch (error) {
+      rememberLaunchIssue('Reset invite', error);
+      setScreenNotice({ title: 'Invite reset failed', message: error instanceof Error ? error.message : 'Could not reset this invite.', tone: 'error' });
+    }
+  };
+
+  const handleDeactivateSeat = async (seat: AdminSeat) => {
+    if (!session || session.role !== 'admin') {
+      setScreenNotice({ title: 'Admin login needed', message: 'Login as admin before changing profile access.', tone: 'warning' });
+      return;
+    }
+    try {
+      const agent = await crystalBioFrontendApi.updateAdminAgentStatus(session, seat.id, false);
+      const nextSeat = updateSeatFromBackend(agent, seat);
+      setScreenNotice({ title: 'Profile deactivated', message: `${nextSeat.name} can no longer log in.`, tone: 'warning' });
+    } catch (error) {
+      rememberLaunchIssue('Deactivate profile', error);
+      setScreenNotice({ title: 'Deactivate failed', message: error instanceof Error ? error.message : 'Could not deactivate this profile.', tone: 'error' });
     }
   };
 
@@ -2020,9 +2131,9 @@ function App() {
                   <div><span>Last active</span><strong>{selectedSeat.lastActive}</strong></div>
                 </div>
                 <div className="admin-seat-actions">
-                  <button type="button" className="secondary-action" onClick={() => { setAdminAgentsView('invite'); setScreenNotice({ title: 'Invite resent', message: `Setup link sent to ${selectedSeat.email}.`, tone: 'success' }); }}>Resend invite</button>
-                  <button type="button" className="secondary-action" onClick={() => setScreenNotice({ title: 'Password reset sent', message: `${selectedSeat.name} will receive a secure reset email.`, tone: 'success' })}>Reset password</button>
-                  <button type="button" className="secondary-action logout-action" onClick={() => setAdminSeats((current) => current.map((seat) => seat.id === selectedSeat.id ? { ...seat, status: 'inactive' } : seat))}>Deactivate</button>
+                  <button type="button" className="secondary-action" onClick={() => void handleResetSeatInvite(selectedSeat)}>Create setup link</button>
+                  <button type="button" className="secondary-action" onClick={() => void handleResetSeatInvite(selectedSeat)}>Reset password link</button>
+                  <button type="button" className="secondary-action logout-action" disabled={selectedSeat.status === 'inactive'} onClick={() => void handleDeactivateSeat(selectedSeat)}>Deactivate</button>
                 </div>
               </section>
             )}
@@ -2030,14 +2141,14 @@ function App() {
             {adminAgentsView === 'invite' && selectedSeat && (
               <section className="admin-invite-preview-card">
                 <button type="button" className="admin-detail-back" onClick={() => setAdminAgentsView('list')}><ChevronLeft size={16} /> Back to profiles</button>
-                <span className="chip chip-soft">Email invite</span>
+                <span className="chip chip-soft">Setup link ready</span>
                 <div className="admin-invite-mail">
-                  <p>To: {selectedSeat.email}</p>
-                  <strong>Set up your CrystalBio Field App account</strong>
-                  <span>Hi {selectedSeat.name}, your company profile is ready. Click the secure link to create your password and activate access.</span>
-                  <button type="button" className="primary-action" onClick={() => setScreenNotice({ title: 'Password setup page', message: `${selectedSeat.name} can create password and open the app.`, tone: 'info' })}>Set up my account</button>
+                  <p>For: {selectedSeat.email}</p>
+                  <strong>Set up CrystalBio Field App account</strong>
+                  <span>Email delivery is not connected yet. For the pilot, copy this setup link/message and send it to the employee manually.</span>
+                  <button type="button" className="primary-action" onClick={() => setScreenNotice({ title: 'Setup link copied', message: `${selectedSeat.name}'s setup link is ready to share manually.`, tone: 'info' })}>Copy setup message</button>
                 </div>
-                <div className="admin-seat-meta-row"><span>Link expires in 48 hours</span><span>No public signup</span></div>
+                <div className="admin-seat-meta-row"><span>Manual share for now</span><span>No public signup</span></div>
               </section>
             )}
           </>

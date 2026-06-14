@@ -427,7 +427,25 @@ export function createCrystalBioFrontendApi(options: ApiClientOptions = {}) {
           inviteStatus: 'pending',
         };
       }
-      const result = await post<{ agent: FrontendAdminSeatInvite }>('/admin/agents', input, session.token);
+      const result = await post<{ agent: FrontendAdminSeatInvite; emailDelivery?: 'not_configured' }>('/admin/agents', input, session.token);
+      return result.agent;
+    },
+
+    async getAdminAgents(session: FrontendSession): Promise<FrontendAdminSeatInvite[]> {
+      if (!baseUrl) return [];
+      const result = await get<{ agents: FrontendAdminSeatInvite[] }>('/admin/agents', session.token);
+      return result.agents;
+    },
+
+    async resetAdminInvite(session: FrontendSession, agentId: string): Promise<FrontendAdminSeatInvite> {
+      if (!baseUrl) throw new Error('Backend URL is not configured');
+      const result = await post<{ agent: FrontendAdminSeatInvite; emailDelivery?: 'not_configured' }>(`/admin/agents/${agentId}/reset-invite`, {}, session.token);
+      return result.agent;
+    },
+
+    async updateAdminAgentStatus(session: FrontendSession, agentId: string, active: boolean): Promise<FrontendAdminSeatInvite> {
+      if (!baseUrl) throw new Error('Backend URL is not configured');
+      const result = await patch<{ agent: FrontendAdminSeatInvite }>(`/admin/agents/${agentId}/status`, { active }, session.token);
       return result.agent;
     },
 

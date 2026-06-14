@@ -30,6 +30,21 @@ const splitPath = (pathWithQuery: string) => {
 
 const isAdminAccessError = (error: unknown) => error instanceof ValidationError && error.message === 'Admin access is required';
 
+const publicAgent = (agent: any, includeInviteToken = false) => {
+  const safeAgent: Record<string, any> = {
+    id: agent.id,
+    name: agent.name,
+    role: agent.role,
+    employeeId: agent.employeeId,
+    email: agent.email,
+    mobile: agent.mobile,
+    active: agent.active,
+    inviteStatus: agent.inviteStatus,
+  };
+  if (includeInviteToken && agent.inviteToken) safeAgent.inviteToken = agent.inviteToken;
+  return safeAgent;
+};
+
 const requireBody = (body: ApiRequest['body']) => {
   if (!body) throw new ValidationError('Request body is required');
   return body;
@@ -152,10 +167,32 @@ export function createCrystalBioApi(backend: Backend) {
           return ok({ visit }, 201);
         }
 
+        if (request.method === 'GET' && pathname === '/admin/agents') {
+          const session = sessionFor(request);
+          const agents = backend.listAdminAgents(session.agentId).map((agent) => publicAgent(agent));
+          return ok({ agents });
+        }
+
         if (request.method === 'POST' && pathname === '/admin/agents') {
           const session = sessionFor(request);
           const agent = backend.createAdminInvite(session.agentId, requireBody(request.body) as any);
-          return ok({ agent: { id: agent.id, name: agent.name, role: agent.role, employeeId: agent.employeeId, email: agent.email, mobile: agent.mobile, active: agent.active, inviteStatus: agent.inviteStatus, inviteToken: agent.inviteToken } }, 201);
+          return ok({ agent: publicAgent(agent, true), emailDelivery: 'not_configured' }, 201);
+        }
+
+        const adminAgentStatusMatch = pathname.match(/^\/admin\/agents\/([^/]+)\/status$/);
+        if (request.method === 'PATCH' && adminAgentStatusMatch) {
+          const session = sessionFor(request);
+          const body = requireBody(request.body);
+          if (typeof body.active !== 'boolean') throw new ValidationError('Active status is required');
+          const agent = backend.updateAdminAgentStatus(session.agentId, adminAgentStatusMatch[1], { active: body.active });
+          return ok({ agent: publicAgent(agent) });
+        }
+
+        const adminAgentInviteMatch = pathname.match(/^\/admin\/agents\/([^/]+)\/reset-invite$/);
+        if (request.method === 'POST' && adminAgentInviteMatch) {
+          const session = sessionFor(request);
+          const agent = backend.resetAdminInvite(session.agentId, adminAgentInviteMatch[1]);
+          return ok({ agent: publicAgent(agent, true), emailDelivery: 'not_configured' });
         }
 
         if (request.method === 'GET' && pathname === '/admin/leave-requests') {

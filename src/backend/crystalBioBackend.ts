@@ -9,6 +9,9 @@ export type GPSLocation = {
 export type PhotoAttachment = {
   source: 'camera' | 'upload';
   fileName: string;
+  contentType?: string;
+  sizeBytes?: number;
+  dataUrl?: string;
 };
 
 export type Agent = {
@@ -310,6 +313,11 @@ export function createCrystalBioBackend(initialState?: CrystalBioBackendState) {
       return agent;
     },
 
+    listAdminAgents(adminAgentId: string): Agent[] {
+      requireAdmin(adminAgentId);
+      return [...agents.values()];
+    },
+
     createAdminInvite(adminAgentId: string, input: { name: string; role: AgentRole; employeeId: string; email: string; mobile?: string }): Agent {
       requireAdmin(adminAgentId);
       requireText(input.name, 'Agent name is required');
@@ -331,6 +339,29 @@ export function createCrystalBioBackend(initialState?: CrystalBioBackendState) {
         inviteStatus: 'pending',
       };
       agents.set(agent.id, agent);
+      return agent;
+    },
+
+    resetAdminInvite(adminAgentId: string, agentId: string): Agent {
+      requireAdmin(adminAgentId);
+      const agent = agents.get(agentId);
+      if (!agent) throw new ValidationError('Agent profile not found');
+      if (agent.role === 'admin' && agent.id === adminAgentId) throw new ValidationError('Admins cannot reset their own access from this screen');
+      agent.active = false;
+      delete agent.password;
+      delete agent.passcode;
+      agent.inviteToken = createInviteToken(agent.id);
+      agent.inviteStatus = 'pending';
+      return agent;
+    },
+
+    updateAdminAgentStatus(adminAgentId: string, agentId: string, input: { active: boolean }): Agent {
+      requireAdmin(adminAgentId);
+      const agent = agents.get(agentId);
+      if (!agent) throw new ValidationError('Agent profile not found');
+      if (agent.id === adminAgentId && input.active === false) throw new ValidationError('Admins cannot deactivate their own profile');
+      if (agent.inviteStatus === 'pending' && input.active) throw new ValidationError('Pending invite users must set a password before activation');
+      agent.active = input.active;
       return agent;
     },
 
