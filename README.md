@@ -23,11 +23,20 @@ Current app includes:
 - Bottom navigation with icons and selected state
 - Phased build plan
 
+Latest live pilot notes:
+
+- Live app: `https://work.convogenie.ai`
+- API health: `https://work-api.convogenie.ai/health`
+- Admin Field Entry now shows saved Sales/Service test entries directly on the Field Entry screen, so they do not appear to disappear after refresh/re-login.
+- Home-screen install uses the provided ConvoGenie logomark icon plus a version check for deployed updates.
+- Test/QA entries may exist in the live pilot database and should be cleaned before final client handover if required.
+
 Current UX corrections to preserve:
 
 - **Agents** is an operational visibility screen: today's live status — who checked in, who updated visits, who is missing data, Sales/Service filtering, and compact visible-count snapshot. It must not look like report generation and should not carry report date-range/export controls.
 - **Admin overview** is a same-day owner snapshot, not a report page. Keep it focused on today's field status, quick counts, today’s action queue, and urgent approvals; detailed date ranges belong in Reports. App-health monitoring/error tracking should live in a separate owner/operator monitoring view, not inside the admin user's daily workflow.
 - **Field entry** is separate from Agents. It is the admin path for entering a Sales or Service report when admin/back office needs to submit one on behalf of an agent; keep the screen simple with Sales/Service entry choices plus a short office-assisted checklist.
+- **Field entry saved visibility:** entries saved from Admin Field Entry must be visible directly on the Field Entry screen after refresh/re-login, not only in agent Visits or Admin Reports.
 - **Approvals** should stay decision-focused: show pending count/type first, then tappable request rows, then approve/reject detail actions.
 - **Profile** owns controlled user/profile creation, invites, password setup, resend/reset/deactivate, access rules, and a compact active/invited/inactive seat summary.
 - When a real backend URL is configured, admin screens must require a successful admin email/password login before opening; direct admin URLs should return to Login instead of exposing owner views.

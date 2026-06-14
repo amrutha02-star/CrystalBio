@@ -65,7 +65,7 @@ const sampleAttendanceLogs = [
 const screenOptions: AppScreen[] = ['login', 'home', 'visits', 'sales', 'service', 'checkin', 'attendance', 'leave', 'reports', 'profile', 'admin'];
 const sessionStorageKey = 'crystalbio.session.v1';
 const screenStorageKey = 'crystalbio.screen.v1';
-const appBuildVersion = '20260614142806';
+const appBuildVersion = '20260614144757';
 
 const isFrontendSession = (value: unknown): value is FrontendSession => {
   const candidate = value as Partial<FrontendSession> | null;
@@ -2294,7 +2294,7 @@ function App() {
             <section className="admin-action-card admin-field-entry-card">
               <label>Field entry</label>
               <strong>Submit your own field update or help an agent</strong>
-              <p>Admins like Raghavendra and Praveen can also save Sales or Service visits from here. Saved entries stay visible in Visits and Admin Reports.</p>
+              <p>Sales and Service entries saved here are shown below and in Admin Reports.</p>
               <div className="visit-action-grid admin-field-entry-grid">
                 <button type="button" className="visit-action-card" onClick={() => goToScreen('sales', { newSalesVisit: true })}><span className="visit-action-icon"><Plus size={19} /></span><strong>Sales entry</strong><small>Customer visit, quote, follow-up</small></button>
                 <button type="button" className="visit-action-card" onClick={() => goToScreen('service', { newServiceVisit: true })}><span className="visit-action-icon service-icon"><ClipboardList size={18} /></span><strong>Service entry</strong><small>Machine issue, parts, closure</small></button>
@@ -2304,6 +2304,24 @@ function App() {
               <div className="admin-report-heading"><label>Before saving</label><span>Office-assisted</span></div>
               <div className="admin-office-action-row"><span className="chip chip-soft">Agent</span><div><strong>Confirm who did the visit</strong><small>Use the agent name from the call/WhatsApp update before submitting.</small></div></div>
               <div className="admin-office-action-row"><span className="chip chip-info">Proof</span><div><strong>Add customer, issue, and next action</strong><small>Reports are clearer when quote status, parts, or follow-up date are captured.</small></div></div>
+            </section>
+            <section className="admin-report-list-card admin-field-entry-recent" aria-label="Saved field entries">
+              <div className="admin-report-heading"><label>Saved field entries</label><span>{recentVisitEntries.length} saved</span></div>
+              {recentVisitEntries.length ? recentVisitEntries.slice(0, 8).map((entry) => (
+                <article key={`admin-field-entry-${entry.id}`} className="admin-report-row-card">
+                  <div className="admin-report-row">
+                    <div className="admin-report-row-main">
+                      <strong>{entry.customer}</strong>
+                      <p>{entry.type} • {entry.agentName ?? 'Field team'} • {entry.next}</p>
+                      <small>{entry.status}</small>
+                    </div>
+                    <span className={toneClass[entry.tone]}>{entry.type}</span>
+                  </div>
+                  <PhotoViewer payload={entry.photoPayload} label={`${entry.customer} ${entry.type}`} />
+                </article>
+              )) : (
+                <div className="empty-state">Saved Sales and Service entries will appear here after refresh/login too.</div>
+              )}
             </section>
           </>
         )}
