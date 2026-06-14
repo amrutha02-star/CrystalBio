@@ -28,8 +28,8 @@ Latest live pilot notes:
 - Live app: `https://work.convogenie.ai`
 - API health: `https://work-api.convogenie.ai/health`
 - Admin Field Entry now shows saved Sales/Service test entries directly on the Field Entry screen, so they do not appear to disappear after refresh/re-login.
-- Home-screen install uses the provided ConvoGenie logomark icon plus a version check for deployed updates.
-- Test/QA entries may exist in the live pilot database and should be cleaned before final client handover if required.
+- Home-screen install uses the provided ConvoGenie logomark icon plus a version check for deployed updates. Share [`docs/HOMESCREEN_INSTALL.md`](./docs/HOMESCREEN_INSTALL.md) with iPhone/Android users.
+- Test/QA entries may exist in the live pilot database and should be cleaned before final client handover if required. Use [`docs/BACKUPS_AND_MONITORING.md`](./docs/BACKUPS_AND_MONITORING.md) for backups, monitoring, and clean-data commands.
 
 Current UX corrections to preserve:
 
@@ -38,7 +38,7 @@ Current UX corrections to preserve:
 - **Field entry** is separate from Agents. It is the admin path for entering a Sales or Service report when admin/back office needs to submit one on behalf of an agent; keep the screen simple with Sales/Service entry choices plus a short office-assisted checklist.
 - **Field entry saved visibility:** entries saved from Admin Field Entry must be visible directly on the Field Entry screen after refresh/re-login, not only in agent Visits or Admin Reports.
 - **Approvals** should stay decision-focused: show pending count/type first, then tappable request rows, then approve/reject detail actions.
-- **Profile** owns controlled user/profile creation, invites, password setup, resend/reset/deactivate, access rules, and a compact active/invited/inactive seat summary.
+- **Profile** owns controlled access visibility, password reset/setup links, deactivate/reactivate rules, and a compact active/setup-pending/inactive seat summary. For this pilot, users are pre-created with unique passwords outside the frontend; public signup and automatic email sending are not shown in the frontend.
 - When a real backend URL is configured, admin screens must require a successful admin email/password login before opening; direct admin URLs should return to Login instead of exposing owner views.
 - Report date controls must be compact. Do not use a large date-range card by default. Show visible From/To fields only when a custom date selection is actually needed.
 - Agent My Reports should be a visual-first, approval-pending screen until the user approves it. For now it must show one simple report setup flow: choose report type (Attendance / Visit / Combined), choose period including Custom dates with visible From/To fields, then tap one Generate report button. Do not build/connect backend logic for this page until visual approval.
@@ -70,6 +70,9 @@ Production/pilot backend settings:
 - `CRYSTALBIO_ALLOWED_ORIGIN=https://your-frontend-domain` restricts browser access to the approved app URL instead of wildcard demo CORS.
 - `HOST=0.0.0.0` can be used for container/hosting deployments; local development can stay on `127.0.0.1`.
 - `/health` is available for uptime monitoring.
+- `npm run backup:db` creates timestamped database backups from `CRYSTALBIO_DB_PATH`.
+- `npm run monitor:api` checks API health and can run a login smoke test when monitor credentials are provided.
+- `npm run clean:pilot-data -- --write` clears test activity while keeping user accounts, after making a pre-clean backup.
 - `/admin/reports.pdf?fromDate=YYYY-MM-DD&toDate=YYYY-MM-DD` downloads a real PDF admin report and requires an admin bearer session.
 - Initial launch monitoring must cover both uptime and real user-action failures: failed saves, form errors, crashes, sync/network problems, login issues, and report-generation failures.
 - Serious or repeated failures should alert admin/us in plain English during the first production days, so issues are caught before agents become frustrated.

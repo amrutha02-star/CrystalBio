@@ -20,9 +20,9 @@ Use this after backend/frontend fixes are merged and before sharing a client pil
 ## 3. Live pilot journey checks
 
 - Admin login with registered email + password.
-- Admin creates an agent profile/invite.
-- Invited user sets password from the invite flow.
-- Invited user logs in.
+- Pilot users are pre-created with registered email IDs and unique passwords; no public signup is exposed.
+- Forgot password is visible on Login and points users to the manual reset/setup-link process for this pilot.
+- Automatic setup/reset emails are deferred to the next version and should not be promised in the frontend.
 - Agent check-in/check-out saves GPS.
 - Agent submits Sales and Service entries.
 - Agent submits a leave request.
@@ -41,6 +41,10 @@ Watch for these during pilot days 1–3:
 - Report/PDF download failures.
 - App crashes or blank screens.
 - Network/sync errors from weak mobile connectivity.
+
+- Backups are configured before handover: daily `npm run backup:db` against the live `CRYSTALBIO_DB_PATH`.
+- Monitoring is configured before handover: `npm run monitor:api` every 5 minutes, with a login smoke test if monitor credentials are available.
+- Clean test/QA activity with `npm run clean:pilot-data -- --write` after taking/confirming a backup.
 
 ## 5. Pilot limitations to explain plainly
 

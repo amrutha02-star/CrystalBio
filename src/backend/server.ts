@@ -1,4 +1,5 @@
-import { mkdirSync } from 'node:fs';
+import { randomBytes } from 'node:crypto';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { createCrystalBioPersistentHttpApp } from './crystalBioPersistentHttpApp';
 import { createCrystalBioMailerFromEnv } from './crystalBioMailer';
@@ -11,7 +12,8 @@ const main = async () => {
   const databasePath = resolve(process.env.CRYSTALBIO_DB_PATH ?? 'data/crystalbio-db.json');
   const seedDemoUsers = process.env.CRYSTALBIO_SEED_DEMO === 'true';
   const requestLimitBytes = Number(process.env.CRYSTALBIO_REQUEST_LIMIT_BYTES ?? 1024 * 1024);
-  const demoPassword = process.env.CRYSTALBIO_DEMO_PASSWORD ?? `Pilot-${Math.random().toString(36).slice(2, 10)}!`;
+  const pilotPasswordPrefix = process.env.CRYSTALBIO_DEMO_PASSWORD;
+  const credentialsPath = process.env.CRYSTALBIO_SEEDED_CREDENTIALS_PATH;
   const appBaseUrl = process.env.CRYSTALBIO_APP_BASE_URL ?? 'https://work.convogenie.ai';
   const mailer = createCrystalBioMailerFromEnv(process.env);
 
@@ -21,6 +23,12 @@ const main = async () => {
   const app = createCrystalBioPersistentHttpApp(store, { allowedOrigin, host, requestLimitBytes, mailer, appBaseUrl });
 
   if (seedDemoUsers && app.backend.exportState().agents.length === 0) {
+    const seededCredentials: Array<{ name: string; email: string; password: string }> = [];
+    const createPilotPassword = (employeeId: string) => {
+      const safeEmployee = employeeId.replace(/[^A-Za-z0-9]/g, '').slice(-6) || 'user';
+      const uniquePart = randomBytes(4).toString('hex');
+      return pilotPasswordPrefix ? `${pilotPasswordPrefix}-${safeEmployee}` : `Pilot-${safeEmployee}-${uniquePart}!`;
+    };
     [
       ['Admin User', 'admin', 'CB-ADM-001', 'admin@crystalbio.in', '+91 98765 43000'],
       ['Rahul Sales', 'sales', 'CB-S-014', 'rahul.sales@crystalbio.in', '+91 98765 43210'],
@@ -34,9 +42,18 @@ const main = async () => {
       ['Kiran Field', 'both', 'CB-F-005', 'kiran.field@crystalbio.in', '+91 98765 43205'],
       ['Sana Field', 'both', 'CB-F-006', 'sana.field@crystalbio.in', '+91 98765 43206'],
       ['Office Coordinator', 'admin', 'CB-ADM-002', 'office@crystalbio.in', '+91 98765 43002'],
-    ].forEach(([name, role, employeeId, email, mobile]) => app.backend.createAgent({ name, role: role as any, employeeId, email, mobile, password: demoPassword }));
+    ].forEach(([name, role, employeeId, email, mobile]) => {
+      const password = createPilotPassword(employeeId);
+      app.backend.createAgent({ name, role: role as any, employeeId, email, mobile, password });
+      seededCredentials.push({ name, email, password });
+    });
     app.save();
-    console.log('Seeded pilot demo users with email/password credentials. Set CRYSTALBIO_DEMO_PASSWORD before sharing a hosted pilot.');
+    if (credentialsPath) {
+      writeFileSync(resolve(credentialsPath), JSON.stringify(seededCredentials, null, 2));
+      console.log(`Seeded pilot users with unique email/password credentials at ${resolve(credentialsPath)}.`);
+    } else {
+      console.log('Seeded pilot users with unique email/password credentials. Set CRYSTALBIO_SEEDED_CREDENTIALS_PATH to write the private password list on first seed.');
+    }
   }
 
   await app.listen(port);

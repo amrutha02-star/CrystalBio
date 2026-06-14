@@ -16,8 +16,9 @@ For real pilot data, do **not** rely on a fully free backend filesystem that res
 - `PORT` — usually provided by the host.
 - `CRYSTALBIO_DB_PATH=/opt/render/project/src/data/crystalbio-db.json` or another private persistent path.
 - `CRYSTALBIO_ALLOWED_ORIGIN=https://your-frontend-domain`
-- `CRYSTALBIO_SEED_DEMO=false` for real client use.
-- `CRYSTALBIO_DEMO_PASSWORD=<temporary pilot password>` only for a controlled demo seed, never a public/default password.
+- `CRYSTALBIO_SEED_DEMO=false` for real client use. If temporarily set to `true`, the seed creates one account per listed email with a unique password.
+- `CRYSTALBIO_DEMO_PASSWORD=<private-prefix>` optionally controls the prefix for generated pilot passwords; each seeded user still gets a unique password suffix based on employee ID.
+- `CRYSTALBIO_SEEDED_CREDENTIALS_PATH=/private/path/crystalbio-credentials.json` writes the first-seed credential list to a private server file; never commit or publish this file.
 - `CRYSTALBIO_REQUEST_LIMIT_BYTES=1048576` keeps browser/API request bodies capped for pilot safety; increase only after photo upload/object storage is designed.
 
 ## Required frontend environment variable

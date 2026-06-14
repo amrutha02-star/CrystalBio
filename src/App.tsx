@@ -202,7 +202,6 @@ function App() {
   const [setupToken, setSetupToken] = useState(() => typeof window === 'undefined' ? '' : new URLSearchParams(window.location.search).get('setupToken') ?? '');
   const [setupPassword, setSetupPassword] = useState('');
   const [setupConfirmPassword, setSetupConfirmPassword] = useState('');
-  const [isLoginLinkSending, setIsLoginLinkSending] = useState(false);
   const [isPasswordSetupSubmitting, setIsPasswordSetupSubmitting] = useState(false);
   const [reportPeriod, setReportPeriod] = useState<ReportPeriod>('week');
   const [reportKind, setReportKind] = useState<AgentReportKind>('combined');
@@ -828,27 +827,14 @@ function App() {
     }
   };
 
-  const handleRequestSignInLink = async () => {
-    if (!loginEmail.trim()) {
-      setScreenNotice({ title: 'Registered email needed', message: 'Enter your registered email first.', tone: 'warning' });
-      return;
-    }
-    setIsLoginLinkSending(true);
-    try {
-      const result = await crystalBioFrontendApi.requestSignInLink(loginEmail.trim());
-      setScreenNotice({
-        title: result.emailDelivery === 'queued' ? 'Email link sent' : 'Email setup needed',
-        message: result.emailDelivery === 'queued'
-          ? 'Check your registered email for the sign-in/password setup link.'
-          : 'Email delivery is not configured yet. Ask admin to share a setup link from Profile.',
-        tone: result.emailDelivery === 'queued' ? 'success' : 'warning',
-      });
-    } catch (error) {
-      rememberLaunchIssue('Sign-in link', error);
-      setScreenNotice({ title: 'Could not request link', message: error instanceof Error ? error.message : 'Try again or ask admin for help.', tone: 'error' });
-    } finally {
-      setIsLoginLinkSending(false);
-    }
+  const handleForgotPassword = () => {
+    setScreenNotice({
+      title: 'Forgot password',
+      message: loginEmail.trim()
+        ? `Password reset for ${loginEmail.trim()} will be handled manually for this pilot. Ask admin/operator for the fresh password or reset link.`
+        : 'Enter your registered email, then ask admin/operator for the fresh password or reset link.',
+      tone: 'info',
+    });
   };
 
   const handleSetupPasswordSubmit = async () => {
@@ -1314,8 +1300,7 @@ function App() {
         </label>
         <button type="button" className="primary-action login-main-button" onClick={handleAgentLogin}>Login</button>
         <div className="login-help-actions">
-          <button type="button" className="text-link" disabled={isLoginLinkSending} onClick={handleRequestSignInLink}>{isLoginLinkSending ? 'Sending link…' : 'Email me a sign-in link'}</button>
-          <button type="button" className="text-link" disabled={isLoginLinkSending} onClick={handleRequestSignInLink}>Forgot password?</button>
+          <button type="button" className="text-link" onClick={handleForgotPassword}>Forgot password?</button>
         </div>
       </section>
     </ScreenPanel>
@@ -1969,8 +1954,8 @@ function App() {
   const statusTextForSeat = (status: AdminSeatStatus) => {
     if (status === 'active') return 'Active';
     if (status === 'inactive') return 'Inactive';
-    if (status === 'expired') return 'Invite expired';
-    return 'Invite pending';
+    if (status === 'expired') return 'Setup expired';
+    return 'Setup pending';
   };
 
   const handleCreateSeatInvite = async () => {
@@ -1978,11 +1963,11 @@ function App() {
     const trimmedEmail = newSeatEmail.trim();
     const trimmedEmployeeId = newSeatEmployeeId.trim();
     if (!trimmedName || !trimmedEmail || !trimmedEmployeeId) {
-      setScreenNotice({ title: 'Missing details', message: 'Name, employee ID, and email are needed before sending invite.', tone: 'warning' });
+      setScreenNotice({ title: 'Missing details', message: 'Name, employee ID, and email are needed before creating a pilot profile.', tone: 'warning' });
       return;
     }
     if (isBackendConfigured && (!session || session.role !== 'admin')) {
-      setScreenNotice({ title: 'Admin login needed', message: 'Login as admin before creating employee invites.', tone: 'warning' });
+      setScreenNotice({ title: 'Admin login needed', message: 'Login as admin before changing employee access.', tone: 'warning' });
       return;
     }
     const inviteSession = session ?? { token: 'demo-admin-token', agentId: 'agent_1', agentName: 'Admin User', role: 'admin' as const };
@@ -2010,10 +1995,10 @@ function App() {
       setAdminSeats((current) => [nextSeat, ...current.filter((seat) => seat.email !== nextSeat.email)]);
       setSelectedAdminSeatId(nextSeat.id);
       setAdminAgentsView('invite');
-      setScreenNotice({ title: invitedSeat.emailDelivery === 'queued' ? 'Invite email sent' : 'Invite ready', message: invitedSeat.emailDelivery === 'queued' ? `Setup email queued for ${nextSeat.name}.` : `Profile created for ${nextSeat.name}. Email is not configured yet, so share the setup link from this screen.`, tone: invitedSeat.emailDelivery === 'queued' ? 'success' : 'info' });
+      setScreenNotice({ title: 'Profile created', message: `Profile created for ${nextSeat.name}. For this pilot, copy the setup link/message and share it manually.`, tone: 'success' });
     } catch (error) {
-      rememberLaunchIssue('Admin invite', error);
-      setScreenNotice({ title: 'Invite failed', message: error instanceof Error ? error.message : 'Could not create the employee invite.', tone: 'error' });
+      rememberLaunchIssue('Admin profile', error);
+      setScreenNotice({ title: 'Profile failed', message: error instanceof Error ? error.message : 'Could not create the employee profile.', tone: 'error' });
     }
   };
 
@@ -2038,17 +2023,17 @@ function App() {
 
   const handleResetSeatInvite = async (seat: AdminSeat) => {
     if (!session || session.role !== 'admin') {
-      setScreenNotice({ title: 'Admin login needed', message: 'Login as admin before resetting an invite.', tone: 'warning' });
+      setScreenNotice({ title: 'Admin login needed', message: 'Login as admin before resetting access.', tone: 'warning' });
       return;
     }
     try {
       const agent = await crystalBioFrontendApi.resetAdminInvite(session, seat.id);
       const nextSeat = updateSeatFromBackend(agent, seat);
       setAdminAgentsView('invite');
-      setScreenNotice({ title: agent.emailDelivery === 'queued' ? 'Reset email sent' : 'Invite ready', message: agent.emailDelivery === 'queued' ? `${nextSeat.name} has been emailed a fresh sign-in/setup link.` : `${nextSeat.name} has a fresh setup link. Email is not configured yet, so share it manually from this screen.`, tone: agent.emailDelivery === 'queued' ? 'success' : 'info' });
+      setScreenNotice({ title: 'Setup link ready', message: `${nextSeat.name} has a fresh setup link. Copy it and share it manually for this pilot.`, tone: 'info' });
     } catch (error) {
-      rememberLaunchIssue('Reset invite', error);
-      setScreenNotice({ title: 'Invite reset failed', message: error instanceof Error ? error.message : 'Could not reset this invite.', tone: 'error' });
+      rememberLaunchIssue('Reset access', error);
+      setScreenNotice({ title: 'Reset failed', message: error instanceof Error ? error.message : 'Could not reset this password setup.', tone: 'error' });
     }
   };
 
@@ -2452,7 +2437,7 @@ function App() {
                 <div className="admin-invite-mail">
                   <p>For: {selectedSeat.email}</p>
                   <strong>Set up CrystalBio Field App account</strong>
-                  <span>{selectedSeat.emailDelivery === 'queued' ? 'Email has been queued to the registered email. If they do not receive it, copy the setup link/message and send manually.' : 'Email delivery is not configured yet. For the pilot, copy this setup link/message and send it to the employee manually.'}</span>
+                  <span>For this pilot, setup/reset details are shared manually. Copy this link/message only when a reset is needed.</span>
                   {selectedSeat.setupLink && <input aria-label="Setup link" readOnly value={selectedSeat.setupLink} />}
                   <button type="button" className="primary-action" onClick={() => setScreenNotice({ title: 'Setup message ready', message: `${selectedSeat.name}'s setup link is ready to share.`, tone: 'info' })}>Copy setup message</button>
                 </div>
@@ -2467,16 +2452,16 @@ function App() {
             {adminAgentsView === 'add' ? (
               <section className="admin-seat-form-card">
                 <button type="button" className="admin-detail-back" onClick={() => setAdminAgentsView('list')}><ChevronLeft size={16} /> Back to profiles</button>
-                <div className="admin-seat-form-heading"><label>New profile</label><strong>Add agent seat</strong><span>Create the profile first, then send the password setup invite to the registered email.</span></div>
+                <div className="admin-seat-form-heading"><label>New profile</label><strong>Add pilot profile</strong><span>Pilot users should normally be pre-created with unique passwords. Use this only if another employee must be added.</span></div>
                 <label className="field-card"><span>Agent name</span><input aria-label="New agent name" value={newSeatName} onChange={(event) => setNewSeatName(event.target.value)} /></label>
                 <label className="field-card"><span>Employee ID</span><input aria-label="New employee ID" value={newSeatEmployeeId} onChange={(event) => setNewSeatEmployeeId(event.target.value)} /></label>
-                <label className="field-card"><span>Email ID for invite</span><input aria-label="New agent email" inputMode="email" value={newSeatEmail} onChange={(event) => setNewSeatEmail(event.target.value)} /></label>
+                <label className="field-card"><span>Registered email ID</span><input aria-label="New agent email" inputMode="email" value={newSeatEmail} onChange={(event) => setNewSeatEmail(event.target.value)} /></label>
                 <label className="field-card"><span>Mobile number</span><input aria-label="New agent mobile" inputMode="tel" value={newSeatMobile} onChange={(event) => setNewSeatMobile(event.target.value)} /></label>
                 <div className="inline-field-grid">
                   <label className="field-card"><span>Role</span><select aria-label="New agent role" value={newSeatRole} onChange={(event) => setNewSeatRole(event.target.value as AdminSeat['role'])}><option value="sales">Sales agent</option><option value="service">Service agent</option><option value="admin">Admin</option></select></label>
                   <label className="field-card"><span>Territory</span><input aria-label="New agent territory" value={newSeatTerritory} onChange={(event) => setNewSeatTerritory(event.target.value)} /></label>
                 </div>
-                <button type="button" className="primary-action" onClick={handleCreateSeatInvite}>Create profile + send invite</button>
+                <button type="button" className="primary-action" onClick={handleCreateSeatInvite}>Create pilot profile</button>
               </section>
             ) : (
               <>
@@ -2486,7 +2471,7 @@ function App() {
                     <p>Admin profile</p>
                     <strong>{session?.role === 'admin' ? session.agentName : 'CrystalBio Admin'}</strong>
                     <span>{session?.role === 'admin' ? session.email : 'admin@crystalbio.in'} • Owner access</span>
-                    <small className="profile-access-note">Invite only • Public signup off • Email OTP backup planned</small>
+                    <small className="profile-access-note">Private access • Public signup off • Users pre-loaded for pilot</small>
                   </div>
                 </section>
                 <section className="admin-profile-access-summary" aria-label="Profile access summary">
@@ -2495,7 +2480,7 @@ function App() {
                   <div><strong>{inactiveSeatCount}</strong><span>Inactive</span></div>
                 </section>
                 <section className="admin-report-list-card admin-agent-activity-list">
-                  <div className="admin-report-heading profile-list-heading"><label>Team profiles</label><button type="button" className="profile-add-button" onClick={() => setAdminAgentsView('add')}><Plus size={16} /> Add profile</button></div>
+                  <div className="admin-report-heading profile-list-heading"><label>Team profiles</label><button type="button" className="profile-add-button" disabled onClick={() => setScreenNotice({ title: 'Pilot users pre-loaded', message: 'New pilot users are created outside the frontend with unique passwords for each registered email.', tone: 'info' })}><Plus size={16} /> Pilot users pre-loaded</button></div>
                   {adminSeats.map((seat) => (
                     <button key={seat.id} type="button" className="admin-report-row admin-click-row" onClick={() => { setSelectedAdminSeatId(seat.id); setAdminAgentsView('profile'); }}>
                       <div className="admin-report-row-main"><strong>{seat.name}</strong><p>{roleTextForAdminSeat(seat.role)} • {seat.employeeId}</p><small>{seat.email}</small></div>
