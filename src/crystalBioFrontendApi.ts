@@ -73,6 +73,7 @@ export type FrontendAdminReport = {
   agentSummaries: Array<{
     agentId: string;
     agentName: string;
+    role?: 'sales' | 'service' | 'both' | 'admin';
     date: string;
     attendanceStatus: 'not_checked_in' | 'checked_in' | 'checked_out';
     salesVisitCount: number;

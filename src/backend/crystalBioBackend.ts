@@ -153,6 +153,7 @@ export type ServiceVisitUpdate = ServiceVisitInput & {
 export type DailyAgentReport = {
   agentId: string;
   agentName: string;
+  role: AgentRole;
   date: string;
   attendanceStatus: 'not_checked_in' | 'checked_in' | 'checked_out';
   salesVisitCount: number;
@@ -680,6 +681,7 @@ export function createCrystalBioBackend(initialState?: CrystalBioBackendState) {
       return {
         agentId,
         agentName: agent.name,
+        role: agent.role,
         date,
         attendanceStatus: attendanceRecord?.status ?? 'not_checked_in',
         salesVisitCount: salesVisits.length,
@@ -712,6 +714,7 @@ export function createCrystalBioBackend(initialState?: CrystalBioBackendState) {
         return {
           agentId: agent.id,
           agentName: agent.name,
+          role: agent.role,
           date: `${input.fromDate} to ${input.toDate}`,
           attendanceStatus: (agentAttendance[agentAttendance.length - 1]?.status ?? 'not_checked_in') as DailyAgentReport['attendanceStatus'],
           salesVisitCount: agentSalesVisits.length,

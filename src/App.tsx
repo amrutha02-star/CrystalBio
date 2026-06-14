@@ -17,7 +17,7 @@ type AdminSeat = {
   employeeId: string;
   email: string;
   mobile: string;
-  role: 'sales' | 'service' | 'admin';
+  role: 'sales' | 'service' | 'both' | 'admin';
   territory: string;
   status: AdminSeatStatus;
   lastActive: string;
@@ -27,6 +27,7 @@ type AdminActivityRow = {
   id: string;
   name: string;
   role: string;
+  roleKey: 'sales' | 'service' | 'both';
   attendance: string;
   visits: string;
   status: string;
@@ -136,6 +137,47 @@ const formatShortDate = (value: string) => {
   return new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short' }).format(new Date(Date.UTC(year, month - 1, day)));
 };
 
+const formatDateInput = (date: Date) => date.toISOString().slice(0, 10);
+
+const startOfCurrentMonthInput = () => {
+  const now = new Date();
+  return formatDateInput(new Date(Date.UTC(now.getFullYear(), now.getMonth(), 1)));
+};
+
+const todayInput = () => formatDateInput(new Date());
+
+const daysAgoInput = (days: number) => {
+  const date = new Date();
+  date.setDate(date.getDate() - days);
+  return formatDateInput(date);
+};
+
+const timeGreeting = () => {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good morning';
+  if (hour < 17) return 'Good afternoon';
+  return 'Good evening';
+};
+
+const adminRoleKeyForSummary = (summary: { role?: FrontendSession['role']; salesVisitCount: number; serviceVisitCount: number }): AdminActivityRow['roleKey'] => {
+  if (summary.role === 'both' || (summary.salesVisitCount > 0 && summary.serviceVisitCount > 0)) return 'both';
+  if (summary.role === 'sales' || (summary.salesVisitCount > 0 && summary.serviceVisitCount === 0)) return 'sales';
+  if (summary.role === 'service' || (summary.serviceVisitCount > 0 && summary.salesVisitCount === 0)) return 'service';
+  return 'both';
+};
+
+const adminRoleLabel = (roleKey: AdminActivityRow['roleKey']) => {
+  if (roleKey === 'sales') return 'Sales agent';
+  if (roleKey === 'service') return 'Service agent';
+  return 'Sales + service agent';
+};
+
+const matchesAdminAgentFilter = (row: Pick<AdminActivityRow, 'roleKey' | 'salesVisitCount' | 'serviceVisitCount'>, filter: AdminAgentFilter) => {
+  if (filter === 'all') return true;
+  if (filter === 'sales') return row.roleKey === 'sales' || row.roleKey === 'both' || row.salesVisitCount > 0;
+  return row.roleKey === 'service' || row.roleKey === 'both' || row.serviceVisitCount > 0;
+};
+
 function App() {
   const initialStoredSession = readStoredSession();
   const initialScreen = getInitialScreen(initialStoredSession);
@@ -151,11 +193,11 @@ function App() {
   const [password, setPassword] = useState('');
   const [reportPeriod, setReportPeriod] = useState<ReportPeriod>('week');
   const [reportKind, setReportKind] = useState<AgentReportKind>('combined');
-  const [reportFromDate, setReportFromDate] = useState('2026-06-01');
-  const [reportToDate, setReportToDate] = useState('2026-06-08');
+  const [reportFromDate, setReportFromDate] = useState(startOfCurrentMonthInput);
+  const [reportToDate, setReportToDate] = useState(todayInput);
   const [adminPeriod, setAdminPeriod] = useState<ReportPeriod>('today');
-  const [adminReportFromDate, setAdminReportFromDate] = useState('2026-06-01');
-  const [adminReportToDate, setAdminReportToDate] = useState('2026-06-08');
+  const [adminReportFromDate, setAdminReportFromDate] = useState(todayInput);
+  const [adminReportToDate, setAdminReportToDate] = useState(todayInput);
   const [adminReportScope, setAdminReportScope] = useState<AdminReportScope>('office');
   const [adminReport, setAdminReport] = useState<FrontendAdminReport | null>(null);
   const [expandedAdminReportId, setExpandedAdminReportId] = useState<string | null>(null);
@@ -270,7 +312,7 @@ function App() {
         employeeId: summary.agentId,
         email: 'Registered email',
         mobile: 'Registered mobile',
-        role: summary.salesVisitCount > 0 && summary.serviceVisitCount === 0 ? 'sales' : 'service',
+        role: adminRoleKeyForSummary(summary),
         territory: 'CrystalBio team',
         status: 'active',
         lastActive: summary.attendanceStatus === 'not_checked_in' ? 'Not checked in today' : summary.attendanceStatus.replace(/_/g, ' '),
@@ -306,6 +348,11 @@ function App() {
       isMounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (session?.role !== 'admin') return;
+    void refreshAdminData(session);
+  }, [session?.token, session?.role, adminReportFromDate, adminReportToDate]);
 
   useEffect(() => {
     if (!screenNotice) return undefined;
@@ -1575,11 +1622,12 @@ function App() {
     const backendRows: AdminActivityRow[] = (adminReport?.agentSummaries ?? []).map((summary) => {
       const totalVisits = summary.salesVisitCount + summary.serviceVisitCount;
       const needsReview = summary.attendanceStatus === 'not_checked_in' || summary.followUpsDue.length > 0;
-      const role = summary.salesVisitCount > 0 && summary.serviceVisitCount === 0 ? 'Sales agent' : summary.serviceVisitCount > 0 && summary.salesVisitCount === 0 ? 'Service agent' : 'Field agent';
+      const roleKey = adminRoleKeyForSummary(summary);
       return {
         id: summary.agentId,
         name: summary.agentName,
-        role,
+        role: adminRoleLabel(roleKey),
+        roleKey,
         attendance: summary.attendanceStatus.replace(/_/g, ' '),
         visits: totalVisits ? `${summary.salesVisitCount} sales • ${summary.serviceVisitCount} service` : 'No visit update yet',
         status: needsReview ? 'Needs check' : 'Ready',
@@ -1627,8 +1675,8 @@ function App() {
     };
     const adminReportScopeRows = adminRows.filter((row) => {
       if (adminReportScope === 'office') return true;
-      if (adminReportScope === 'sales') return row.role.toLowerCase().includes('sales');
-      if (adminReportScope === 'service') return row.role.toLowerCase().includes('service');
+      if (adminReportScope === 'sales') return matchesAdminAgentFilter(row, 'sales');
+      if (adminReportScope === 'service') return matchesAdminAgentFilter(row, 'service');
       return true;
     });
     const backendApprovalRequests = [...reviewedAdminLeaveRequests, ...adminLeaveRequests]
@@ -1675,10 +1723,7 @@ function App() {
         setScreenNotice({ title: 'Leave update failed', message: error instanceof Error ? error.message : 'Could not update leave approval.', tone: 'error' });
       }
     };
-    const visibleAgentActivityRows = adminRows.filter((row) => {
-      if (adminAgentFilter === 'all') return true;
-      return row.role.toLowerCase().startsWith(adminAgentFilter);
-    });
+    const visibleAgentActivityRows = adminRows.filter((row) => matchesAdminAgentFilter(row, adminAgentFilter));
     const visibleCheckedInCount = visibleAgentActivityRows.filter((row) => row.attendance === 'checked in').length;
     const visibleMissingCount = visibleAgentActivityRows.filter((row) => row.status !== 'Ready').length;
     const visibleFollowUpCount = visibleAgentActivityRows.filter((row) => row.followUpsDue.length > 0).length;
@@ -1710,6 +1755,18 @@ function App() {
     };
     const changePeriod = (nextPeriod: ReportPeriod) => {
       setAdminPeriod(nextPeriod);
+      if (nextPeriod === 'today') {
+        setAdminReportFromDate(todayInput());
+        setAdminReportToDate(todayInput());
+      }
+      if (nextPeriod === 'week') {
+        setAdminReportFromDate(daysAgoInput(6));
+        setAdminReportToDate(todayInput());
+      }
+      if (nextPeriod === 'month') {
+        setAdminReportFromDate(startOfCurrentMonthInput());
+        setAdminReportToDate(todayInput());
+      }
       setScreenNotice(null);
     };
     const renderAdminDateFilter = (label: string) => (
@@ -2107,7 +2164,7 @@ function App() {
           <header className="phone-header">
             <div>
               {screen !== 'home' && screen !== 'login' && <button type="button" className="back-button" onClick={() => goToScreen('home')}><ChevronLeft size={17} /> Home</button>}
-              <p className="muted">{screen === 'login' ? 'Welcome' : screen === 'admin' ? 'Owner access' : 'Good morning'}</p>
+              <p className="muted">{screen === 'login' ? 'Welcome' : screen === 'admin' ? 'Owner access' : timeGreeting()}</p>
               <h2>{screen === 'login' ? 'CrystalBio' : screen === 'admin' ? 'Admin' : session?.agentName ?? 'Field agent'}</h2>
             </div>
             <button type="button" className="avatar avatar-button" aria-label={screen === 'admin' && adminTab === 'profiles' ? 'Admin profile selected' : screen === 'profile' ? 'Profile selected' : 'Open profile'} disabled={screen === 'login'} onClick={() => screen === 'admin' ? openAdminTab('profiles') : goToScreen('profile')}>{screen === 'admin' ? <UsersRound size={21} /> : <UserRound size={21} />}</button>

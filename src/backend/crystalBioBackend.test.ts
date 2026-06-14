@@ -321,9 +321,14 @@ describe('CrystalBio backend core', () => {
     const report = backend.getDailyAgentReport(agent.id, '2026-06-07');
 
     expect(report.agentName).toBe('Rahul');
+    expect(report.role).toBe('both');
     expect(report.attendanceStatus).toBe('checked_out');
     expect(report.salesVisitCount).toBe(1);
     expect(report.serviceVisitCount).toBe(1);
     expect(report.followUpsDue).toEqual([]);
+
+    const admin = backend.createAgent({ name: 'Admin User', role: 'admin' });
+    const adminReport = backend.getAdminReport(admin.id, { fromDate: '2026-06-07', toDate: '2026-06-07' });
+    expect(adminReport.agentSummaries.find((summary) => summary.agentId === agent.id)?.role).toBe('both');
   });
 });
