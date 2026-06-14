@@ -56,6 +56,8 @@ VITE_CRYSTALBIO_API_URL=https://your-crystalbio-api-domain
 
 ## Launch safety rules
 
+Use `PILOT_LAUNCH_CHECKLIST.md` as the step-by-step launch runbook before sharing the client link.
+
 - Do not publish demo credentials in a public README or client message.
 - Use invite-created accounts for real users.
 - Keep mobile numbers as profile/contact details, not as the login method.

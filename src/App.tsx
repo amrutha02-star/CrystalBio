@@ -1,7 +1,7 @@
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { CalendarCheck, CheckCircle2, ChevronLeft, ClipboardList, Clock3, FileText, Home, MapPin, Plus, Search, UserRound, UsersRound, X } from 'lucide-react';
 import { sampleEntries } from './appData';
-import { crystalBioFrontendApi, type FrontendAttendance, type FrontendLeaveRequest, type FrontendLoginInput, type FrontendSalesSaveResult, type FrontendSalesNextAction, type FrontendServiceSaveResult, type FrontendServiceNextAction, type FrontendServiceType, type FrontendSession } from './crystalBioFrontendApi';
+import { crystalBioFrontendApi, type FrontendAdminSeatInvite, type FrontendAttendance, type FrontendLeaveRequest, type FrontendLoginInput, type FrontendSalesSaveResult, type FrontendSalesNextAction, type FrontendServiceSaveResult, type FrontendServiceNextAction, type FrontendServiceType, type FrontendSession } from './crystalBioFrontendApi';
 
 type AppScreen = 'login' | 'home' | 'visits' | 'sales' | 'service' | 'checkin' | 'attendance' | 'leave' | 'reports' | 'profile' | 'admin';
 type ReportPeriod = 'today' | 'week' | 'month' | 'custom';
@@ -9,7 +9,7 @@ type AgentReportKind = 'attendance' | 'visits' | 'combined';
 type AdminAgentFilter = 'all' | 'sales' | 'service';
 type AdminReportScope = 'office' | 'sales' | 'service' | 'rahul' | 'meera' | 'anil';
 type AdminTab = 'overview' | 'fieldEntry' | 'agents' | 'approvals' | 'adminReports' | 'profiles';
-type AdminApprovalId = 'meera-leave';
+type AdminApprovalId = string;
 type AdminAgentsView = 'list' | 'add' | 'profile' | 'invite';
 type AdminSeatStatus = 'invited' | 'active' | 'inactive' | 'expired';
 type AdminSeat = {
@@ -75,7 +75,13 @@ const getInitialAdminTab = (): AdminTab => {
 const getInitialAdminApproval = (): AdminApprovalId | null => {
   if (typeof window === 'undefined') return null;
   const requestedApproval = new URLSearchParams(window.location.search).get('approval') as AdminApprovalId | null;
-  return requestedApproval && ['meera-leave'].includes(requestedApproval) ? requestedApproval : null;
+  return requestedApproval || null;
+};
+
+const formatShortDate = (value: string) => {
+  const [year, month, day] = value.split('-').map(Number);
+  if (!year || !month || !day) return value;
+  return new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short' }).format(new Date(Date.UTC(year, month - 1, day)));
 };
 
 function App() {
@@ -116,6 +122,8 @@ function App() {
   const [leaveReason, setLeaveReason] = useState('Sick leave');
   const [leaveNote, setLeaveNote] = useState('');
   const [leaveRequest, setLeaveRequest] = useState<FrontendLeaveRequest | null>(null);
+  const [adminLeaveRequests, setAdminLeaveRequests] = useState<FrontendLeaveRequest[]>([]);
+  const [reviewedAdminLeaveRequests, setReviewedAdminLeaveRequests] = useState<FrontendLeaveRequest[]>([]);
   const [isLeaveSubmitting, setIsLeaveSubmitting] = useState(false);
   const [visitSearch, setVisitSearch] = useState('');
   const [workTypes, setWorkTypes] = useState<string[]>(['Sales visit']);
@@ -190,6 +198,16 @@ function App() {
   const rememberLaunchIssue = (area: string, error: unknown) => {
     const message = error instanceof Error ? error.message : String(error || 'Unknown issue');
     setLaunchIssues((current) => [{ area, message, when: 'Just now' }, ...current].slice(0, 5));
+  };
+
+  const refreshAdminLeaveRequests = async (adminSession = session) => {
+    if (!adminSession || adminSession.role !== 'admin') return;
+    try {
+      const requests = await crystalBioFrontendApi.getAdminLeaveRequests(adminSession);
+      setAdminLeaveRequests(requests);
+    } catch (error) {
+      rememberLaunchIssue('Leave approvals refresh', error);
+    }
   };
 
   useEffect(() => {
@@ -396,6 +414,7 @@ function App() {
         setSelectedAdminApproval(null);
         setStatusMessage('Admin logged in.');
         setScreen('admin');
+        void refreshAdminLeaveRequests(nextSession);
         return;
       }
       setStatusMessage('Logged in. Check in to start field work.');
@@ -423,6 +442,7 @@ function App() {
       setSession(nextSession);
       setStatusMessage('Admin logged in.');
       setScreen('admin');
+      void refreshAdminLeaveRequests(nextSession);
     } catch (error) {
       rememberLaunchIssue('Admin login', error);
       setIsAdminSignedIn(false);
@@ -1350,7 +1370,7 @@ function App() {
           </div>
 
           <button type="button" className="primary-action single-report-generate" onClick={generateReport}>Generate report</button>
-          <p className="report-approval-note">Preview only for visual approval. Backend connection comes after this flow is approved.</p>
+          <p className="report-approval-note">Agent-side report preview. Owner PDF download is available from Admin Reports during the backend pilot.</p>
         </section>
 
         <section className="report-preview-card simple-report-preview-card">
@@ -1423,7 +1443,7 @@ function App() {
     return 'Invite pending';
   };
 
-  const handleCreateSeatInvite = () => {
+  const handleCreateSeatInvite = async () => {
     const trimmedName = newSeatName.trim();
     const trimmedEmail = newSeatEmail.trim();
     const trimmedEmployeeId = newSeatEmployeeId.trim();
@@ -1431,21 +1451,38 @@ function App() {
       setScreenNotice({ title: 'Missing details', message: 'Name, employee ID, and email are needed before sending invite.', tone: 'warning' });
       return;
     }
-    const nextSeat: AdminSeat = {
-      id: `seat_${Date.now()}`,
-      name: trimmedName,
-      employeeId: trimmedEmployeeId,
-      email: trimmedEmail,
-      mobile: newSeatMobile.trim() || 'Not added',
-      role: newSeatRole,
-      territory: newSeatTerritory.trim() || 'Not assigned',
-      status: 'invited',
-      lastActive: 'Invite sent just now',
-    };
-    setAdminSeats((current) => [nextSeat, ...current]);
-    setSelectedAdminSeatId(nextSeat.id);
-    setAdminAgentsView('invite');
-    setScreenNotice({ title: 'Invite sent', message: `${nextSeat.name} can set password from the email invite.`, tone: 'success' });
+    if (isBackendConfigured && (!session || session.role !== 'admin')) {
+      setScreenNotice({ title: 'Admin login needed', message: 'Login as admin before creating employee invites.', tone: 'warning' });
+      return;
+    }
+    const inviteSession = session ?? { token: 'demo-admin-token', agentId: 'agent_1', agentName: 'Admin User', role: 'admin' as const };
+    try {
+      const invitedSeat: FrontendAdminSeatInvite = await crystalBioFrontendApi.createAdminInvite(inviteSession, {
+        name: trimmedName,
+        employeeId: trimmedEmployeeId,
+        email: trimmedEmail,
+        mobile: newSeatMobile.trim() || undefined,
+        role: newSeatRole,
+      });
+      const nextSeat: AdminSeat = {
+        id: invitedSeat.id,
+        name: invitedSeat.name,
+        employeeId: invitedSeat.employeeId,
+        email: invitedSeat.email,
+        mobile: invitedSeat.mobile || 'Not added',
+        role: invitedSeat.role === 'both' ? 'sales' : invitedSeat.role,
+        territory: newSeatTerritory.trim() || 'Not assigned',
+        status: invitedSeat.active ? 'active' : 'invited',
+        lastActive: 'Invite sent just now',
+      };
+      setAdminSeats((current) => [nextSeat, ...current.filter((seat) => seat.email !== nextSeat.email)]);
+      setSelectedAdminSeatId(nextSeat.id);
+      setAdminAgentsView('invite');
+      setScreenNotice({ title: 'Invite sent', message: `${nextSeat.name} can set password from the registered email invite.`, tone: 'success' });
+    } catch (error) {
+      rememberLaunchIssue('Admin invite', error);
+      setScreenNotice({ title: 'Invite failed', message: error instanceof Error ? error.message : 'Could not create the employee invite.', tone: 'error' });
+    }
   };
 
   const renderAdmin = () => {
@@ -1523,24 +1560,59 @@ function App() {
       if (adminReportScope === 'sales' || adminReportScope === 'service') return row.role.toLowerCase().startsWith(adminReportScope);
       return row.name.toLowerCase().startsWith(adminReportScope);
     });
-    const adminApprovals: Record<AdminApprovalId, { label: string; chipClass: string; agent: string; title: string; summary: string; detail: string; meta: string; actionNote: string }> = {
-      'meera-leave': {
-        label: 'Leave',
-        chipClass: 'chip chip-warning',
-        agent: 'Meera Service',
-        title: 'Leave request',
-        summary: '12 Jun to 13 Jun • Sick leave',
-        detail: 'Meera has requested leave for two days. Admin can approve or reject from this detail view.',
-        meta: 'Service agent • Submitted today',
-        actionNote: 'Approval status will show in Meera’s Leave and Reports pages.',
-      },
-    };
+    const backendApprovalRequests = [...reviewedAdminLeaveRequests, ...adminLeaveRequests]
+      .filter((request, index, all) => all.findIndex((candidate) => candidate.id === request.id) === index);
+    const fallbackApprovalRequests: FrontendLeaveRequest[] = [{
+      id: 'meera-leave',
+      agentId: 'agent_3',
+      agentName: 'Meera Service',
+      fromDate: '2026-06-12',
+      toDate: '2026-06-13',
+      reason: 'Sick leave',
+      status: 'pending',
+    }];
+    const approvalRequests = isBackendConfigured ? backendApprovalRequests : fallbackApprovalRequests;
+    const pendingApprovalRequests = approvalRequests.filter((request) => request.status === 'pending');
+    const adminApprovals: Record<AdminApprovalId, { leaveRequestId: string; status: FrontendLeaveRequest['status']; label: string; chipClass: string; agent: string; title: string; summary: string; detail: string; meta: string; actionNote: string }> = Object.fromEntries(
+      approvalRequests.map((request) => [
+        request.id,
+        {
+          leaveRequestId: request.id,
+          status: request.status,
+          label: 'Leave',
+          chipClass: request.status === 'pending' ? 'chip chip-warning' : request.status === 'approved' ? 'chip chip-soft' : 'chip chip-info',
+          agent: request.agentName,
+          title: 'Leave request',
+          summary: `${formatShortDate(request.fromDate)} to ${formatShortDate(request.toDate)} • ${request.reason}`,
+          detail: `${request.agentName} requested leave from ${formatShortDate(request.fromDate)} to ${formatShortDate(request.toDate)}.${request.note ? ` Note: ${request.note}` : ''}`,
+          meta: `Field agent • ${request.status === 'pending' ? 'Waiting for admin decision' : `Marked ${request.status}`}`,
+          actionNote: request.status === 'pending' ? 'Approval status will show in the agent app and reports.' : 'This decision has already been recorded.',
+        },
+      ]),
+    );
     const openApproval = (approvalId: AdminApprovalId) => {
       setSelectedAdminApproval(approvalId);
       setAdminTab('approvals');
       setScreenNotice(null);
     };
     const activeApproval = selectedAdminApproval ? adminApprovals[selectedAdminApproval] : null;
+    const reviewAdminLeave = async (nextStatus: 'approved' | 'rejected') => {
+      if (!activeApproval) return;
+      if (isBackendConfigured && (!session || session.role !== 'admin')) {
+        setScreenNotice({ title: 'Admin login needed', message: 'Login as admin before approving leave.', tone: 'warning' });
+        return;
+      }
+      const reviewSession = session ?? { token: 'demo-admin-token', agentId: 'agent_1', agentName: 'Admin User', role: 'admin' as const };
+      try {
+        const reviewedLeave = await crystalBioFrontendApi.reviewLeaveRequest(reviewSession, activeApproval.leaveRequestId, nextStatus);
+        setReviewedAdminLeaveRequests((current) => [reviewedLeave, ...current.filter((request) => request.id !== reviewedLeave.id)]);
+        setAdminLeaveRequests((current) => current.map((request) => request.id === reviewedLeave.id ? reviewedLeave : request));
+        setScreenNotice({ title: nextStatus === 'approved' ? 'Approved' : 'Rejected', message: `${reviewedLeave.agentName} leave request marked ${nextStatus}.`, tone: nextStatus === 'approved' ? 'success' : 'warning' });
+      } catch (error) {
+        rememberLaunchIssue('Leave approval', error);
+        setScreenNotice({ title: 'Leave update failed', message: error instanceof Error ? error.message : 'Could not update leave approval.', tone: 'error' });
+      }
+    };
     const visibleAgentActivityRows = adminReportRows.today.filter((row) => {
       if (adminAgentFilter === 'all') return true;
       return row.role.toLowerCase().startsWith(adminAgentFilter);
@@ -1689,22 +1761,26 @@ function App() {
                 <small>{activeApproval.actionNote}</small>
               </div>
               <div className="admin-approval-actions">
-                <button type="button" className="secondary-action" onClick={() => setScreenNotice({ title: 'Rejected', message: `${activeApproval.title} marked rejected.`, tone: 'warning' })}>Reject</button>
-                <button type="button" className="primary-action" onClick={() => setScreenNotice({ title: 'Approved', message: `${activeApproval.title} approved and reflected in the agent app.`, tone: 'success' })}>Approve</button>
+                <button type="button" className="secondary-action" disabled={activeApproval.status !== 'pending'} onClick={() => void reviewAdminLeave('rejected')}>Reject</button>
+                <button type="button" className="primary-action" disabled={activeApproval.status !== 'pending'} onClick={() => void reviewAdminLeave('approved')}>Approve</button>
               </div>
             </section>
           ) : (
             <>
               <section className="admin-approval-summary-card">
-                <div><strong>1</strong><span>Pending approval</span></div>
-                <div><strong>Leave</strong><span>Decision needed today</span></div>
+                <div><strong>{pendingApprovalRequests.length}</strong><span>Pending approval</span></div>
+                <div><strong>Leave</strong><span>{pendingApprovalRequests.length ? 'Decision needed today' : 'No pending decisions'}</span></div>
               </section>
               <section className="admin-action-card admin-approval-list-card">
                 <label>Leave approvals</label>
-                <button type="button" className="admin-alert-row admin-click-row" onClick={() => openApproval('meera-leave')}>
-                  <span className="chip chip-warning">Leave</span>
-                  <div><strong>Meera Service</strong><p>12 Jun to 13 Jun • Sick leave</p><small>Tap to approve or reject. Status reflects in the agent app.</small></div>
-                </button>
+                {approvalRequests.length ? approvalRequests.map((request) => (
+                  <button key={request.id} type="button" className="admin-alert-row admin-click-row" onClick={() => openApproval(request.id)}>
+                    <span className={request.status === 'pending' ? 'chip chip-warning' : request.status === 'approved' ? 'chip chip-soft' : 'chip chip-info'}>{request.status === 'pending' ? 'Leave' : request.status}</span>
+                    <div><strong>{request.agentName}</strong><p>{formatShortDate(request.fromDate)} to {formatShortDate(request.toDate)} • {request.reason}</p><small>Tap to approve/reject or review recorded status.</small></div>
+                  </button>
+                )) : (
+                  <div className="admin-alert-row"><span className="chip chip-soft">Clear</span><div><strong>No leave approvals pending</strong><p>New agent requests will appear here from the backend.</p></div></div>
+                )}
               </section>
             </>
           )
@@ -1813,7 +1889,7 @@ function App() {
                     <p>Admin profile</p>
                     <strong>{session?.role === 'admin' ? session.agentName : 'CrystalBio Admin'}</strong>
                     <span>{session?.role === 'admin' ? session.email : 'admin@crystalbio.in'} • Owner access</span>
-                    <small className="profile-access-note">Invite only • Public signup off • Email OTP backup on</small>
+                    <small className="profile-access-note">Invite only • Public signup off • Email OTP backup planned</small>
                   </div>
                 </section>
                 <section className="admin-profile-access-summary" aria-label="Profile access summary">

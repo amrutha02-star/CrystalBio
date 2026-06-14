@@ -128,6 +128,16 @@ describe('CrystalBio API layer', () => {
 
     expect(reviewed.status).toBe(200);
     expect(reviewed.body.leaveRequest.status).toBe('approved');
+
+    const approvals = api.handle({
+      method: 'GET',
+      path: '/admin/leave-requests',
+      headers: { authorization: `Bearer ${adminToken}` },
+    });
+
+    expect(approvals.status).toBe(200);
+    expect(approvals.body.leaveRequests).toHaveLength(1);
+    expect(approvals.body.leaveRequests[0].status).toBe('approved');
   });
 
   it('rejects invalid leave review status values', () => {

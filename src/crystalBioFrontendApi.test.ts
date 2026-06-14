@@ -219,6 +219,94 @@ describe('CrystalBio frontend API client', () => {
     );
   });
 
+  it('reviews leave requests through configured backend with admin authorization', async () => {
+    const fetcher = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
+      if (String(url).endsWith('/leave-requests/leave_1/review')) {
+        expect(init?.method).toBe('PATCH');
+        expect(init?.body).toBe(JSON.stringify({ status: 'approved' }));
+        return new Response(JSON.stringify({
+          leaveRequest: {
+            id: 'leave_1',
+            agentId: 'agent_2',
+            agentName: 'Rahul Sales',
+            fromDate: '2026-06-10',
+            toDate: '2026-06-11',
+            reason: 'Personal work',
+            status: 'approved',
+          },
+        }), { status: 200, headers: { 'content-type': 'application/json' } });
+      }
+      return new Response(JSON.stringify({ leaveRequests: [] }), { status: 200, headers: { 'content-type': 'application/json' } });
+    }) as unknown as typeof fetch;
+    const api = createCrystalBioFrontendApi({ baseUrl: 'http://127.0.0.1:8787', fetcher });
+    const session = { token: 'admin-token', agentId: 'agent_1', agentName: 'Admin User', role: 'admin' as const };
+
+    const reviewed = await api.reviewLeaveRequest(session, 'leave_1', 'approved');
+
+    expect(reviewed.status).toBe('approved');
+    expect(fetcher).toHaveBeenCalledWith(
+      'http://127.0.0.1:8787/leave-requests/leave_1/review',
+      expect.objectContaining({
+        method: 'PATCH',
+        headers: expect.objectContaining({ authorization: 'Bearer admin-token' }),
+      }),
+    );
+  });
+
+  it('creates admin invites through configured backend with admin authorization', async () => {
+    const fetcher = vi.fn(async () => new Response(JSON.stringify({
+      agent: {
+        id: 'agent_99',
+        name: 'New Sales',
+        role: 'sales',
+        employeeId: 'CB-S-099',
+        email: 'new.sales@crystalbio.in',
+        mobile: '+91 99999 99999',
+        active: false,
+        inviteStatus: 'pending',
+        inviteToken: 'invite-token',
+      },
+    }), { status: 201, headers: { 'content-type': 'application/json' } })) as unknown as typeof fetch;
+    const api = createCrystalBioFrontendApi({ baseUrl: 'http://127.0.0.1:8787', fetcher });
+    const session = { token: 'admin-token', agentId: 'agent_1', agentName: 'Admin User', role: 'admin' as const };
+
+    const invite = await api.createAdminInvite(session, {
+      name: 'New Sales',
+      role: 'sales',
+      employeeId: 'CB-S-099',
+      email: 'new.sales@crystalbio.in',
+      mobile: '+91 99999 99999',
+    });
+
+    expect(invite.inviteStatus).toBe('pending');
+    expect(fetcher).toHaveBeenCalledWith(
+      'http://127.0.0.1:8787/admin/agents',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({ authorization: 'Bearer admin-token' }),
+      }),
+    );
+  });
+
+  it('loads admin leave approvals through configured backend with admin authorization', async () => {
+    const fetcher = vi.fn(async () => new Response(JSON.stringify({
+      leaveRequests: [{ id: 'leave_1', agentId: 'agent_2', agentName: 'Rahul Sales', fromDate: '2026-06-10', toDate: '2026-06-11', reason: 'Personal work', status: 'pending' }],
+    }), { status: 200, headers: { 'content-type': 'application/json' } })) as unknown as typeof fetch;
+    const api = createCrystalBioFrontendApi({ baseUrl: 'http://127.0.0.1:8787', fetcher });
+    const session = { token: 'admin-token', agentId: 'agent_1', agentName: 'Admin User', role: 'admin' as const };
+
+    const approvals = await api.getAdminLeaveRequests(session);
+
+    expect(approvals).toHaveLength(1);
+    expect(fetcher).toHaveBeenCalledWith(
+      'http://127.0.0.1:8787/admin/leave-requests',
+      expect.objectContaining({
+        method: 'GET',
+        headers: expect.objectContaining({ authorization: 'Bearer admin-token' }),
+      }),
+    );
+  });
+
   it('creates a stable demo leave request when no backend URL is configured', async () => {
     const api = createCrystalBioFrontendApi({ now: () => new Date('2026-06-08T09:00:00.000Z') });
 

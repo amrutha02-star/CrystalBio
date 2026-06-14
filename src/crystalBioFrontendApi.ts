@@ -45,6 +45,21 @@ export type FrontendLeaveRequestInput = {
   note?: string;
 };
 
+export type FrontendAdminSeatInput = {
+  name: string;
+  role: 'sales' | 'service' | 'both' | 'admin';
+  employeeId: string;
+  email: string;
+  mobile?: string;
+};
+
+export type FrontendAdminSeatInvite = FrontendAdminSeatInput & {
+  id: string;
+  active: boolean;
+  inviteStatus?: 'pending' | 'accepted';
+  inviteToken?: string;
+};
+
 export type FrontendAdminReport = {
   fromDate: string;
   toDate: string;
@@ -372,6 +387,45 @@ export function createCrystalBioFrontendApi(options: ApiClientOptions = {}) {
       const query = new URLSearchParams({ fromDate: input.fromDate, toDate: input.toDate }).toString();
       const result = await get<{ report: FrontendAdminReport }>(`/admin/reports?${query}`, session.token);
       return result.report;
+    },
+
+    async getAdminLeaveRequests(session: FrontendSession): Promise<FrontendLeaveRequest[]> {
+      if (!baseUrl) return [];
+      const result = await get<{ leaveRequests: FrontendLeaveRequest[] }>('/admin/leave-requests', session.token);
+      return result.leaveRequests;
+    },
+
+    async reviewLeaveRequest(session: FrontendSession, leaveRequestId: string, status: 'approved' | 'rejected'): Promise<FrontendLeaveRequest> {
+      if (!baseUrl) {
+        return {
+          id: leaveRequestId,
+          agentId: 'agent_3',
+          agentName: 'Meera Service',
+          fromDate: '2026-06-12',
+          toDate: '2026-06-13',
+          reason: 'Sick leave',
+          status,
+        };
+      }
+      const result = await patch<{ leaveRequest: FrontendLeaveRequest }>(
+        `/leave-requests/${leaveRequestId}/review`,
+        { status },
+        session.token,
+      );
+      return result.leaveRequest;
+    },
+
+    async createAdminInvite(session: FrontendSession, input: FrontendAdminSeatInput): Promise<FrontendAdminSeatInvite> {
+      if (!baseUrl) {
+        return {
+          id: `demo-seat-${now().getTime()}`,
+          ...input,
+          active: false,
+          inviteStatus: 'pending',
+        };
+      }
+      const result = await post<{ agent: FrontendAdminSeatInvite }>('/admin/agents', input, session.token);
+      return result.agent;
     },
 
     async checkIn(session: FrontendSession): Promise<FrontendAttendance> {

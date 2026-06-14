@@ -160,6 +160,12 @@ export function createCrystalBioApi(backend: Backend) {
           return ok({ agent: { id: agent.id, name: agent.name, role: agent.role, employeeId: agent.employeeId, email: agent.email, mobile: agent.mobile, active: agent.active, inviteStatus: agent.inviteStatus, inviteToken: agent.inviteToken } }, 201);
         }
 
+        if (request.method === 'GET' && pathname === '/admin/leave-requests') {
+          const session = sessionFor(request);
+          backend.getAdminReport(session.agentId, { fromDate: '1900-01-01', toDate: '2999-12-31' });
+          return ok({ leaveRequests: backend.exportState().leaveRequests });
+        }
+
         if (request.method === 'GET' && pathname === '/admin/reports') {
           const session = sessionFor(request);
           const report = backend.getAdminReport(session.agentId, {
