@@ -1,18 +1,25 @@
 services:
   - type: web
-    name: crystalbio-backend
+    name: crystalbio-api
     runtime: node
-    plan: free
-    buildCommand: npm install && npm run build
-    startCommand: node --import tsx src/backend/server.ts
+    plan: starter
+    buildCommand: npm install && npm run backend:build
+    startCommand: npm run backend:start
+    healthCheckPath: /health
+    disk:
+      name: crystalbio-data
+      mountPath: /var/data
+      sizeGB: 1
     envVars:
       - key: HOST
         value: 0.0.0.0
       - key: CRYSTALBIO_DB_PATH
-        value: /opt/render/project/src/data/crystalbio-db.json
+        value: /var/data/crystalbio-db.json
       - key: CRYSTALBIO_ALLOWED_ORIGIN
         sync: false
       - key: CRYSTALBIO_SEED_DEMO
         value: "false"
       - key: CRYSTALBIO_DEMO_PASSWORD
         sync: false
+      - key: CRYSTALBIO_REQUEST_LIMIT_BYTES
+        value: "1048576"

@@ -1,12 +1,14 @@
-# CrystalBio Free Pilot Hosting
+# CrystalBio Pilot Hosting
 
-This is the approved short path for a free/low-cost pilot link. It is for a controlled client pilot, not final production.
+This is the approved short path for a controlled client pilot link, not final production.
 
-## Recommended free split
+## Recommended pilot split
 
 1. **Frontend/mobile app:** Vercel, Netlify, or Cloudflare Pages.
-2. **Backend/API:** Render free web service or another free Node host.
-3. **Storage:** JSON database file outside the repo via `CRYSTALBIO_DB_PATH`.
+2. **Backend/API:** Render Node web service or another Node host.
+3. **Storage:** JSON database file on a private persistent disk via `CRYSTALBIO_DB_PATH`.
+
+For real pilot data, do **not** rely on a fully free backend filesystem that resets. A free frontend is fine; the backend needs persistent storage so invites, attendance, forms, approvals, and reports survive restarts.
 
 ## Required backend environment variables
 
@@ -21,6 +23,36 @@ This is the approved short path for a free/low-cost pilot link. It is for a cont
 ## Required frontend environment variable
 
 - `VITE_CRYSTALBIO_API_URL=https://your-backend-domain`
+
+## Render backend blueprint
+
+`render.yaml` is included for the pilot API service:
+
+- builds the backend with `npm run backend:build`
+- starts the API with `npm run backend:start`
+- exposes `/health` for host checks
+- mounts a small persistent disk at `/var/data`
+- keeps client-specific frontend origin and demo password as private Render environment values
+
+## Frontend host settings
+
+Use the normal static build command:
+
+```bash
+npm run build
+```
+
+Publish directory:
+
+```text
+dist
+```
+
+Set the frontend environment variable before building/deploying:
+
+```text
+VITE_CRYSTALBIO_API_URL=https://your-crystalbio-api-domain
+```
 
 ## Launch safety rules
 
