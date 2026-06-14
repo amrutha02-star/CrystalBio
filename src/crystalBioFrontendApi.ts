@@ -95,6 +95,7 @@ export type FrontendSalesVisitInput = {
   note: string;
   nextAction: FrontendSalesNextAction;
   followUpDate?: string;
+  gps?: FrontendGps;
 };
 
 export type FrontendSalesStep2Input = {
@@ -201,6 +202,7 @@ export type FrontendServiceVisitInput = {
   supportRequiredNote?: string;
   finalRemarks?: string;
   photoNote?: string;
+  gps?: FrontendGps;
 };
 
 export type FrontendServiceVisit = {
@@ -429,8 +431,12 @@ export function createCrystalBioFrontendApi(options: ApiClientOptions = {}) {
       return result.agent;
     },
 
-    async checkIn(session: FrontendSession): Promise<FrontendAttendance> {
-      const gps = await gpsProvider();
+    async getCurrentLocation(): Promise<FrontendGps> {
+      return gpsProvider();
+    },
+
+    async checkIn(session: FrontendSession, gpsOverride?: FrontendGps): Promise<FrontendAttendance> {
+      const gps = gpsOverride ?? await gpsProvider();
       if (!baseUrl) {
         demoCheckedIn = true;
         return {
@@ -451,8 +457,8 @@ export function createCrystalBioFrontendApi(options: ApiClientOptions = {}) {
       return normalizeAttendance(result.attendance);
     },
 
-    async checkOut(session: FrontendSession): Promise<FrontendAttendance> {
-      const gps = await gpsProvider();
+    async checkOut(session: FrontendSession, gpsOverride?: FrontendGps): Promise<FrontendAttendance> {
+      const gps = gpsOverride ?? await gpsProvider();
       if (!baseUrl) {
         demoCheckedIn = false;
         return {
@@ -497,7 +503,7 @@ export function createCrystalBioFrontendApi(options: ApiClientOptions = {}) {
     },
 
     async submitSalesVisit(session: FrontendSession, input: FrontendSalesVisitInput): Promise<FrontendSalesSaveResult> {
-      const gps = await gpsProvider();
+      const gps = input.gps ?? await gpsProvider();
       const visitTimestamp = now();
       const visitDate = visitTimestamp.toISOString().slice(0, 10);
       const visitTime = visitTimestamp.toTimeString().slice(0, 5);
@@ -590,7 +596,7 @@ export function createCrystalBioFrontendApi(options: ApiClientOptions = {}) {
     },
 
     async submitServiceVisit(session: FrontendSession, input: FrontendServiceVisitInput): Promise<FrontendServiceSaveResult> {
-      const gps = await gpsProvider();
+      const gps = input.gps ?? await gpsProvider();
       const visitTimestamp = now();
       const visitDate = visitTimestamp.toISOString().slice(0, 10);
       const visitTime = visitTimestamp.toTimeString().slice(0, 5);

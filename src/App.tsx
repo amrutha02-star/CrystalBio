@@ -1,6 +1,6 @@
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { CalendarCheck, CheckCircle2, ChevronLeft, ClipboardList, Clock3, FileText, Home, MapPin, Plus, Search, UserRound, UsersRound, X } from 'lucide-react';
-import { crystalBioFrontendApi, type FrontendAdminReport, type FrontendAdminSeatInvite, type FrontendAttendance, type FrontendLeaveRequest, type FrontendLoginInput, type FrontendSalesSaveResult, type FrontendSalesNextAction, type FrontendServiceSaveResult, type FrontendServiceNextAction, type FrontendServiceType, type FrontendSession } from './crystalBioFrontendApi';
+import { crystalBioFrontendApi, type FrontendAdminReport, type FrontendAdminSeatInvite, type FrontendAttendance, type FrontendGps, type FrontendLeaveRequest, type FrontendLoginInput, type FrontendSalesSaveResult, type FrontendSalesNextAction, type FrontendServiceSaveResult, type FrontendServiceNextAction, type FrontendServiceType, type FrontendSession } from './crystalBioFrontendApi';
 
 type AppScreen = 'login' | 'home' | 'visits' | 'sales' | 'service' | 'checkin' | 'attendance' | 'leave' | 'reports' | 'profile' | 'admin';
 type ReportPeriod = 'today' | 'week' | 'month' | 'custom';
@@ -187,6 +187,10 @@ function App() {
   const [session, setSession] = useState<FrontendSession | null>(initialStoredSession);
   const [attendance, setAttendance] = useState<FrontendAttendance | null>(null);
   const [isAttendanceBusy, setIsAttendanceBusy] = useState(false);
+  const [currentGps, setCurrentGps] = useState<FrontendGps | null>(null);
+  const [currentGpsCapturedAt, setCurrentGpsCapturedAt] = useState<string | null>(null);
+  const [isLocationCapturing, setIsLocationCapturing] = useState(false);
+  const [locationMessage, setLocationMessage] = useState('Tap Use current location before check-in or saving a visit.');
   const [statusMessage, setStatusMessage] = useState('Loading logged-in agent…');
   const [screenNotice, setScreenNotice] = useState<ToastNotice | string | null>(null);
   const [loginEmail, setLoginEmail] = useState('');
@@ -397,14 +401,54 @@ function App() {
     setWorkTypes((current) => current.includes(type) ? current.filter((item) => item !== type) : [...current, type]);
   };
 
+  const currentLocationSummary = currentGps
+    ? `Location added • ${currentGps.latitude.toFixed(5)}, ${currentGps.longitude.toFixed(5)}${currentGps.accuracyMeters ? ` • accuracy ${Math.round(currentGps.accuracyMeters)}m` : ''}${currentGpsCapturedAt ? ` • ${currentGpsCapturedAt}` : ''}`
+    : locationMessage;
+
+  const captureCurrentLocation = async (purpose: 'check-in' | 'sales' | 'service' | 'attendance' = 'attendance') => {
+    setIsLocationCapturing(true);
+    const actionLabel = purpose === 'check-in' ? 'check-in' : purpose === 'sales' ? 'sales visit' : purpose === 'service' ? 'service visit' : 'attendance';
+    setLocationMessage(`Asking phone GPS for ${actionLabel}…`);
+    try {
+      const gps = await crystalBioFrontendApi.getCurrentLocation();
+      setCurrentGps(gps);
+      const capturedAt = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      setCurrentGpsCapturedAt(capturedAt);
+      const message = `Current location added for ${actionLabel}.`;
+      setLocationMessage(message);
+      setScreenNotice({ title: 'Location added', message: `${message} Save now to attach it to this update.`, tone: 'success' });
+      return gps;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Location could not be captured. Please allow GPS permission and try again.';
+      setLocationMessage(message);
+      setScreenNotice({ title: 'Location needed', message, tone: 'warning' });
+      throw error;
+    } finally {
+      setIsLocationCapturing(false);
+    }
+  };
+
+  const LocationCaptureCard = ({ purpose }: { purpose: 'check-in' | 'sales' | 'service' }) => (
+    <div className="form-card highlighted-card location-capture-card">
+      <label>Current location</label>
+      <p>{currentLocationSummary}</p>
+      <button type="button" className="secondary-action location-capture-action" disabled={isLocationCapturing} onClick={() => void captureCurrentLocation(purpose)}>
+        {isLocationCapturing ? 'Getting location…' : currentGps ? 'Refresh current location' : 'Use current location'}
+      </button>
+    </div>
+  );
+
+  const gpsForSave = async (purpose: 'check-in' | 'sales' | 'service' | 'attendance') => currentGps ?? await captureCurrentLocation(purpose);
+
   const handleAttendanceAction = async () => {
     if (!session) return;
     setIsAttendanceBusy(true);
     setStatusMessage(isCheckedIn ? 'Capturing check-out location…' : 'Capturing check-in location…');
     try {
+      const gps = await gpsForSave('attendance');
       const nextAttendance = isCheckedIn
-        ? await crystalBioFrontendApi.checkOut(session)
-        : await crystalBioFrontendApi.checkIn(session);
+        ? await crystalBioFrontendApi.checkOut(session, gps)
+        : await crystalBioFrontendApi.checkIn(session, gps);
       setAttendance(nextAttendance);
       setStatusMessage(
         nextAttendance.status === 'checked_in'
@@ -429,7 +473,8 @@ function App() {
     setScreenNotice('Capturing check-in location…');
     setStatusMessage('Capturing check-in location…');
     try {
-      const nextAttendance = await crystalBioFrontendApi.checkIn(session);
+      const gps = await gpsForSave('check-in');
+      const nextAttendance = await crystalBioFrontendApi.checkIn(session, gps);
       setAttendance(nextAttendance);
       setStatusMessage(`Checked in. ${workTypes.join(' + ')} saved with GPS.`);
       setScreenNotice({
@@ -659,6 +704,7 @@ function App() {
         return;
       }
 
+      const gps = await gpsForSave('sales');
       const savedSalesVisit = await crystalBioFrontendApi.submitSalesVisit(session, {
         accountName: salesAccountName.trim(),
         ...(salesContactPerson.trim() ? { contactPerson: salesContactPerson.trim() } : {}),
@@ -666,6 +712,7 @@ function App() {
         ...(salesRequirement.trim() ? { requirement: salesRequirement.trim() } : {}),
         note: salesVisitNote.trim(),
         nextAction: salesNextAction,
+        gps,
         ...(salesNextAction === 'follow_up_needed' ? { followUpDate: salesFollowUpDate } : {}),
       });
       setSalesSaveResult(savedSalesVisit);
@@ -808,6 +855,7 @@ function App() {
         return;
       }
 
+      const gps = await gpsForSave('service');
       const savedServiceVisit = await crystalBioFrontendApi.submitServiceVisit(serviceSession, {
         customerName: serviceCustomerName.trim(),
         ...(servicePhone.trim() ? { phone: servicePhone.trim() } : {}),
@@ -825,6 +873,7 @@ function App() {
         workDone: serviceWorkDone.trim(),
         supportRequired: serviceSupportRequired,
         nextAction: serviceNextAction,
+        gps,
         ...(serviceNextAction === 'parts_required' || serviceNextAction === 'next_visit_needed' ? { nextVisitDate: serviceNextVisitDate } : {}),
         ...(serviceOfficeNotes.trim() ? { officeNotes: serviceOfficeNotes.trim() } : {}),
       });
@@ -1082,10 +1131,7 @@ function App() {
           <div><span className="step-pill">Step 1</span><h3>Quick visit update</h3><p>For use at client place or immediately after coming out.</p></div>
           <span className={salesSaveResult ? 'chip chip-soft' : 'chip chip-warning'}>{salesSaveResult ? 'Saved' : 'Required'}</span>
         </div>
-        <div className="form-card highlighted-card">
-          <label>Current visit location</label>
-          <p>Phone GPS is captured when this update is saved.</p>
-        </div>
+        <LocationCaptureCard purpose="sales" />
         <label className="field-card">
           <span>Customer / lab name</span>
           <input aria-label="Sales customer name" value={salesAccountName} onChange={(event) => setSalesAccountName(event.target.value)} />
@@ -1238,10 +1284,7 @@ function App() {
             <div><span className="step-pill">Step 1</span><h3>Quick service update</h3><p>For the engineer to save at the site.</p></div>
             <span className={serviceSaveResult ? 'chip chip-soft' : 'chip chip-warning'}>{serviceSaveResult ? 'Saved' : 'Required'}</span>
           </div>
-          <div className="form-card highlighted-card">
-            <label>Current visit location</label>
-            <p>Phone GPS is captured when this update is saved.</p>
-          </div>
+          <LocationCaptureCard purpose="service" />
           <label className="field-card"><span>Customer / lab name</span><input aria-label="Service customer name" value={serviceCustomerName} onChange={(event) => setServiceCustomerName(event.target.value)} /></label>
           <label className="field-card"><span>Work done / issue checked</span><textarea aria-label="Service work done" value={serviceWorkDone} onChange={(event) => setServiceWorkDone(event.target.value)} placeholder="Issue checked, work done, customer update" rows={3} /></label>
           <div className="inline-field-grid">
@@ -1312,10 +1355,13 @@ function App() {
         <div className="attendance-status-icon"><MapPin size={20} /></div>
         <div>
           <label>Current location</label>
-          <strong>{isBackendConfigured ? 'Phone GPS will be captured' : 'Location capture ready'}</strong>
-          <span>{isBackendConfigured ? 'The app asks for location when the agent taps Check in now.' : 'The app saves the phone location when the agent checks in.'}</span>
+          <strong>{currentGps ? 'Location added' : 'Add current location'}</strong>
+          <span>{currentLocationSummary}</span>
         </div>
       </div>
+      <button type="button" className="secondary-action location-capture-action" disabled={isLocationCapturing} onClick={() => void captureCurrentLocation('check-in')}>
+        {isLocationCapturing ? 'Getting location…' : currentGps ? 'Refresh current location' : 'Use current location'}
+      </button>
       <div className="work-type-card">
         <label>Today’s work plan</label>
         <p>Select one or more before check-in.</p>
@@ -1378,9 +1424,12 @@ function App() {
           </div>
           <span>{workTypes.length ? `Marked as: ${workTypes.join(' + ')}` : 'Choose field work, office work, or both.'}</span>
         </div>
-        <div className="form-card highlighted-card">
+        <div className="form-card highlighted-card location-capture-card">
           <label>GPS capture</label>
-          <p>{isBackendConfigured ? 'The app saves the phone location during check-in and check-out.' : 'The app saves phone location during check-in and check-out.'}</p>
+          <p>{currentLocationSummary}</p>
+          <button type="button" className="secondary-action location-capture-action" disabled={isLocationCapturing} onClick={() => void captureCurrentLocation('attendance')}>
+            {isLocationCapturing ? 'Getting location…' : currentGps ? 'Refresh current location' : 'Use current location'}
+          </button>
         </div>
         <button type="button" className="primary-action attendance-main-action" disabled={!session || isAttendanceBusy} onClick={() => isCheckedIn ? void handleAttendanceAction() : goToScreen('checkin')}>{isAttendanceBusy ? 'Saving…' : attendanceAction}</button>
         <div className="section-label">Recent attendance</div>
@@ -1679,6 +1728,12 @@ function App() {
       if (adminReportScope === 'service') return matchesAdminAgentFilter(row, 'service');
       return true;
     });
+    const reportSalesVisits = adminReportScopeRows.reduce((sum, row) => sum + row.salesVisitCount, 0);
+    const reportServiceVisits = adminReportScopeRows.reduce((sum, row) => sum + row.serviceVisitCount, 0);
+    const reportReadyAgents = adminReportScopeRows.filter((row) => row.status === 'Ready').length;
+    const reportReviewAgents = adminReportScopeRows.filter((row) => row.status !== 'Ready').length;
+    const reportChartMax = Math.max(reportSalesVisits, reportServiceVisits, reportReadyAgents, reportReviewAgents, 1);
+    const chartWidth = (value: number) => `${Math.max(value === 0 ? 0 : 8, Math.round((value / reportChartMax) * 100))}%`;
     const backendApprovalRequests = [...reviewedAdminLeaveRequests, ...adminLeaveRequests]
       .filter((request, index, all) => all.findIndex((candidate) => candidate.id === request.id) === index);
     const approvalRequests = backendApprovalRequests;
@@ -2063,10 +2118,10 @@ function App() {
                     <div><strong>{adminReportScopeRows.filter((row) => row.status !== 'Ready').length}</strong><span>Review</span></div>
                   </div>
                   <div className="admin-report-chart-block" aria-label="Simple report charts">
-                    <div className="admin-chart-row"><span>Sales</span><div><i style={{ width: '61%' }} /></div><strong>14</strong></div>
-                    <div className="admin-chart-row"><span>Service</span><div><i className="service-bar" style={{ width: '39%' }} /></div><strong>9</strong></div>
-                    <div className="admin-chart-row"><span>Ready</span><div><i style={{ width: '62%' }} /></div><strong>5</strong></div>
-                    <div className="admin-chart-row"><span>Review</span><div><i className="warning-bar" style={{ width: '38%' }} /></div><strong>3</strong></div>
+                    <div className="admin-chart-row"><span>Sales</span><div><i style={{ width: chartWidth(reportSalesVisits) }} /></div><strong>{reportSalesVisits}</strong></div>
+                    <div className="admin-chart-row"><span>Service</span><div><i className="service-bar" style={{ width: chartWidth(reportServiceVisits) }} /></div><strong>{reportServiceVisits}</strong></div>
+                    <div className="admin-chart-row"><span>Ready</span><div><i style={{ width: chartWidth(reportReadyAgents) }} /></div><strong>{reportReadyAgents}</strong></div>
+                    <div className="admin-chart-row"><span>Review</span><div><i className="warning-bar" style={{ width: chartWidth(reportReviewAgents) }} /></div><strong>{reportReviewAgents}</strong></div>
                   </div>
                 </section>
 
