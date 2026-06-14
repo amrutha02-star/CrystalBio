@@ -65,7 +65,7 @@ const sampleAttendanceLogs = [
 const screenOptions: AppScreen[] = ['login', 'home', 'visits', 'sales', 'service', 'checkin', 'attendance', 'leave', 'reports', 'profile', 'admin'];
 const sessionStorageKey = 'crystalbio.session.v1';
 const screenStorageKey = 'crystalbio.screen.v1';
-const appBuildVersion = '20260614144757';
+const appBuildVersion = '20260614163500';
 
 const isFrontendSession = (value: unknown): value is FrontendSession => {
   const candidate = value as Partial<FrontendSession> | null;
@@ -100,6 +100,8 @@ const forgetSession = () => {
   window.localStorage.removeItem(sessionStorageKey);
   window.localStorage.removeItem(screenStorageKey);
 };
+
+const isExpiredSessionError = (error: unknown) => error instanceof Error && /login session|required|valid login session/i.test(error.message);
 
 const rememberScreen = (nextScreen: AppScreen) => {
   if (typeof window === 'undefined' || nextScreen === 'login') return;
@@ -366,6 +368,16 @@ function App() {
       }));
     } catch (error) {
       rememberLaunchIssue('Admin data refresh', error);
+      if (isExpiredSessionError(error)) {
+        forgetSession();
+        setSession(null);
+        setIsAdminSignedIn(false);
+        setAdminSeats([]);
+        setAdminLeaveRequests([]);
+        setScreen('login');
+        setStatusMessage('Please log in again to refresh admin profiles.');
+        setScreenNotice({ title: 'Login refreshed', message: 'Please log in again. The latest user profiles will load after login.', tone: 'warning' });
+      }
     }
   };
 
