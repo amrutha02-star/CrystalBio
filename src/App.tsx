@@ -1645,15 +1645,22 @@ function App() {
         )}
 
         {showFieldEntry && (
-          <section className="admin-action-card admin-field-entry-card">
-            <label>Back-office field entry</label>
-            <strong>Submit a sales or service update for an agent</strong>
-            <p>Choose Sales or Service when the office team needs to submit a field report for an agent.</p>
-            <div className="visit-action-grid">
-              <button type="button" className="visit-action-card" onClick={() => goToScreen('sales', { newSalesVisit: true })}><span className="visit-action-icon"><Plus size={19} /></span><strong>Sales entry</strong><small>Office-assisted sales report</small></button>
-              <button type="button" className="visit-action-card" onClick={() => goToScreen('service', { newServiceVisit: true })}><span className="visit-action-icon service-icon"><ClipboardList size={18} /></span><strong>Service entry</strong><small>Office-assisted service report</small></button>
-            </div>
-          </section>
+          <>
+            <section className="admin-action-card admin-field-entry-card">
+              <label>Back-office field entry</label>
+              <strong>Submit a field update for an agent</strong>
+              <p>Use this only when the office team needs to enter a report on behalf of a sales or service agent.</p>
+              <div className="visit-action-grid admin-field-entry-grid">
+                <button type="button" className="visit-action-card" onClick={() => goToScreen('sales', { newSalesVisit: true })}><span className="visit-action-icon"><Plus size={19} /></span><strong>Sales entry</strong><small>Customer visit, quote, follow-up</small></button>
+                <button type="button" className="visit-action-card" onClick={() => goToScreen('service', { newServiceVisit: true })}><span className="visit-action-icon service-icon"><ClipboardList size={18} /></span><strong>Service entry</strong><small>Machine issue, parts, closure</small></button>
+              </div>
+            </section>
+            <section className="admin-office-actions-card admin-field-entry-guide">
+              <div className="admin-report-heading"><label>Before saving</label><span>Office-assisted</span></div>
+              <div className="admin-office-action-row"><span className="chip chip-soft">Agent</span><div><strong>Confirm who did the visit</strong><small>Use the agent name from the call/WhatsApp update before submitting.</small></div></div>
+              <div className="admin-office-action-row"><span className="chip chip-info">Proof</span><div><strong>Add customer, issue, and next action</strong><small>Reports are clearer when quote status, parts, or follow-up date are captured.</small></div></div>
+            </section>
+          </>
         )}
 
         {showApprovals && (

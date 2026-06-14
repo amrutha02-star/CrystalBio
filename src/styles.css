@@ -1013,6 +1013,19 @@ p { color: var(--muted); line-height: 1.5; }
   margin-bottom: 12px;
   box-shadow: 0 12px 26px rgba(47, 61, 40, 0.055);
 }
+.admin-field-entry-card {
+  background: linear-gradient(180deg, #fffef8 0%, #f8fbf4 100%);
+}
+.admin-field-entry-card strong {
+  display: block;
+  max-width: 285px;
+  line-height: 1.25;
+}
+.admin-field-entry-card p {
+  max-width: 310px;
+}
+.admin-field-entry-grid { margin-top: 14px; }
+.admin-field-entry-guide .admin-office-action-row { padding: 8px 0; }
 .admin-approval-list-card {
   padding: 16px;
 }
