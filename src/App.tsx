@@ -427,31 +427,6 @@ function App() {
     }
   };
 
-  const handleAdminLogin = async () => {
-    setAdminTab('overview');
-    setSelectedAdminApproval(null);
-    setScreenNotice(null);
-    setStatusMessage('Checking admin login…');
-    try {
-      const nextSession = await crystalBioFrontendApi.login(
-        isBackendConfigured ? { email: loginEmail.trim(), password } : 'agent_2',
-      );
-      if (isBackendConfigured && nextSession.role !== 'admin') {
-        throw new Error('Use an admin email and password to open admin access.');
-      }
-      setIsAdminSignedIn(true);
-      setSession(nextSession);
-      setStatusMessage('Admin logged in.');
-      setScreen('admin');
-      void refreshAdminLeaveRequests(nextSession);
-    } catch (error) {
-      rememberLaunchIssue('Admin login', error);
-      setIsAdminSignedIn(false);
-      setStatusMessage(error instanceof Error ? error.message : 'Admin login failed');
-      setScreenNotice(error instanceof Error ? error.message : 'Admin login failed');
-    }
-  };
-
 
   const handleLeaveSubmit = async () => {
     if (!session) {
@@ -811,12 +786,7 @@ function App() {
   };
 
   const renderLogin = () => (
-    <ScreenPanel title="Login" subtitle="Use the registered email and password from the admin invite.">
-      <section className="login-hero-card clean-login-card">
-        <p>CrystalBio</p>
-        <strong>Field work login</strong>
-        <span>Invite-only access. No public signup; the app opens the right role from the registered email.</span>
-      </section>
+    <ScreenPanel title="Login" subtitle="Use your registered email and password.">
       <label className="field-card login-field-card">
         <span>Registered email</span>
         <input aria-label="Registered email" value={loginEmail} inputMode="email" onChange={(event) => setLoginEmail(event.target.value)} />
@@ -826,7 +796,6 @@ function App() {
         <input aria-label="Password" value={password} type="password" onChange={(event) => setPassword(event.target.value)} />
       </label>
       <button type="button" className="primary-action login-main-button" onClick={handleAgentLogin}>Login</button>
-      <button type="button" className="secondary-action login-admin-button" onClick={handleAdminLogin}>Admin access</button>
     </ScreenPanel>
   );
 

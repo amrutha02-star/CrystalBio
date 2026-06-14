@@ -9,19 +9,18 @@ describe('Crystal Bio agent view shell', () => {
     window.history.pushState({}, '', '/?screen=home');
   });
 
-  it('shows a clean login form and lets admins submit without logging out', async () => {
+  it('shows a clean single login form without redundant access copy', async () => {
     window.history.pushState({}, '', '/?screen=login');
     render(<App />);
 
     expect(screen.getByText('Login screen')).toBeInTheDocument();
+    expect(screen.getByText('Use your registered email and password.')).toBeInTheDocument();
     expect(screen.getByLabelText('Registered email')).toBeInTheDocument();
     expect(screen.getByLabelText('Password')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^login$/i })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /admin access/i }));
-    expect(await screen.findByRole('button', { name: /^home$/i })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /^home$/i }));
-    expect(await screen.findByText('Quick actions')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /back to admin dashboard/i })).toBeInTheDocument();
+    expect(screen.queryByText('Field work login')).not.toBeInTheDocument();
+    expect(screen.queryByText(/invite-only access/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /admin access/i })).not.toBeInTheDocument();
   });
 
   it('renders the connected agent home with compact quick actions', async () => {
