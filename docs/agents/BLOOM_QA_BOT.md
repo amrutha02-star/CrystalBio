@@ -221,12 +221,14 @@ Each report must include:
 
 ## Bloom's own maintained Markdown files
 
-Bloom must maintain two records:
+Bloom must maintain three records:
 
 1. Repo record: this file and QA reports under `docs/qa-runs/`.
-2. Bloom profile record: `/root/workspace/.hermes/profiles/bloom/BLOOM_QA_LOG.md`.
+2. Bloom profile QA record: `/root/workspace/.hermes/profiles/bloom/BLOOM_QA_LOG.md`.
+3. Bloom live user tracker: `/root/workspace/.hermes/profiles/bloom/BLOOM_LIVE_USER_TRACKER.md`.
 
 The Bloom profile log should keep a simple running index of QA rounds, bugs found, retests, and open questions.
+The live user tracker is updated by the watchdog from server logs. It records logged-in accounts, failed login attempts, and recent user-facing errors without storing passwords or form contents.
 
 ## What Bloom must not do
 

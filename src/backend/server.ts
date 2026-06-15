@@ -3,7 +3,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { createCrystalBioPersistentHttpApp } from './crystalBioPersistentHttpApp';
 import { createCrystalBioMailerFromEnv } from './crystalBioMailer';
-import { createJsonlClientErrorLogStore } from './crystalBioClientErrorLogStore';
+import { createJsonlClientErrorLogStore, createJsonlLoginActivityLogStore } from './crystalBioClientErrorLogStore';
 import { JsonFileCrystalBioStore } from './crystalBioPersistence';
 
 const main = async () => {
@@ -12,6 +12,7 @@ const main = async () => {
   const allowedOrigin = process.env.CRYSTALBIO_ALLOWED_ORIGIN ?? 'http://localhost:5173';
   const databasePath = resolve(process.env.CRYSTALBIO_DB_PATH ?? 'data/crystalbio-db.json');
   const clientErrorLogPath = resolve(process.env.CRYSTALBIO_CLIENT_ERROR_LOG_PATH ?? 'data/crystalbio-client-errors.jsonl');
+  const loginActivityLogPath = resolve(process.env.CRYSTALBIO_LOGIN_ACTIVITY_LOG_PATH ?? 'data/crystalbio-login-activity.jsonl');
   const seedDemoUsers = process.env.CRYSTALBIO_SEED_DEMO === 'true';
   const requestLimitBytes = Number(process.env.CRYSTALBIO_REQUEST_LIMIT_BYTES ?? 1024 * 1024);
   const pilotPasswordPrefix = process.env.CRYSTALBIO_DEMO_PASSWORD;
@@ -23,7 +24,16 @@ const main = async () => {
 
   const store = new JsonFileCrystalBioStore(databasePath);
   const clientErrorLogStore = createJsonlClientErrorLogStore(clientErrorLogPath);
-  const app = createCrystalBioPersistentHttpApp(store, { allowedOrigin, host, requestLimitBytes, mailer, appBaseUrl, clientErrorLogStore });
+  const loginActivityLogStore = createJsonlLoginActivityLogStore(loginActivityLogPath);
+  const app = createCrystalBioPersistentHttpApp(store, {
+    allowedOrigin,
+    host,
+    requestLimitBytes,
+    mailer,
+    appBaseUrl,
+    clientErrorLogStore,
+    loginActivityLogStore,
+  });
 
   if (seedDemoUsers && app.backend.exportState().agents.length === 0) {
     const seededCredentials: Array<{ name: string; email: string; password: string }> = [];
@@ -64,6 +74,7 @@ const main = async () => {
   console.log(`Allowed frontend origin: ${allowedOrigin}`);
   console.log(`Database file: ${databasePath}`);
   console.log(`Live user error log file: ${clientErrorLogPath}`);
+  console.log(`Login activity log file: ${loginActivityLogPath}`);
 
   const shutdown = async () => {
     await app.close();

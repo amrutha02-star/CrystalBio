@@ -27,6 +27,12 @@ If Bloom notices a live-user problem during the day, Bloom should record it here
 
 The app now has app-side logging for Bloom. It records serious user-facing app/API failures without saving passwords or form contents. Bloom’s watcher checks the server-side log and adds serious recent issues here.
 
+Bloom also keeps `/root/workspace/.hermes/profiles/bloom/BLOOM_LIVE_USER_TRACKER.md` updated from server-side logs. That tracker shows:
+
+- which accounts have logged in,
+- failed login attempts by email,
+- recent user-facing errors connected to the logged-in account when available.
+
 For live-user problems, Bloom should include:
 
 - Time noticed:

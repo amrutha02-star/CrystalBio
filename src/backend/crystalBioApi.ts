@@ -21,9 +21,25 @@ type ClientErrorEvent = {
   role?: Agent['role'];
 };
 
+type LoginActivityEvent = {
+  id: string;
+  createdAt: string;
+  email?: string;
+  success: boolean;
+  message: string;
+  agentId?: string;
+  agentName?: string;
+  role?: Agent['role'];
+};
+
 export type ClientErrorLogStore = {
   add(event: ClientErrorEvent): void;
   list(limit?: number): ClientErrorEvent[];
+};
+
+export type LoginActivityLogStore = {
+  add(event: LoginActivityEvent): void;
+  list(limit?: number): LoginActivityEvent[];
 };
 
 const createMemoryClientErrorLogStore = (): ClientErrorLogStore => {
@@ -33,6 +49,18 @@ const createMemoryClientErrorLogStore = (): ClientErrorLogStore => {
       events.push(event);
     },
     list(limit = 50) {
+      return events.slice(-limit).reverse();
+    },
+  };
+};
+
+const createMemoryLoginActivityLogStore = (): LoginActivityLogStore => {
+  const events: LoginActivityEvent[] = [];
+  return {
+    add(event) {
+      events.push(event);
+    },
+    list(limit = 100) {
       return events.slice(-limit).reverse();
     },
   };
@@ -118,6 +146,15 @@ const buildClientErrorEvent = (body: Record<string, unknown>, session?: ReturnTy
   ...(session ? { agentId: session.agentId, agentName: session.agentName, role: session.role } : {}),
 });
 
+const buildLoginActivityEvent = (input: { email?: string; success: boolean; message: string; session?: ReturnType<Backend['getSession']> }): LoginActivityEvent => ({
+  id: `login-activity-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+  createdAt: new Date().toISOString(),
+  ...(input.email ? { email: input.email.trim().toLowerCase().slice(0, 200) } : {}),
+  success: input.success,
+  message: input.message.slice(0, 300),
+  ...(input.session ? { agentId: input.session.agentId, agentName: input.session.agentName, role: input.session.role } : {}),
+});
+
 const shortDateLabel = (value?: string) => value || 'No date set';
 
 const compactDetailRows = (rows: Array<[string, unknown]>) => rows
@@ -142,9 +179,10 @@ const serviceVisitStatus = (nextAction: string) => {
   return 'Next visit needed';
 };
 
-export function createCrystalBioApi(backend: Backend, options: { mailer?: CrystalBioMailer; appBaseUrl?: string; clientErrorLogStore?: ClientErrorLogStore } = {}) {
+export function createCrystalBioApi(backend: Backend, options: { mailer?: CrystalBioMailer; appBaseUrl?: string; clientErrorLogStore?: ClientErrorLogStore; loginActivityLogStore?: LoginActivityLogStore } = {}) {
   const mailer = options.mailer;
   const clientErrorLogStore = options.clientErrorLogStore ?? createMemoryClientErrorLogStore();
+  const loginActivityLogStore = options.loginActivityLogStore ?? createMemoryLoginActivityLogStore();
   const appBaseUrl = options.appBaseUrl ?? 'https://work.convogenie.ai';
   const setupLinkFor = (agent: Agent) => agent.inviteToken ? `${appBaseUrl}/?setupToken=${encodeURIComponent(agent.inviteToken)}` : appBaseUrl;
   const sendSetupEmail = (agent: Agent, reason: 'invite' | 'reset' | 'login') => {
@@ -190,8 +228,15 @@ export function createCrystalBioApi(backend: Backend, options: { mailer?: Crysta
           if (!body.email || !String(body.email).trim()) throw new ValidationError('Email is required');
           if (!body.password || !String(body.password).trim()) throw new ValidationError('Password is required');
           const loginInput: LoginInput = { email: String(body.email), password: String(body.password) };
-          const session = backend.login(loginInput);
-          return ok({ session });
+          const requestedEmail = String(body.email).trim().toLowerCase();
+          try {
+            const session = backend.login(loginInput);
+            loginActivityLogStore.add(buildLoginActivityEvent({ email: requestedEmail, success: true, message: 'Login successful', session }));
+            return ok({ session });
+          } catch (error) {
+            loginActivityLogStore.add(buildLoginActivityEvent({ email: requestedEmail, success: false, message: error instanceof Error ? error.message : 'Login failed' }));
+            throw error;
+          }
         }
 
         if (request.method === 'GET' && pathname === '/auth/session') {
@@ -218,6 +263,13 @@ export function createCrystalBioApi(backend: Backend, options: { mailer?: Crysta
           backend.getAdminReport(session.agentId, { fromDate: '1900-01-01', toDate: '2999-12-31' });
           const limit = Number.parseInt(query.limit ?? '50', 10);
           return ok({ events: clientErrorLogStore.list(Number.isFinite(limit) ? limit : 50) });
+        }
+
+        if (request.method === 'GET' && pathname === '/admin/login-activity') {
+          const session = sessionFor(request);
+          backend.getAdminReport(session.agentId, { fromDate: '1900-01-01', toDate: '2999-12-31' });
+          const limit = Number.parseInt(query.limit ?? '100', 10);
+          return ok({ events: loginActivityLogStore.list(Number.isFinite(limit) ? limit : 100) });
         }
 
         if (request.method === 'POST' && pathname === '/auth/request-link') {

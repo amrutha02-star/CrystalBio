@@ -45,6 +45,31 @@ describe('CrystalBio API layer', () => {
     expect(failed.body.error).toBe('Invalid email or password');
   });
 
+  it('records login activity for Bloom without storing passwords', () => {
+    const backend = createCrystalBioBackend();
+    const admin = createLoginAgent(backend, { name: 'Admin User', role: 'admin', email: 'admin.loginlog@crystalbio.in' });
+    const agent = createLoginAgent(backend, { name: 'Rahul', role: 'sales', email: 'rahul.loginlog@crystalbio.in' });
+    const events: any[] = [];
+    const api = createCrystalBioApi(backend, {
+      loginActivityLogStore: {
+        add(event) { events.push(event); },
+        list(limit = 100) { return events.slice(-limit).reverse(); },
+      },
+    });
+
+    const success = api.handle({ method: 'POST', path: '/auth/login', body: { email: agent.email, password } });
+    const failed = api.handle({ method: 'POST', path: '/auth/login', body: { email: agent.email, password: 'wrong-password' } });
+    const adminToken = api.handle({ method: 'POST', path: '/auth/login', body: { email: admin.email, password } }).body.session.token;
+    const activity = api.handle({ method: 'GET', path: '/admin/login-activity?limit=10', headers: { authorization: `Bearer ${adminToken}` } });
+
+    expect(success.status).toBe(200);
+    expect(failed.status).toBe(400);
+    expect(activity.status).toBe(200);
+    expect(activity.body.events.some((event: any) => event.success && event.agentName === 'Rahul')).toBe(true);
+    expect(activity.body.events.some((event: any) => !event.success && event.email === agent.email)).toBe(true);
+    expect(JSON.stringify(activity.body.events)).not.toContain('wrong-password');
+  });
+
   it('validates saved sessions against the live backend before trusting stored profile data', () => {
     const backend = createCrystalBioBackend();
     const admin = createLoginAgent(backend, { name: 'Admin User', role: 'admin', email: 'admin.session@crystalbio.in' });
