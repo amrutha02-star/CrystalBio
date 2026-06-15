@@ -85,6 +85,32 @@ export type FrontendAdminReport = {
   followUpsDue: string[];
 };
 
+export type FrontendLoginActivityEvent = {
+  id: string;
+  createdAt: string;
+  email?: string;
+  success: boolean;
+  message: string;
+  agentId?: string;
+  agentName?: string;
+  role?: 'sales' | 'service' | 'both' | 'admin';
+};
+
+export type FrontendClientErrorEvent = {
+  id: string;
+  createdAt: string;
+  type: string;
+  severity: 'critical' | 'high' | 'medium' | 'low';
+  journey: string;
+  message: string;
+  path?: string;
+  status?: number;
+  pageUrl?: string;
+  agentId?: string;
+  agentName?: string;
+  role?: 'sales' | 'service' | 'both' | 'admin';
+};
+
 export type FrontendSalesNextAction = 'follow_up_needed' | 'no_follow_up' | 'closed';
 export type FrontendServiceType = 'installation' | 'preventive_maintenance' | 'breakdown' | 'repair' | 'calibration' | 'demo' | 'training' | 'other';
 export type FrontendServiceNextAction = 'parts_required' | 'next_visit_needed' | 'no_follow_up' | 'closed';
@@ -535,6 +561,18 @@ export function createCrystalBioFrontendApi(options: ApiClientOptions = {}) {
       if (!baseUrl) return [];
       const result = await get<{ leaveRequests: FrontendLeaveRequest[] }>('/admin/leave-requests', session.token);
       return result.leaveRequests;
+    },
+
+    async getAdminLoginActivity(session: FrontendSession): Promise<FrontendLoginActivityEvent[]> {
+      if (!baseUrl) return [];
+      const result = await get<{ events: FrontendLoginActivityEvent[] }>('/admin/login-activity?limit=120', session.token);
+      return result.events;
+    },
+
+    async getAdminClientErrors(session: FrontendSession): Promise<FrontendClientErrorEvent[]> {
+      if (!baseUrl) return [];
+      const result = await get<{ events: FrontendClientErrorEvent[] }>('/admin/client-error-logs?limit=80', session.token);
+      return result.events;
     },
 
     async reviewLeaveRequest(session: FrontendSession, leaveRequestId: string, status: 'approved' | 'rejected'): Promise<FrontendLeaveRequest> {

@@ -1,6 +1,6 @@
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
-import { CalendarCheck, CheckCircle2, ChevronLeft, ClipboardList, Clock3, FileText, Home, MapPin, Plus, Search, UserRound, UsersRound, X } from 'lucide-react';
-import { crystalBioFrontendApi, type FrontendAdminReport, type FrontendAdminSeatInvite, type FrontendAttendance, type FrontendGps, type FrontendLeaveRequest, type FrontendLoginInput, type FrontendRecentVisitEntry, type FrontendSalesSaveResult, type FrontendSalesNextAction, type FrontendServiceSaveResult, type FrontendServiceNextAction, type FrontendServiceType, type FrontendSession } from './crystalBioFrontendApi';
+import { Activity, AlertTriangle, CalendarCheck, CheckCircle2, ChevronLeft, ClipboardList, Clock3, FileText, Home, MapPin, Plus, Search, UserRound, UsersRound, X } from 'lucide-react';
+import { crystalBioFrontendApi, type FrontendAdminReport, type FrontendAdminSeatInvite, type FrontendAttendance, type FrontendClientErrorEvent, type FrontendGps, type FrontendLeaveRequest, type FrontendLoginActivityEvent, type FrontendLoginInput, type FrontendRecentVisitEntry, type FrontendSalesSaveResult, type FrontendSalesNextAction, type FrontendServiceSaveResult, type FrontendServiceNextAction, type FrontendServiceType, type FrontendSession } from './crystalBioFrontendApi';
 
 type AppScreen = 'login' | 'home' | 'visits' | 'sales' | 'service' | 'checkin' | 'attendance' | 'leave' | 'reports' | 'profile' | 'admin';
 type ReportPeriod = 'today' | 'week' | 'month' | 'custom';
@@ -10,7 +10,7 @@ type AdminAgentFilter = 'all' | 'sales' | 'service';
 type AdminVisitTypeFilter = 'all' | 'Sales' | 'Service';
 type AdminFieldEntryScope = 'mine' | 'all';
 type AdminReportScope = 'office' | 'sales' | 'service' | 'agent';
-type AdminTab = 'overview' | 'fieldEntry' | 'agents' | 'approvals' | 'adminReports' | 'profiles';
+type AdminTab = 'overview' | 'fieldEntry' | 'agents' | 'approvals' | 'adminReports' | 'monitoring' | 'profiles';
 type AdminApprovalId = string;
 type AdminAgentsView = 'list' | 'add' | 'profile' | 'invite';
 type AdminSeatStatus = 'invited' | 'active' | 'inactive' | 'expired';
@@ -69,7 +69,7 @@ const sampleAttendanceLogs = [
 const screenOptions: AppScreen[] = ['login', 'home', 'visits', 'sales', 'service', 'checkin', 'attendance', 'leave', 'reports', 'profile', 'admin'];
 const sessionStorageKey = 'crystalbio.session.v1';
 const screenStorageKey = 'crystalbio.screen.v1';
-const appBuildVersion = '20260615053142';
+const appBuildVersion = '20260615092000';
 
 const isFrontendSession = (value: unknown): value is FrontendSession => {
   const candidate = value as Partial<FrontendSession> | null;
@@ -139,7 +139,7 @@ const getInitialScreen = (storedSession: FrontendSession | null = readStoredSess
 const getInitialAdminTab = (): AdminTab => {
   if (typeof window === 'undefined') return 'overview';
   const requestedTab = new URLSearchParams(window.location.search).get('adminTab') as AdminTab | null;
-  return requestedTab && ['overview', 'fieldEntry', 'agents', 'approvals', 'adminReports', 'profiles'].includes(requestedTab) ? requestedTab : 'overview';
+  return requestedTab && ['overview', 'fieldEntry', 'agents', 'approvals', 'adminReports', 'monitoring', 'profiles'].includes(requestedTab) ? requestedTab : 'overview';
 };
 
 const getInitialAdminApproval = (): AdminApprovalId | null => {
@@ -152,6 +152,21 @@ const formatShortDate = (value: string) => {
   const [year, month, day] = value.split('-').map(Number);
   if (!year || !month || !day) return value;
   return new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short' }).format(new Date(Date.UTC(year, month - 1, day)));
+};
+
+const formatMonitorWhen = (value?: string) => {
+  if (!value) return 'Time not recorded';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }).format(date);
+};
+
+const roleLabel = (role?: FrontendSession['role']) => {
+  if (role === 'admin') return 'Admin';
+  if (role === 'sales') return 'Sales';
+  if (role === 'service') return 'Service';
+  if (role === 'both') return 'Sales + service';
+  return 'User';
 };
 
 const formatVisitWhen = (entry: Pick<FrontendRecentVisitEntry, 'visitDate' | 'visitTime'>) => {
@@ -278,6 +293,9 @@ function App() {
   const [leaveNote, setLeaveNote] = useState('');
   const [leaveRequest, setLeaveRequest] = useState<FrontendLeaveRequest | null>(null);
   const [adminLeaveRequests, setAdminLeaveRequests] = useState<FrontendLeaveRequest[]>([]);
+  const [adminLoginActivity, setAdminLoginActivity] = useState<FrontendLoginActivityEvent[]>([]);
+  const [adminClientErrors, setAdminClientErrors] = useState<FrontendClientErrorEvent[]>([]);
+  const [isAdminMonitorRefreshing, setIsAdminMonitorRefreshing] = useState(false);
   const [reviewedAdminLeaveRequests, setReviewedAdminLeaveRequests] = useState<FrontendLeaveRequest[]>([]);
   const [isLeaveSubmitting, setIsLeaveSubmitting] = useState(false);
   const [visitSearch, setVisitSearch] = useState('');
@@ -424,15 +442,19 @@ function App() {
   const refreshAdminData = async (adminSession = session) => {
     if (!adminSession || adminSession.role !== 'admin') return;
     try {
-      const [requests, report, agents, teamVisits] = await Promise.all([
+      const [requests, report, agents, teamVisits, loginActivity, clientErrors] = await Promise.all([
         crystalBioFrontendApi.getAdminLeaveRequests(adminSession),
         crystalBioFrontendApi.getAdminReport(adminSession, { fromDate: adminReportFromDate, toDate: adminReportToDate }),
         crystalBioFrontendApi.getAdminAgents(adminSession),
         crystalBioFrontendApi.getRecentVisits(adminSession, { scope: 'team' }),
+        crystalBioFrontendApi.getAdminLoginActivity(adminSession),
+        crystalBioFrontendApi.getAdminClientErrors(adminSession),
       ]);
       setAdminLeaveRequests(requests);
       setAdminReport(report);
       setAdminTeamRecentVisitEntries(teamVisits);
+      setAdminLoginActivity(loginActivity);
+      setAdminClientErrors(clientErrors);
       const activityByAgentId = new Map(report.agentSummaries.map((summary) => [summary.agentId, summary]));
       setAdminSeats(agents.map((agent) => {
         const summary = activityByAgentId.get(agent.id);
@@ -459,6 +481,8 @@ function App() {
         setAdminSeats([]);
         setAdminTeamRecentVisitEntries([]);
         setAdminLeaveRequests([]);
+        setAdminLoginActivity([]);
+        setAdminClientErrors([]);
         setScreen('login');
         setStatusMessage('Please log in again to refresh admin profiles.');
         setScreenNotice({ title: 'Login refreshed', message: 'Please log in again. The latest user profiles will load after login.', tone: 'warning' });
@@ -2286,6 +2310,37 @@ function App() {
       }
       setScreenNotice(null);
     };
+    const successfulLoginEvents = adminLoginActivity.filter((event) => event.success);
+    const failedLoginEvents = adminLoginActivity.filter((event) => !event.success);
+    const seriousClientErrors = adminClientErrors.filter((event) => event.severity === 'critical' || event.severity === 'high');
+    const lastMonitorEvent = [...adminLoginActivity, ...adminClientErrors]
+      .sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime())[0];
+    const monitoringCards = [
+      { label: 'Logged in', value: String(successfulLoginEvents.length), hint: 'Recent successful account logins', tone: 'good' },
+      { label: 'Failed login', value: String(failedLoginEvents.length), hint: failedLoginEvents.length ? 'Needs a quick check' : 'No failed attempts', tone: failedLoginEvents.length ? 'warn' : 'good' },
+      { label: 'App errors', value: String(adminClientErrors.length), hint: seriousClientErrors.length ? `${seriousClientErrors.length} serious` : 'No serious issue', tone: seriousClientErrors.length ? 'warn' : 'good' },
+    ];
+    const refreshMonitoring = async () => {
+      if (!session || session.role !== 'admin') {
+        setScreenNotice({ title: 'Admin login needed', message: 'Login as admin before opening monitoring.', tone: 'warning' });
+        return;
+      }
+      setIsAdminMonitorRefreshing(true);
+      try {
+        const [loginActivity, clientErrors] = await Promise.all([
+          crystalBioFrontendApi.getAdminLoginActivity(session),
+          crystalBioFrontendApi.getAdminClientErrors(session),
+        ]);
+        setAdminLoginActivity(loginActivity);
+        setAdminClientErrors(clientErrors);
+        setScreenNotice({ title: 'Monitoring refreshed', message: 'Latest login and error records are showing.', tone: 'success' });
+      } catch (error) {
+        rememberLaunchIssue('Monitoring refresh', error);
+        setScreenNotice({ title: 'Refresh failed', message: error instanceof Error ? error.message : 'Could not load monitoring records.', tone: 'error' });
+      } finally {
+        setIsAdminMonitorRefreshing(false);
+      }
+    };
     const reportVisitCount = reportSubmittedEntries.length || reportSalesVisits + reportServiceVisits;
     const reportChartMax = Math.max(reportSalesVisits, reportServiceVisits, reportReadyAgents, reportReviewAgents, 1);
     const chartWidth = (value: number) => `${Math.max(value === 0 ? 0 : 8, Math.round((value / reportChartMax) * 100))}%`;
@@ -2448,10 +2503,11 @@ function App() {
     const showAgents = adminTab === 'agents';
     const showApprovals = adminTab === 'overview' || adminTab === 'approvals';
     const showReports = adminTab === 'adminReports';
+    const showMonitoring = adminTab === 'monitoring';
     const showProfiles = adminTab === 'profiles';
 
     return (
-      <ScreenPanel title={adminTab === 'overview' ? 'Admin overview' : adminTab === 'fieldEntry' ? 'Field entry' : adminTab === 'agents' ? 'Agents' : adminTab === 'approvals' ? 'Approvals' : adminTab === 'profiles' ? 'Profiles' : 'Admin reports'} subtitle="">
+      <ScreenPanel title={adminTab === 'overview' ? 'Admin overview' : adminTab === 'fieldEntry' ? 'Field entry' : adminTab === 'agents' ? 'Agents' : adminTab === 'approvals' ? 'Approvals' : adminTab === 'monitoring' ? 'Live monitor' : adminTab === 'profiles' ? 'Profiles' : 'Admin reports'} subtitle="">
         {(showOverview || showReports) && (
           <>
             {showOverview && (
@@ -2514,6 +2570,66 @@ function App() {
             )}
 
             {showReports && renderAdminDateFilter('Report date range')}
+          </>
+        )}
+
+        {showMonitoring && (
+          <>
+            <section className="admin-monitor-hero-card">
+              <div>
+                <p>Bloom live view</p>
+                <strong>{seriousClientErrors.length ? 'Needs attention' : 'All clear now'}</strong>
+                <span>{lastMonitorEvent ? `Last activity: ${formatMonitorWhen(lastMonitorEvent.createdAt)}` : 'No login or error activity recorded yet.'}</span>
+              </div>
+              <span className={seriousClientErrors.length ? 'admin-monitor-icon admin-monitor-icon-warn' : 'admin-monitor-icon'}>
+                {seriousClientErrors.length ? <AlertTriangle size={22} /> : <Activity size={22} />}
+              </span>
+            </section>
+            <div className="admin-monitor-grid">
+              {monitoringCards.map((card) => (
+                <article key={card.label} className={`admin-monitor-card admin-monitor-card-${card.tone}`}>
+                  <strong>{card.value}</strong>
+                  <span>{card.label}</span>
+                  <small>{card.hint}</small>
+                </article>
+              ))}
+            </div>
+            <button type="button" className="secondary-action admin-monitor-refresh" disabled={isAdminMonitorRefreshing} onClick={() => void refreshMonitoring()}>
+              {isAdminMonitorRefreshing ? 'Refreshing…' : 'Refresh monitoring'}
+            </button>
+            <section className="admin-monitor-list-card" aria-label="Logged-in accounts">
+              <div className="admin-report-heading"><label>Logged-in accounts</label><span>{successfulLoginEvents.length}</span></div>
+              <div className="admin-monitor-list">
+                {successfulLoginEvents.length ? successfulLoginEvents.slice(0, 12).map((event) => (
+                  <article key={event.id} className="admin-monitor-row">
+                    <span className="chip chip-soft">Logged in</span>
+                    <div><strong>{event.agentName || event.email || 'Account'}</strong><p>{event.email || roleLabel(event.role)} • {formatMonitorWhen(event.createdAt)}</p><small>{roleLabel(event.role)}</small></div>
+                  </article>
+                )) : <div className="empty-state">No successful logins recorded yet.</div>}
+              </div>
+            </section>
+            <section className="admin-monitor-list-card" aria-label="Failed login attempts">
+              <div className="admin-report-heading"><label>Failed login attempts</label><span>{failedLoginEvents.length}</span></div>
+              <div className="admin-monitor-list">
+                {failedLoginEvents.length ? failedLoginEvents.slice(0, 8).map((event) => (
+                  <article key={event.id} className="admin-monitor-row admin-monitor-row-warn">
+                    <span className="chip chip-warning">Check</span>
+                    <div><strong>{event.email || 'Unknown email'}</strong><p>{formatMonitorWhen(event.createdAt)}</p><small>{event.message}</small></div>
+                  </article>
+                )) : <div className="empty-state">No failed login attempts recorded.</div>}
+              </div>
+            </section>
+            <section className="admin-monitor-list-card" aria-label="User-facing app errors">
+              <div className="admin-report-heading"><label>App errors</label><span>{adminClientErrors.length}</span></div>
+              <div className="admin-monitor-list">
+                {adminClientErrors.length ? adminClientErrors.slice(0, 10).map((event) => (
+                  <article key={event.id} className={event.severity === 'critical' || event.severity === 'high' ? 'admin-monitor-row admin-monitor-row-warn' : 'admin-monitor-row'}>
+                    <span className={event.severity === 'critical' || event.severity === 'high' ? 'chip chip-warning' : 'chip chip-info'}>{event.severity}</span>
+                    <div><strong>{event.journey || 'App issue'}</strong><p>{event.agentName || roleLabel(event.role)} • {formatMonitorWhen(event.createdAt)}</p><small>{event.message}{event.status ? ` • ${event.status}` : ''}</small></div>
+                  </article>
+                )) : <div className="empty-state">No user-facing errors recorded.</div>}
+              </div>
+            </section>
           </>
         )}
 
@@ -2830,7 +2946,7 @@ function App() {
     <main className="app-shell agent-only-shell">
       <section className="preview-note">
         <p className="eyebrow">CrystalBio Field Hub</p>
-        <h1>{screen === 'login' ? 'Login screen' : screen === 'admin' ? (adminTab === 'adminReports' ? 'Admin reports screen' : adminTab === 'fieldEntry' ? 'Admin field entry screen' : adminTab === 'approvals' ? 'Admin approvals screen' : adminTab === 'agents' ? 'Admin agents screen' : adminTab === 'profiles' ? 'Admin profiles screen' : 'Admin overview screen') : screen === 'profile' ? 'Agent profile screen' : 'Agent home screen'}</h1>
+        <h1>{screen === 'login' ? 'Login screen' : screen === 'admin' ? (adminTab === 'adminReports' ? 'Admin reports screen' : adminTab === 'monitoring' ? 'Admin monitoring screen' : adminTab === 'fieldEntry' ? 'Admin field entry screen' : adminTab === 'approvals' ? 'Admin approvals screen' : adminTab === 'agents' ? 'Admin agents screen' : adminTab === 'profiles' ? 'Admin profiles screen' : 'Admin overview screen') : screen === 'profile' ? 'Agent profile screen' : 'Agent home screen'}</h1>
         <p>{screen === 'login' ? 'Role-based entry for field agents and admin users.' : screen === 'admin' ? 'Owner view for team attendance, leave, and field reports.' : 'Mobile workspace for field attendance, visits, leave, and reports.'}</p>
       </section>
 
@@ -2881,6 +2997,7 @@ function App() {
                 { label: 'Agents', tab: 'agents' as AdminTab, icon: UsersRound },
                 { label: 'Approvals', tab: 'approvals' as AdminTab, icon: CalendarCheck },
                 { label: 'Reports', tab: 'adminReports' as AdminTab, icon: FileText },
+                { label: 'Monitor', tab: 'monitoring' as AdminTab, icon: Activity },
               ].map((item) => {
                 const Icon = item.icon;
                 const selected = adminTab === item.tab;
