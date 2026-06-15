@@ -38,7 +38,8 @@ CRYSTALBIO_BACKUP_RETENTION_DAYS=30
 The monitor checks:
 
 - API uptime via `/health`,
-- optional real login smoke test if monitor credentials are provided.
+- optional real login smoke test if monitor credentials are provided,
+- optional app-side live-user error logs when `CRYSTALBIO_MONITOR_CLIENT_ERRORS=true` is enabled.
 
 Basic uptime check:
 
@@ -54,6 +55,18 @@ CRYSTALBIO_MONITOR_EMAIL=monitor@crystalbio.in \
 CRYSTALBIO_MONITOR_PASSWORD='private-password' \
 npm run monitor:api
 ```
+
+Uptime + login + live-user error monitoring for Bloom:
+
+```bash
+CRYSTALBIO_API_URL=https://work-api.convogenie.ai \
+CRYSTALBIO_MONITOR_EMAIL=monitor@crystalbio.in \
+CRYSTALBIO_MONITOR_PASSWORD='private-password' \
+CRYSTALBIO_MONITOR_CLIENT_ERRORS=true \
+npm run monitor:api
+```
+
+App-side live-user errors are written by the backend to `CRYSTALBIO_CLIENT_ERROR_LOG_PATH` or, by default, `data/crystalbio-client-errors.jsonl`. On the live server, keep this outside the app bundle, for example `/var/lib/crystalbio/crystalbio-client-errors.jsonl`. Bloom’s daytime watcher can read this file directly on the server and add serious recent issues to `docs/BUG_INTAKE_BOARD.md`.
 
 Recommended cron entry every 5 minutes:
 

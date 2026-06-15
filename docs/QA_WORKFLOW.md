@@ -4,12 +4,15 @@ This is the working QA process for CrystalBio once backend/app development start
 
 ## Short version
 
-Use two agents with separate responsibilities:
+Use three separate responsibilities:
 
-1. **Testing Agent** — checks the app like a real user and documents everything on GitHub.
-2. **Bug-Fixer Agent** — fixes confirmed bugs, but never verifies its own work.
+1. **Bloom / Testing Agent** — checks the app like a real user, finds bugs, collects evidence, writes QA reports, updates its Bloom QA log, and records live-user problems in `docs/BUG_INTAKE_BOARD.md`.
+2. **Periwinkle / Lead Agent** — reviews Bloom's bugs, decides what matters, approves what Iris may fix, and gives final acceptance.
+3. **Iris / Bug-Fixer Agent** — fixes confirmed bugs only after Periwinkle or Rahul approves them.
 
-A bug is only considered fixed after the Testing Agent retests it and records evidence.
+A bug is only considered fixed after Iris fixes it, Bloom retests it, and Periwinkle/Rahul accepts it.
+
+During launch week, routine QA/fixing should happen at night because real team members use the app during the day. See `docs/LAUNCH_WEEK_NIGHT_QA_SCHEDULE.md`.
 
 ---
 

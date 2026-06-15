@@ -3,6 +3,41 @@ import type { CrystalBioMailer } from './crystalBioMailer';
 
 type Backend = ReturnType<typeof createCrystalBioBackend>;
 
+type ClientErrorSeverity = 'critical' | 'high' | 'medium' | 'low';
+
+type ClientErrorEvent = {
+  id: string;
+  createdAt: string;
+  type: string;
+  severity: ClientErrorSeverity;
+  journey: string;
+  message: string;
+  path?: string;
+  status?: number;
+  pageUrl?: string;
+  userAgent?: string;
+  agentId?: string;
+  agentName?: string;
+  role?: Agent['role'];
+};
+
+export type ClientErrorLogStore = {
+  add(event: ClientErrorEvent): void;
+  list(limit?: number): ClientErrorEvent[];
+};
+
+const createMemoryClientErrorLogStore = (): ClientErrorLogStore => {
+  const events: ClientErrorEvent[] = [];
+  return {
+    add(event) {
+      events.push(event);
+    },
+    list(limit = 50) {
+      return events.slice(-limit).reverse();
+    },
+  };
+};
+
 export type ApiRequest = {
   method: 'GET' | 'POST' | 'PATCH';
   path: string;
@@ -58,7 +93,36 @@ const requireLeaveReviewStatus = (status: unknown) => {
   return status;
 };
 
+const asText = (value: unknown, fallback = '') => (typeof value === 'string' ? value.trim().slice(0, 500) : fallback);
+
+const asSeverity = (value: unknown): ClientErrorSeverity => (
+  value === 'critical' || value === 'high' || value === 'medium' || value === 'low' ? value : 'medium'
+);
+
+const asStatus = (value: unknown) => {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return undefined;
+  return Math.max(0, Math.min(599, Math.trunc(value)));
+};
+
+const buildClientErrorEvent = (body: Record<string, unknown>, session?: ReturnType<Backend['getSession']>): ClientErrorEvent => ({
+  id: `client-error-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+  createdAt: new Date().toISOString(),
+  type: asText(body.type, 'client_error') || 'client_error',
+  severity: asSeverity(body.severity),
+  journey: asText(body.journey, 'Unknown journey') || 'Unknown journey',
+  message: asText(body.message, 'User-facing app error') || 'User-facing app error',
+  ...(asText(body.path) ? { path: asText(body.path, '').slice(0, 200) } : {}),
+  ...(asStatus(body.status) !== undefined ? { status: asStatus(body.status) } : {}),
+  ...(asText(body.pageUrl) ? { pageUrl: asText(body.pageUrl, '').slice(0, 300) } : {}),
+  ...(asText(body.userAgent) ? { userAgent: asText(body.userAgent, '').slice(0, 300) } : {}),
+  ...(session ? { agentId: session.agentId, agentName: session.agentName, role: session.role } : {}),
+});
+
 const shortDateLabel = (value?: string) => value || 'No date set';
+
+const compactDetailRows = (rows: Array<[string, unknown]>) => rows
+  .map(([label, value]) => ({ label, value: typeof value === 'string' ? value.trim() : String(value ?? '').trim() }))
+  .filter((row) => row.value && row.value !== 'undefined' && row.value !== 'null');
 
 const photoPayloadFromVisit = (photos?: Array<{ source: 'camera' | 'upload'; fileName: string; contentType?: string; sizeBytes?: number; dataUrl?: string }>) => {
   const photo = photos?.[0];
@@ -78,8 +142,9 @@ const serviceVisitStatus = (nextAction: string) => {
   return 'Next visit needed';
 };
 
-export function createCrystalBioApi(backend: Backend, options: { mailer?: CrystalBioMailer; appBaseUrl?: string } = {}) {
+export function createCrystalBioApi(backend: Backend, options: { mailer?: CrystalBioMailer; appBaseUrl?: string; clientErrorLogStore?: ClientErrorLogStore } = {}) {
   const mailer = options.mailer;
+  const clientErrorLogStore = options.clientErrorLogStore ?? createMemoryClientErrorLogStore();
   const appBaseUrl = options.appBaseUrl ?? 'https://work.convogenie.ai';
   const setupLinkFor = (agent: Agent) => agent.inviteToken ? `${appBaseUrl}/?setupToken=${encodeURIComponent(agent.inviteToken)}` : appBaseUrl;
   const sendSetupEmail = (agent: Agent, reason: 'invite' | 'reset' | 'login') => {
@@ -105,7 +170,7 @@ export function createCrystalBioApi(backend: Backend, options: { mailer?: Crysta
 
   const fail = (error: unknown): ApiResponse => {
     if (error instanceof ValidationError) {
-      if (error.message === 'Login session is required' || error.message === 'Valid login session is required') {
+      if (error.message === 'Login session is required' || error.message === 'Valid login session is required' || error.message === 'Active logged-in agent is required') {
         return { status: 401, body: { error: 'Login session is required' } };
       }
       if (isAdminAccessError(error)) return { status: 403, body: { error: error.message } };
@@ -127,6 +192,32 @@ export function createCrystalBioApi(backend: Backend, options: { mailer?: Crysta
           const loginInput: LoginInput = { email: String(body.email), password: String(body.password) };
           const session = backend.login(loginInput);
           return ok({ session });
+        }
+
+        if (request.method === 'GET' && pathname === '/auth/session') {
+          const session = sessionFor(request);
+          return ok({ session });
+        }
+
+        if (request.method === 'POST' && pathname === '/client-error-logs') {
+          const body = requireBody(request.body);
+          let session;
+          try {
+            const token = parseBearerToken(request.headers);
+            if (token) session = backend.getSession(token);
+          } catch {
+            session = undefined;
+          }
+          const event = buildClientErrorEvent(body, session);
+          clientErrorLogStore.add(event);
+          return ok({ logged: true, event }, 201);
+        }
+
+        if (request.method === 'GET' && pathname === '/admin/client-error-logs') {
+          const session = sessionFor(request);
+          backend.getAdminReport(session.agentId, { fromDate: '1900-01-01', toDate: '2999-12-31' });
+          const limit = Number.parseInt(query.limit ?? '50', 10);
+          return ok({ events: clientErrorLogStore.list(Number.isFinite(limit) ? limit : 50) });
         }
 
         if (request.method === 'POST' && pathname === '/auth/request-link') {
@@ -258,7 +349,7 @@ export function createCrystalBioApi(backend: Backend, options: { mailer?: Crysta
         if (request.method === 'GET' && pathname === '/field-visits') {
           const session = sessionFor(request);
           const state = backend.exportState();
-          const canSeeAll = session.role === 'admin';
+          const canSeeAll = session.role === 'admin' && query.scope === 'team';
           const entries = [
             ...state.sales.flatMap((opportunity) => opportunity.visits
               .filter((visit) => canSeeAll || visit.agentId === session.agentId || opportunity.ownerAgentId === session.agentId)
@@ -269,8 +360,35 @@ export function createCrystalBioApi(backend: Backend, options: { mailer?: Crysta
                 status: salesVisitStatus(visit.nextAction),
                 next: shortDateLabel(visit.followUpDate),
                 tone: visit.nextAction === 'follow_up_needed' ? 'warning' as const : 'soft' as const,
+                agentId: visit.agentId,
                 agentName: visit.agentName,
+                visitDate: visit.visitDate,
+                visitTime: visit.visitTime,
                 photoPayload: opportunity.sitePhoto ?? photoPayloadFromVisit(visit.photos),
+                detailRows: compactDetailRows([
+                  ['Submitted by', visit.agentName],
+                  ['Visit date', visit.visitTime ? `${visit.visitDate} • ${visit.visitTime}` : visit.visitDate],
+                  ['Customer', opportunity.accountName],
+                  ['Contact person', opportunity.contactPerson],
+                  ['Phone', opportunity.phone],
+                  ['Email', opportunity.email],
+                  ['Department / address', opportunity.departmentAddress],
+                  ['Lead source', opportunity.leadSource],
+                  ['Product type', opportunity.productType],
+                  ['Brand / model', [opportunity.brandName, opportunity.equipmentModel].filter(Boolean).join(' • ')],
+                  ['Requirement', opportunity.requirement],
+                  ['Visit note', visit.note],
+                  ['Next action', salesVisitStatus(visit.nextAction)],
+                  ['Follow-up date', visit.followUpDate],
+                  ['Quote submitted', opportunity.quoteSubmitted],
+                  ['Quote status', opportunity.quoteStatus],
+                  ['Budget / proposal', opportunity.budgetaryProposal],
+                  ['Fund status', opportunity.fundStatus],
+                  ['Probability', opportunity.probability],
+                  ['Closing date', opportunity.closingDate],
+                  ['Support required', opportunity.supportRequired],
+                  ['Office notes', opportunity.officeNotes],
+                ]),
                 sortDate: `${visit.visitDate}T${visit.visitTime}`,
               }))),
             ...state.service.flatMap((record) => record.visits
@@ -282,8 +400,35 @@ export function createCrystalBioApi(backend: Backend, options: { mailer?: Crysta
                 status: serviceVisitStatus(visit.nextAction),
                 next: shortDateLabel(visit.nextVisitDate),
                 tone: visit.nextAction === 'closed' ? 'soft' as const : 'info' as const,
+                agentId: visit.agentId,
                 agentName: visit.agentName,
+                visitDate: visit.visitDate,
+                visitTime: visit.visitTime,
                 photoPayload: record.photoNote ?? photoPayloadFromVisit(visit.photos),
+                detailRows: compactDetailRows([
+                  ['Submitted by', visit.agentName],
+                  ['Visit date', visit.visitTime ? `${visit.visitDate} • ${visit.visitTime}` : visit.visitDate],
+                  ['Customer', record.customerName],
+                  ['Contact person', record.contactPerson],
+                  ['Phone', record.phone],
+                  ['Email', record.email],
+                  ['Department / address', record.departmentAddress],
+                  ['Equipment', [record.equipmentName, record.brandName, record.modelName].filter(Boolean).join(' • ')],
+                  ['Serial number', record.serialNumber],
+                  ['Issue category', record.issueCategory],
+                  ['Issue description', record.issueDescription],
+                  ['Warranty / AMC', record.warrantyAmc],
+                  ['Service type', visit.serviceType],
+                  ['Work done', visit.workDone],
+                  ['Next action', serviceVisitStatus(visit.nextAction)],
+                  ['Next visit date', visit.nextVisitDate],
+                  ['Parts required', record.partsRequired],
+                  ['Parts used', record.partsUsed],
+                  ['Machine status', record.machineStatus],
+                  ['Support note', record.supportRequiredNote],
+                  ['Final remarks', record.finalRemarks],
+                  ['Office notes', visit.officeNotes],
+                ]),
                 sortDate: `${visit.visitDate}T${visit.visitTime}`,
               }))),
           ]

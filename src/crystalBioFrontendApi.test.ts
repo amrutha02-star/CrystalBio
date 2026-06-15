@@ -62,6 +62,25 @@ describe('CrystalBio frontend API client', () => {
     );
   });
 
+  it('validates a saved browser session with the backend before trusting stored user details', async () => {
+    const fetcher = vi.fn(async () => new Response(JSON.stringify({
+      session: { token: 'token-1', agentId: 'agent_1', agentName: 'Raghavendra K', role: 'admin', email: 'sales@crystalbio.in' },
+    }), { status: 200, headers: { 'content-type': 'application/json' } })) as unknown as typeof fetch;
+    const api = createCrystalBioFrontendApi({ baseUrl: 'http://127.0.0.1:8787/', fetcher });
+
+    const session = await api.validateSession({ token: 'token-1', agentId: 'wrong-id', agentName: 'Wrong Saved User', role: 'sales', email: 'wrong@crystalbio.in' });
+
+    expect(session.agentName).toBe('Raghavendra K');
+    expect(session.role).toBe('admin');
+    expect(fetcher).toHaveBeenCalledWith(
+      'http://127.0.0.1:8787/auth/session',
+      expect.objectContaining({
+        method: 'GET',
+        headers: expect.objectContaining({ authorization: 'Bearer token-1' }),
+      }),
+    );
+  });
+
   it('fetches admin reports through configured backend with session authorization', async () => {
     const fetcher = vi.fn(async (url: RequestInfo | URL) => {
       if (String(url).endsWith('/auth/login')) {
@@ -92,6 +111,30 @@ describe('CrystalBio frontend API client', () => {
         headers: expect.objectContaining({ authorization: 'Bearer admin-token' }),
       }),
     );
+  });
+
+  it('passes selected report type when downloading admin PDF', async () => {
+    const originalCreateObjectUrl = URL.createObjectURL;
+    URL.createObjectURL = vi.fn(() => 'blob:report-pdf');
+    const fetcher = vi.fn(async () => new Response(new Blob(['%PDF']), {
+      status: 200,
+      headers: { 'content-type': 'application/pdf' },
+    })) as unknown as typeof fetch;
+    const api = createCrystalBioFrontendApi({ baseUrl: 'http://127.0.0.1:8787', fetcher });
+
+    await api.downloadAdminReportPdf(
+      { token: 'admin-token', agentId: 'agent_1', agentName: 'Raghavendra K', role: 'admin' },
+      { fromDate: '2026-06-01', toDate: '2026-06-30', kind: 'attendance' },
+    );
+
+    expect(fetcher).toHaveBeenCalledWith(
+      'http://127.0.0.1:8787/admin/reports.pdf?fromDate=2026-06-01&toDate=2026-06-30&kind=attendance',
+      expect.objectContaining({
+        method: 'GET',
+        headers: expect.objectContaining({ authorization: 'Bearer admin-token' }),
+      }),
+    );
+    URL.createObjectURL = originalCreateObjectUrl;
   });
 
   it('surfaces JSON error messages when admin PDF download fails', async () => {
@@ -170,6 +213,41 @@ describe('CrystalBio frontend API client', () => {
     const api = createCrystalBioFrontendApi({ baseUrl: 'http://127.0.0.1:8787', fetcher });
 
     await expect(api.login('bad-agent')).rejects.toThrow('GPS location is required');
+  });
+
+  it('reports backend failures to the live-user error log so Bloom can monitor real problems', async () => {
+    const fetcher = vi.fn(async (url: RequestInfo | URL) => {
+      if (String(url).endsWith('/attendance/check-in')) {
+        return new Response(JSON.stringify({ error: 'Unexpected server error' }), {
+          status: 500,
+          headers: { 'content-type': 'application/json' },
+        });
+      }
+      if (String(url).endsWith('/client-error-logs')) {
+        return new Response(JSON.stringify({ logged: true }), {
+          status: 201,
+          headers: { 'content-type': 'application/json' },
+        });
+      }
+      throw new Error(`Unexpected URL ${String(url)}`);
+    }) as unknown as typeof fetch;
+    const api = createCrystalBioFrontendApi({
+      baseUrl: 'http://127.0.0.1:8787',
+      fetcher,
+      now: () => new Date('2026-06-15T13:30:00.000Z'),
+      gpsProvider: async () => ({ latitude: 12.9716, longitude: 77.5946 }),
+    });
+
+    await expect(api.checkIn({ token: 'token-1', agentId: 'agent_2', agentName: 'Field User', role: 'sales' })).rejects.toThrow('Unexpected server error');
+
+    expect(fetcher).toHaveBeenCalledWith(
+      'http://127.0.0.1:8787/client-error-logs',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({ authorization: 'Bearer token-1' }),
+        body: expect.stringContaining('Attendance check-in'),
+      }),
+    );
   });
 
   it('submits leave requests to the configured backend with session authorization', async () => {

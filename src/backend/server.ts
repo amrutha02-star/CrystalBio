@@ -3,6 +3,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { createCrystalBioPersistentHttpApp } from './crystalBioPersistentHttpApp';
 import { createCrystalBioMailerFromEnv } from './crystalBioMailer';
+import { createJsonlClientErrorLogStore } from './crystalBioClientErrorLogStore';
 import { JsonFileCrystalBioStore } from './crystalBioPersistence';
 
 const main = async () => {
@@ -10,6 +11,7 @@ const main = async () => {
   const host = process.env.HOST ?? '127.0.0.1';
   const allowedOrigin = process.env.CRYSTALBIO_ALLOWED_ORIGIN ?? 'http://localhost:5173';
   const databasePath = resolve(process.env.CRYSTALBIO_DB_PATH ?? 'data/crystalbio-db.json');
+  const clientErrorLogPath = resolve(process.env.CRYSTALBIO_CLIENT_ERROR_LOG_PATH ?? 'data/crystalbio-client-errors.jsonl');
   const seedDemoUsers = process.env.CRYSTALBIO_SEED_DEMO === 'true';
   const requestLimitBytes = Number(process.env.CRYSTALBIO_REQUEST_LIMIT_BYTES ?? 1024 * 1024);
   const pilotPasswordPrefix = process.env.CRYSTALBIO_DEMO_PASSWORD;
@@ -20,7 +22,8 @@ const main = async () => {
   mkdirSync(dirname(databasePath), { recursive: true });
 
   const store = new JsonFileCrystalBioStore(databasePath);
-  const app = createCrystalBioPersistentHttpApp(store, { allowedOrigin, host, requestLimitBytes, mailer, appBaseUrl });
+  const clientErrorLogStore = createJsonlClientErrorLogStore(clientErrorLogPath);
+  const app = createCrystalBioPersistentHttpApp(store, { allowedOrigin, host, requestLimitBytes, mailer, appBaseUrl, clientErrorLogStore });
 
   if (seedDemoUsers && app.backend.exportState().agents.length === 0) {
     const seededCredentials: Array<{ name: string; email: string; password: string }> = [];
@@ -60,6 +63,7 @@ const main = async () => {
   console.log(`CrystalBio backend listening on http://${host}:${port}`);
   console.log(`Allowed frontend origin: ${allowedOrigin}`);
   console.log(`Database file: ${databasePath}`);
+  console.log(`Live user error log file: ${clientErrorLogPath}`);
 
   const shutdown = async () => {
     await app.close();

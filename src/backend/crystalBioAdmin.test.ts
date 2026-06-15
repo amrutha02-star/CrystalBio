@@ -147,5 +147,39 @@ describe('CrystalBio backend auth leave and admin reports', () => {
     expect(weekly.totals.pendingLeaveRequests).toBe(0);
     expect(monthly.totals.salesVisits).toBe(2);
     expect(monthly.totals.pendingLeaveRequests).toBe(1);
+    expect(monthly.attendancePeriodSummaries?.find((summary) => summary.agentName === 'Rahul')).toMatchObject({
+      totalDays: 30,
+      workedDays: 0,
+      leaveAppliedDays: 2,
+      pendingLeaveDays: 2,
+      noUpdateDays: 28,
+    });
+  });
+
+  it('summarizes worked days and leave days for attendance date-range reports', () => {
+    const backend = createCrystalBioBackend();
+    const admin = backend.createAgent({ name: 'Admin User', role: 'admin' });
+    const agent = backend.createAgent({ name: 'Girish', role: 'service' });
+
+    backend.checkIn(agent.id, { timestamp: '2026-06-01T09:00:00.000Z', gps });
+    backend.checkOut(agent.id, { timestamp: '2026-06-01T18:00:00.000Z', gps });
+    backend.checkIn(agent.id, { timestamp: '2026-06-03T09:10:00.000Z', gps });
+    backend.submitLeaveRequest(agent.id, {
+      fromDate: '2026-06-04',
+      toDate: '2026-06-05',
+      reason: 'Family work',
+    });
+
+    const report = backend.getAdminReport(admin.id, { fromDate: '2026-06-01', toDate: '2026-06-07' });
+    const girish = report.attendancePeriodSummaries?.find((summary) => summary.agentName === 'Girish');
+
+    expect(girish).toMatchObject({
+      totalDays: 7,
+      workedDays: 2,
+      checkedOutDays: 1,
+      leaveAppliedDays: 2,
+      pendingLeaveDays: 2,
+      noUpdateDays: 3,
+    });
   });
 });

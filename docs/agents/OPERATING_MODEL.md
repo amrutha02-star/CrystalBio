@@ -1,71 +1,96 @@
 # CrystalBio Agent Operating Model
 
-## Do we need a separate bot?
+## Do we have separate QA and bug-fixing bots?
 
-No.
+Yes.
 
-For now, CrystalBio does not need a separate Telegram/Discord bot for QA.
+CrystalBio has a small bot team under Periwinkle.
 
-The agents are operating roles inside the development workflow:
+## Team roles
 
-1. Testing Agent
-2. Bug-Fixer Agent
+### Periwinkle — lead / reviewer / decision-maker
 
-They can be run through Hermes when needed and will document work in GitHub.
+Periwinkle oversees the project.
 
-A separate bot is only useful later if the client wants automated notifications like:
+Periwinkle reviews Bloom's QA findings, decides what matters, approves bugs for fixing, reviews Iris's work, and gives final acceptance.
 
-- “New bug found”
-- “Bug fixed and ready for retest”
-- “Daily QA summary”
-- “Backend test failed”
+### Bloom — QA testing bot
 
-That can be added later, but it is not required to start building and testing.
+Bloom owns testing.
+
+Bloom tests CrystalBio journeys, tries multiple scenarios, finds bugs, collects evidence, and writes QA reports.
+
+Bloom must not fix bugs unless Rahul explicitly asks.
+
+Bloom's detailed instructions live in:
+
+`docs/agents/BLOOM_QA_BOT.md`
+
+Bloom also maintains its own profile log at:
+
+`/root/workspace/.hermes/profiles/bloom/BLOOM_QA_LOG.md`
+
+### Iris — bug-fixing bot
+
+Iris owns approved bug fixes.
+
+Iris fixes only bugs approved by Periwinkle or Rahul. Iris does not decide product direction, redesign screens, or add new features unless asked.
+
+Iris's detailed instructions live in:
+
+`docs/agents/IRIS_BUG_FIXER.md`
+
+The shared bug-fix workflow lives in:
+
+`docs/BUG_FIX_WORKFLOW.md`
+
+The repo-level fix log lives in:
+
+`docs/BUG_FIX_LOG.md`
+
+Iris also maintains its own profile log at:
+
+`/root/workspace/.hermes/profiles/iris/IRIS_FIX_LOG.md`
 
 ---
 
-## Recommended setup
+## Recommended workflow
 
-### Agent 1: Testing Agent
-
-Owns:
-
-- testing journeys
-- finding bugs
-- creating GitHub issues
-- attaching evidence
-- writing QA run reports
-- retesting fixed bugs
-
-### Agent 2: Bug-Fixer Agent
-
-Owns:
-
-- fixing confirmed GitHub bugs
-- running tests/builds
-- documenting fix commits
-- sending issues back for retest
+1. Bloom tests a journey.
+2. Bloom records bugs with evidence.
+3. Periwinkle reviews the bugs.
+4. Periwinkle decides whether each bug is:
+   - fix now
+   - fix later
+   - needs more testing
+   - needs Rahul decision
+   - not a bug
+5. Iris fixes only the bugs marked fix now.
+6. Iris runs checks and updates the fix log.
+7. Bloom retests the fixed journey.
+8. Periwinkle accepts, rejects, or asks for another fix.
 
 ---
 
-## Workflow
+## Important boundaries
 
-1. Backend/app feature is built.
-2. Testing Agent runs checklist.
-3. Testing Agent creates GitHub issues for confirmed bugs.
-4. Bug-Fixer Agent fixes one issue at a time.
-5. Testing Agent retests.
-6. Bug is closed only after verified fixed.
+- Bloom finds and retests bugs.
+- Iris fixes approved bugs.
+- Periwinkle supervises and decides.
+- Rahul can override everything.
+
+This separation is important because it prevents one bot from testing, deciding, and fixing its own work without review.
 
 ---
 
 ## When to automate further
 
-Later, we can add GitHub Actions or scheduled Hermes runs for:
+Later, we can add scheduled Hermes runs for:
 
-- nightly QA smoke test
-- daily bug summary
-- automatic report to Telegram
+- nightly QA smoke tests by Bloom
+- daily bug summaries
+- automatic reports to Telegram
 - automatic issue creation from failed tests
+- automatic Iris fix tasks after Periwinkle approval
 
-For the first backend phase, manual agent runs with GitHub documentation are safer because the product logic is still being finalised.
+For now, manual Periwinkle approval is safer because the product logic and pilot needs are still being finalized.

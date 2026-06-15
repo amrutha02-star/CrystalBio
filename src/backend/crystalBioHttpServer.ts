@@ -83,6 +83,9 @@ export function createCrystalBioHttpServer(api: CrystalBioApiHandler, options: C
         return;
       }
       if (request.method === 'GET' && (request.url ?? '').startsWith('/admin/reports.pdf')) {
+        const reportUrl = new URL(request.url ?? '/admin/reports.pdf', 'http://127.0.0.1');
+        const requestedKind = reportUrl.searchParams.get('kind');
+        const pdfKind = requestedKind === 'attendance' ? 'attendance' : requestedKind === 'visits' ? 'visits' : 'combined';
         const apiResponse = api.handle({
           method: 'GET',
           path: (request.url ?? '').replace('/admin/reports.pdf', '/admin/reports'),
@@ -95,8 +98,9 @@ export function createCrystalBioHttpServer(api: CrystalBioApiHandler, options: C
           return;
         }
         const report = apiResponse.body.report;
-        const pdf = await renderAdminReportPdf(report);
-        writePdf(response, `crystalbio-report-${report.fromDate}-to-${report.toDate}.pdf`, pdf, allowedOrigin);
+        const pdf = await renderAdminReportPdf(report, { kind: pdfKind });
+        const reportName = pdfKind === 'attendance' ? 'attendance-report' : pdfKind === 'visits' ? 'visit-report' : 'field-report';
+        writePdf(response, `crystalbio-${reportName}-${report.fromDate}-to-${report.toDate}.pdf`, pdf, allowedOrigin);
         return;
       }
       const body = await readJsonBody(request, requestLimitBytes);

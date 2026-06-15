@@ -1,4 +1,4 @@
-import { createCrystalBioApi, type ApiRequest } from './crystalBioApi';
+import { createCrystalBioApi, type ApiRequest, type ClientErrorLogStore } from './crystalBioApi';
 import { createCrystalBioBackend } from './crystalBioBackend';
 import { createCrystalBioHttpServer, type CrystalBioHttpServerOptions } from './crystalBioHttpServer';
 import type { CrystalBioMailer } from './crystalBioMailer';
@@ -6,9 +6,9 @@ import type { JsonFileCrystalBioStore } from './crystalBioPersistence';
 
 const mutatesState = (request: ApiRequest) => request.method === 'POST' || request.method === 'PATCH';
 
-export function createCrystalBioPersistentHttpApp(store: JsonFileCrystalBioStore, options: CrystalBioHttpServerOptions & { mailer?: CrystalBioMailer; appBaseUrl?: string } = {}) {
+export function createCrystalBioPersistentHttpApp(store: JsonFileCrystalBioStore, options: CrystalBioHttpServerOptions & { mailer?: CrystalBioMailer; appBaseUrl?: string; clientErrorLogStore?: ClientErrorLogStore } = {}) {
   const backend = createCrystalBioBackend(store.load());
-  const api = createCrystalBioApi(backend, { mailer: options.mailer, appBaseUrl: options.appBaseUrl });
+  const api = createCrystalBioApi(backend, { mailer: options.mailer, appBaseUrl: options.appBaseUrl, clientErrorLogStore: options.clientErrorLogStore });
   const persistentApi = {
     handle(request: ApiRequest) {
       const response = api.handle(request);

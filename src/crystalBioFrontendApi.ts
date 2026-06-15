@@ -263,15 +263,21 @@ export type FrontendServiceSaveResult = {
   visit: FrontendServiceVisit;
 };
 
+export type FrontendVisitDetailRow = { label: string; value: string };
+
 export type FrontendRecentVisitEntry = {
   id: string;
+  agentId?: string;
   customer: string;
   type: 'Sales' | 'Service';
   status: string;
   next: string;
   tone: 'warning' | 'info' | 'soft';
   agentName: string;
+  visitDate?: string;
+  visitTime?: string;
   photoPayload?: string;
+  detailRows?: FrontendVisitDetailRow[];
 };
 
 type BackendAttendance = Omit<FrontendAttendance, 'checkInTime' | 'checkOutTime'> & {
@@ -309,9 +315,28 @@ const browserGpsProvider = async (): Promise<FrontendGps> => {
 
 const trimSlash = (value: string) => value.replace(/\/$/, '');
 
-const parseJson = async <T>(response: Response): Promise<T> => {
+type ApiFailureContext = {
+  method: 'GET' | 'POST' | 'PATCH';
+  path: string;
+  token?: string;
+  journey?: string;
+  report?: (input: { method: string; path: string; status: number; message: string; token?: string; journey?: string }) => Promise<void>;
+};
+
+const parseJson = async <T>(response: Response, context?: ApiFailureContext): Promise<T> => {
   const body = await response.json();
-  if (!response.ok) throw new Error(body?.error ?? 'Backend request failed');
+  if (!response.ok) {
+    const message = body?.error ?? 'Backend request failed';
+    await context?.report?.({
+      method: context.method,
+      path: context.path,
+      status: response.status,
+      message,
+      token: context.token,
+      journey: context.journey,
+    });
+    throw new Error(message);
+  }
   return body as T;
 };
 
@@ -328,6 +353,45 @@ export function createCrystalBioFrontendApi(options: ApiClientOptions = {}) {
   const gpsProvider = options.gpsProvider ?? (baseUrl ? browserGpsProvider : async () => demoGps);
   let demoCheckedIn = false;
 
+  const reportClientError = async (input: { method: string; path: string; status: number; message: string; token?: string; journey?: string }) => {
+    if (!baseUrl || input.path === '/client-error-logs') return;
+    try {
+      const pageUrl = typeof window !== 'undefined' ? window.location.href : undefined;
+      const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : undefined;
+      await fetcher(`${baseUrl}/client-error-logs`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          ...(input.token ? { authorization: `Bearer ${input.token}` } : {}),
+        },
+        body: JSON.stringify({
+          type: 'api_error',
+          severity: input.status >= 500 ? 'high' : 'medium',
+          journey: input.journey ?? `${input.method} ${input.path}`,
+          message: input.message,
+          path: input.path,
+          status: input.status,
+          ...(pageUrl ? { pageUrl } : {}),
+          ...(userAgent ? { userAgent } : {}),
+        }),
+      });
+    } catch {
+      // Never block the real user because the monitoring log failed.
+    }
+  };
+
+  const journeyForPath = (path: string) => {
+    if (path === '/attendance/check-in') return 'Attendance check-in';
+    if (path === '/attendance/check-out') return 'Attendance check-out';
+    if (path === '/leave-requests') return 'Leave request save';
+    if (path === '/sales-opportunities' || path.includes('/sales-opportunities/')) return 'Sales visit save';
+    if (path === '/service-records' || path.includes('/service-records/')) return 'Service visit save';
+    if (path.includes('/admin/reports')) return 'Admin reports';
+    if (path.includes('/admin/agents')) return 'Admin profile/access';
+    if (path === '/auth/login') return 'Login';
+    return undefined;
+  };
+
   const post = async <T>(path: string, body: unknown, token?: string) => {
     if (!baseUrl) throw new Error('Backend URL is not configured');
     const response = await fetcher(`${baseUrl}${path}`, {
@@ -338,7 +402,7 @@ export function createCrystalBioFrontendApi(options: ApiClientOptions = {}) {
       },
       body: JSON.stringify(body),
     });
-    return parseJson<T>(response);
+    return parseJson<T>(response, { method: 'POST', path, token, journey: journeyForPath(path), report: reportClientError });
   };
 
   const patch = async <T>(path: string, body: unknown, token?: string) => {
@@ -351,7 +415,7 @@ export function createCrystalBioFrontendApi(options: ApiClientOptions = {}) {
       },
       body: JSON.stringify(body),
     });
-    return parseJson<T>(response);
+    return parseJson<T>(response, { method: 'PATCH', path, token, journey: journeyForPath(path), report: reportClientError });
   };
 
   const get = async <T>(path: string, token?: string) => {
@@ -362,10 +426,34 @@ export function createCrystalBioFrontendApi(options: ApiClientOptions = {}) {
         ...(token ? { authorization: `Bearer ${token}` } : {}),
       },
     });
-    return parseJson<T>(response);
+    return parseJson<T>(response, { method: 'GET', path, token, journey: journeyForPath(path), report: reportClientError });
   };
 
   return {
+    async reportClientIssue(input: { type?: string; severity?: 'critical' | 'high' | 'medium' | 'low'; journey?: string; message: string; path?: string; status?: number }) {
+      if (!baseUrl) return;
+      try {
+        const pageUrl = typeof window !== 'undefined' ? window.location.href : undefined;
+        const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : undefined;
+        await fetcher(`${baseUrl}/client-error-logs`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            type: input.type ?? 'client_error',
+            severity: input.severity ?? 'high',
+            journey: input.journey ?? 'App screen error',
+            message: input.message,
+            path: input.path,
+            status: input.status,
+            ...(pageUrl ? { pageUrl } : {}),
+            ...(userAgent ? { userAgent } : {}),
+          }),
+        });
+      } catch {
+        // Monitoring should never interrupt the user.
+      }
+    },
+
     isBackendConfigured() {
       return Boolean(baseUrl);
     },
@@ -382,6 +470,12 @@ export function createCrystalBioFrontendApi(options: ApiClientOptions = {}) {
       return result.session;
     },
 
+    async validateSession(session: FrontendSession): Promise<FrontendSession> {
+      if (!baseUrl) return session;
+      const result = await get<{ session: FrontendSession }>('/auth/session', session.token);
+      return result.session;
+    },
+
     async requestSignInLink(email: string): Promise<{ emailDelivery: 'queued' | 'not_configured'; message: string }> {
       if (!baseUrl) return { emailDelivery: 'not_configured', message: 'Demo mode only.' };
       return post<{ emailDelivery: 'queued' | 'not_configured'; message: string }>('/auth/request-link', { email });
@@ -395,9 +489,9 @@ export function createCrystalBioFrontendApi(options: ApiClientOptions = {}) {
       return result.agent;
     },
 
-    async downloadAdminReportPdf(session: FrontendSession, input: { fromDate: string; toDate: string }): Promise<string> {
+    async downloadAdminReportPdf(session: FrontendSession, input: { fromDate: string; toDate: string; kind?: 'attendance' | 'visits' | 'combined' }): Promise<string> {
       if (!baseUrl) return '#demo-pdf-preview';
-      const query = new URLSearchParams({ fromDate: input.fromDate, toDate: input.toDate }).toString();
+      const query = new URLSearchParams({ fromDate: input.fromDate, toDate: input.toDate, kind: input.kind ?? 'combined' }).toString();
       const response = await fetcher(`${baseUrl}/admin/reports.pdf?${query}`, {
         method: 'GET',
         headers: { authorization: `Bearer ${session.token}` },
@@ -430,9 +524,10 @@ export function createCrystalBioFrontendApi(options: ApiClientOptions = {}) {
       return result.report;
     },
 
-    async getRecentVisits(session: FrontendSession): Promise<FrontendRecentVisitEntry[]> {
+    async getRecentVisits(session: FrontendSession, input?: { scope?: 'own' | 'team' }): Promise<FrontendRecentVisitEntry[]> {
       if (!baseUrl) return [];
-      const result = await get<{ entries: FrontendRecentVisitEntry[] }>('/field-visits', session.token);
+      const query = input?.scope === 'team' ? '?scope=team' : '';
+      const result = await get<{ entries: FrontendRecentVisitEntry[] }>(`/field-visits${query}`, session.token);
       return result.entries;
     },
 
@@ -789,5 +884,8 @@ export function createCrystalBioFrontendApi(options: ApiClientOptions = {}) {
 }
 
 const envBaseUrl = (import.meta as unknown as { env?: { VITE_CRYSTALBIO_API_URL?: string } }).env?.VITE_CRYSTALBIO_API_URL;
+const liveHostBaseUrl = typeof window !== 'undefined' && window.location.hostname === 'work.convogenie.ai'
+  ? 'https://work-api.convogenie.ai'
+  : undefined;
 
-export const crystalBioFrontendApi = createCrystalBioFrontendApi({ baseUrl: envBaseUrl });
+export const crystalBioFrontendApi = createCrystalBioFrontendApi({ baseUrl: envBaseUrl || liveHostBaseUrl });

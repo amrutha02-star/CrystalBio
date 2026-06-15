@@ -5,12 +5,16 @@ import { crystalBioFrontendApi, type FrontendAdminReport, type FrontendAdminSeat
 type AppScreen = 'login' | 'home' | 'visits' | 'sales' | 'service' | 'checkin' | 'attendance' | 'leave' | 'reports' | 'profile' | 'admin';
 type ReportPeriod = 'today' | 'week' | 'month' | 'custom';
 type AgentReportKind = 'attendance' | 'visits' | 'combined';
+type AdminReportKind = 'attendance' | 'visits' | 'combined';
 type AdminAgentFilter = 'all' | 'sales' | 'service';
+type AdminVisitTypeFilter = 'all' | 'Sales' | 'Service';
+type AdminFieldEntryScope = 'mine' | 'all';
 type AdminReportScope = 'office' | 'sales' | 'service' | 'agent';
 type AdminTab = 'overview' | 'fieldEntry' | 'agents' | 'approvals' | 'adminReports' | 'profiles';
 type AdminApprovalId = string;
 type AdminAgentsView = 'list' | 'add' | 'profile' | 'invite';
 type AdminSeatStatus = 'invited' | 'active' | 'inactive' | 'expired';
+type AdminOverviewMetric = 'visits' | 'checkedIn' | 'leave' | 'followUps';
 type AdminSeat = {
   id: string;
   name: string;
@@ -65,7 +69,7 @@ const sampleAttendanceLogs = [
 const screenOptions: AppScreen[] = ['login', 'home', 'visits', 'sales', 'service', 'checkin', 'attendance', 'leave', 'reports', 'profile', 'admin'];
 const sessionStorageKey = 'crystalbio.session.v1';
 const screenStorageKey = 'crystalbio.screen.v1';
-const appBuildVersion = '20260614173500';
+const appBuildVersion = '20260615053142';
 
 const isFrontendSession = (value: unknown): value is FrontendSession => {
   const candidate = value as Partial<FrontendSession> | null;
@@ -86,7 +90,8 @@ const readStoredSession = (): FrontendSession | null => {
     const parsed = JSON.parse(rawSession) as unknown;
     if (!isFrontendSession(parsed)) return null;
     const liveBackendUrl = (import.meta as unknown as { env?: { VITE_CRYSTALBIO_API_URL?: string } }).env?.VITE_CRYSTALBIO_API_URL;
-    if (liveBackendUrl && (parsed.email === 'qa.agent@crystalbio.in' || parsed.agentName === 'QA Test Agent')) {
+    const isLiveCrystalBioHost = window.location.hostname === 'work.convogenie.ai';
+    if ((liveBackendUrl || isLiveCrystalBioHost) && (parsed.email === 'qa.agent@crystalbio.in' || parsed.agentName === 'QA Test Agent')) {
       forgetSession();
       return null;
     }
@@ -149,6 +154,20 @@ const formatShortDate = (value: string) => {
   return new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short' }).format(new Date(Date.UTC(year, month - 1, day)));
 };
 
+const formatVisitWhen = (entry: Pick<FrontendRecentVisitEntry, 'visitDate' | 'visitTime'>) => {
+  if (!entry.visitDate && !entry.visitTime) return 'Time not recorded';
+  const dateLabel = entry.visitDate ? formatShortDate(entry.visitDate) : 'Date not recorded';
+  return entry.visitTime ? `${dateLabel} • ${entry.visitTime}` : dateLabel;
+};
+
+const displayCustomerName = (value: string) => {
+  const cleaned = value
+    .replace(/^PERIWINKLE(?:-[A-Z]+)*-AUDIT-\d{8}-\d{6}\s+/i, '')
+    .replace(/^PERIWINKLE-[A-Z-]+-AUDIT-\d{8}-\d{6}\s+/i, '')
+    .trim();
+  return cleaned || value;
+};
+
 const formatDateInput = (date: Date) => date.toISOString().slice(0, 10);
 
 const startOfCurrentMonthInput = () => {
@@ -197,9 +216,14 @@ function App() {
   const initialStoredSession = readStoredSession();
   const initialScreen = getInitialScreen(initialStoredSession);
   const hasConfiguredBackend = crystalBioFrontendApi.isBackendConfigured();
-  const [screen, setScreen] = useState<AppScreen>(() => hasConfiguredBackend && initialScreen === 'admin' && initialStoredSession?.role !== 'admin' ? 'login' : initialScreen);
-  const [isAdminSignedIn, setIsAdminSignedIn] = useState(() => initialStoredSession?.role === 'admin' || (!hasConfiguredBackend && initialScreen === 'admin'));
-  const [session, setSession] = useState<FrontendSession | null>(initialStoredSession);
+  const mustValidateStoredSession = Boolean(hasConfiguredBackend && initialStoredSession);
+  const [screen, setScreen] = useState<AppScreen>(() => {
+    if (hasConfiguredBackend && !initialStoredSession) return 'login';
+    if (mustValidateStoredSession) return 'login';
+    return hasConfiguredBackend && initialScreen === 'admin' && initialStoredSession?.role !== 'admin' ? 'login' : initialScreen;
+  });
+  const [isAdminSignedIn, setIsAdminSignedIn] = useState(() => !mustValidateStoredSession && (initialStoredSession?.role === 'admin' || (!hasConfiguredBackend && initialScreen === 'admin')));
+  const [session, setSession] = useState<FrontendSession | null>(() => mustValidateStoredSession ? null : initialStoredSession);
   const [attendance, setAttendance] = useState<FrontendAttendance | null>(null);
   const [isAttendanceBusy, setIsAttendanceBusy] = useState(false);
   const [currentGps, setCurrentGps] = useState<FrontendGps | null>(null);
@@ -221,10 +245,21 @@ function App() {
   const [adminPeriod, setAdminPeriod] = useState<ReportPeriod>('today');
   const [adminReportFromDate, setAdminReportFromDate] = useState(todayInput);
   const [adminReportToDate, setAdminReportToDate] = useState(todayInput);
+  const [adminReportKind, setAdminReportKind] = useState<AdminReportKind>('attendance');
   const [adminReportScope, setAdminReportScope] = useState<AdminReportScope>('office');
   const [adminReport, setAdminReport] = useState<FrontendAdminReport | null>(null);
   const [expandedAdminReportId, setExpandedAdminReportId] = useState<string | null>(null);
+  const [showAdminAttendanceList, setShowAdminAttendanceList] = useState(false);
   const [expandedAgentActivityId, setExpandedAgentActivityId] = useState<string | null>(null);
+  const [selectedAdminEntryId, setSelectedAdminEntryId] = useState<string | null>(null);
+  const [selectedAdminEntryReturnTab, setSelectedAdminEntryReturnTab] = useState<AdminTab>('agents');
+  const [showAllAdminEntries, setShowAllAdminEntries] = useState(false);
+  const [showAdminTeamStatus, setShowAdminTeamStatus] = useState(false);
+  const [expandedAdminMetric, setExpandedAdminMetric] = useState<AdminOverviewMetric | null>(null);
+  const [adminEntryAgentFilter, setAdminEntryAgentFilter] = useState('all');
+  const [adminEntryTypeFilter, setAdminEntryTypeFilter] = useState<AdminVisitTypeFilter>('all');
+  const [adminFieldEntryScope, setAdminFieldEntryScope] = useState<AdminFieldEntryScope>('mine');
+  const [adminFieldEntrySearch, setAdminFieldEntrySearch] = useState('');
   const [adminAgentFilter, setAdminAgentFilter] = useState<AdminAgentFilter>('all');
   const [adminTab, setAdminTab] = useState<AdminTab>(getInitialAdminTab);
   const [selectedAdminApproval, setSelectedAdminApproval] = useState<AdminApprovalId | null>(getInitialAdminApproval);
@@ -312,6 +347,7 @@ function App() {
   const [isServiceStep3Open, setIsServiceStep3Open] = useState(false);
   const [serviceSaveResult, setServiceSaveResult] = useState<FrontendServiceSaveResult | null>(null);
   const [backendRecentVisitEntries, setBackendRecentVisitEntries] = useState<FrontendRecentVisitEntry[]>([]);
+  const [adminTeamRecentVisitEntries, setAdminTeamRecentVisitEntries] = useState<FrontendRecentVisitEntry[]>([]);
   const [isServiceSubmitting, setIsServiceSubmitting] = useState(false);
   const [isServiceStep2Submitting, setIsServiceStep2Submitting] = useState(false);
   const [isServiceStep3Submitting, setIsServiceStep3Submitting] = useState(false);
@@ -322,6 +358,43 @@ function App() {
     const message = error instanceof Error ? error.message : String(error || 'Unknown issue');
     setLaunchIssues((current) => [{ area, message, when: 'Just now' }, ...current].slice(0, 5));
   };
+
+  useEffect(() => {
+    if (!mustValidateStoredSession || !initialStoredSession) return undefined;
+    let isMounted = true;
+    setStatusMessage('Checking saved login…');
+    crystalBioFrontendApi.validateSession(initialStoredSession)
+      .then((validatedSession) => {
+        if (!isMounted) return;
+        setSession(validatedSession);
+        rememberSession(validatedSession);
+        if (validatedSession.role === 'admin') {
+          setIsAdminSignedIn(true);
+          setAdminTab('overview');
+          setScreen('admin');
+          rememberScreen('admin');
+          setStatusMessage('Admin logged in.');
+          void refreshAdminData(validatedSession);
+          return;
+        }
+        setIsAdminSignedIn(false);
+        setScreen('home');
+        rememberScreen('home');
+        setStatusMessage('Logged in. Check in to start field work.');
+      })
+      .catch((error) => {
+        if (!isMounted) return;
+        rememberLaunchIssue('Saved login validation', error);
+        forgetSession();
+        setSession(null);
+        setIsAdminSignedIn(false);
+        setScreen('login');
+        setStatusMessage('Please log in again.');
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined;
@@ -351,13 +424,15 @@ function App() {
   const refreshAdminData = async (adminSession = session) => {
     if (!adminSession || adminSession.role !== 'admin') return;
     try {
-      const [requests, report, agents] = await Promise.all([
+      const [requests, report, agents, teamVisits] = await Promise.all([
         crystalBioFrontendApi.getAdminLeaveRequests(adminSession),
         crystalBioFrontendApi.getAdminReport(adminSession, { fromDate: adminReportFromDate, toDate: adminReportToDate }),
         crystalBioFrontendApi.getAdminAgents(adminSession),
+        crystalBioFrontendApi.getRecentVisits(adminSession, { scope: 'team' }),
       ]);
       setAdminLeaveRequests(requests);
       setAdminReport(report);
+      setAdminTeamRecentVisitEntries(teamVisits);
       const activityByAgentId = new Map(report.agentSummaries.map((summary) => [summary.agentId, summary]));
       setAdminSeats(agents.map((agent) => {
         const summary = activityByAgentId.get(agent.id);
@@ -382,6 +457,7 @@ function App() {
         setSession(null);
         setIsAdminSignedIn(false);
         setAdminSeats([]);
+        setAdminTeamRecentVisitEntries([]);
         setAdminLeaveRequests([]);
         setScreen('login');
         setStatusMessage('Please log in again to refresh admin profiles.');
@@ -463,7 +539,10 @@ function App() {
       status: salesSaveResult.visit.nextAction === 'closed' ? 'Closed' : salesSaveResult.visit.nextAction === 'no_follow_up' ? 'No follow-up' : 'Follow-up needed',
       next: salesSaveResult.visit.followUpDate ? formatShortDate(salesSaveResult.visit.followUpDate) : 'No date set',
       tone: salesSaveResult.visit.nextAction === 'follow_up_needed' ? 'warning' as const : 'soft' as const,
+      agentId: salesSaveResult.visit.agentId,
       agentName: salesSaveResult.visit.agentName,
+      visitDate: salesSaveResult.visit.visitDate,
+      visitTime: salesSaveResult.visit.visitTime,
       photoPayload: salesSaveResult.opportunity.sitePhoto,
     }] : []),
     ...(serviceSaveResult ? [{
@@ -473,11 +552,16 @@ function App() {
       status: serviceSaveResult.visit.nextAction === 'closed' ? 'Closed' : serviceSaveResult.visit.nextAction === 'no_follow_up' ? 'No follow-up' : 'Follow-up needed',
       next: serviceSaveResult.visit.nextVisitDate ? formatShortDate(serviceSaveResult.visit.nextVisitDate) : 'No date set',
       tone: serviceSaveResult.visit.nextAction === 'closed' ? 'soft' as const : 'info' as const,
+      agentId: serviceSaveResult.visit.agentId,
       agentName: serviceSaveResult.visit.agentName,
+      visitDate: serviceSaveResult.visit.visitDate,
+      visitTime: serviceSaveResult.visit.visitTime,
       photoPayload: serviceSaveResult.serviceRecord.photoNote,
     }] : []),
   ];
   const recentVisitEntries = [...latestVisitEntries, ...backendRecentVisitEntries]
+    .filter((entry, index, all) => all.findIndex((candidate) => candidate.id === entry.id) === index);
+  const teamVisitEntries = [...latestVisitEntries, ...adminTeamRecentVisitEntries, ...backendRecentVisitEntries]
     .filter((entry, index, all) => all.findIndex((candidate) => candidate.id === entry.id) === index);
 
   const toggleWorkType = (type: string) => {
@@ -648,7 +732,7 @@ function App() {
     if (options?.newSalesVisit) resetSalesFormForNewVisit();
     if (options?.newServiceVisit) resetServiceFormForNewVisit();
     if (nextScreen === 'sales' || nextScreen === 'service') {
-      if (isBackendConfigured) {
+      if (isBackendConfigured || session?.role === 'admin' || isAdminSignedIn) {
         setStatusMessage(session ? 'Logged in. Check in to start field work.' : 'Login is required before field work.');
       } else {
         setStatusMessage('Loading logged-in agent…');
@@ -665,13 +749,19 @@ function App() {
   };
 
   const openAdminTab = (nextTab: AdminTab) => {
-    if (nextTab === 'fieldEntry') {
-      goToScreen('home');
-      return;
-    }
     setAdminTab(nextTab);
+    setSelectedAdminEntryId(null);
+    setSelectedAdminEntryReturnTab(nextTab);
+    if (nextTab !== 'agents') setShowAdminTeamStatus(false);
     if (nextTab !== 'approvals') setSelectedAdminApproval(null);
     if (nextTab !== 'agents' && nextTab !== 'profiles') setAdminAgentsView('list');
+    setScreenNotice(null);
+  };
+
+  const returnToAdminFieldEntry = () => {
+    setScreen('admin');
+    setAdminTab('fieldEntry');
+    rememberScreen('admin');
     setScreenNotice(null);
   };
 
@@ -1000,7 +1090,10 @@ function App() {
           status: savedSalesVisit.visit.nextAction === 'closed' ? 'Closed' : savedSalesVisit.visit.nextAction === 'no_follow_up' ? 'No follow-up' : 'Follow-up needed',
           next: savedSalesVisit.visit.followUpDate ? formatShortDate(savedSalesVisit.visit.followUpDate) : 'No date set',
           tone: savedSalesVisit.visit.nextAction === 'follow_up_needed' ? 'warning' as const : 'soft' as const,
+          agentId: savedSalesVisit.visit.agentId,
           agentName: savedSalesVisit.visit.agentName,
+          visitDate: savedSalesVisit.visit.visitDate,
+          visitTime: savedSalesVisit.visit.visitTime,
           photoPayload: savedSalesVisit.opportunity.sitePhoto ?? storedPhotoPayload(salesPhotoNote, salesPhotoAttachment),
         },
         ...current,
@@ -1182,7 +1275,10 @@ function App() {
           status: savedServiceVisit.visit.nextAction === 'closed' ? 'Closed' : savedServiceVisit.visit.nextAction === 'no_follow_up' ? 'No follow-up' : savedServiceVisit.visit.nextAction === 'parts_required' ? 'Parts required' : 'Next visit needed',
           next: savedServiceVisit.visit.nextVisitDate ? formatShortDate(savedServiceVisit.visit.nextVisitDate) : 'No date set',
           tone: savedServiceVisit.visit.nextAction === 'closed' ? 'soft' as const : 'info' as const,
+          agentId: savedServiceVisit.visit.agentId,
           agentName: savedServiceVisit.visit.agentName,
+          visitDate: savedServiceVisit.visit.visitDate,
+          visitTime: savedServiceVisit.visit.visitTime,
           photoPayload: savedServiceVisit.serviceRecord.photoNote ?? storedPhotoPayload(servicePhotoNote, servicePhotoAttachment),
         },
         ...current,
@@ -1377,17 +1473,20 @@ function App() {
           <h3>Recent visits</h3>
           <button type="button" className="text-link" onClick={() => goToScreen('visits')}>View all</button>
         </div>
-        {recentVisitEntries.length ? recentVisitEntries.slice(0, 2).map((entry) => (
-          <button className="entry-row entry-button" key={entry.id} type="button" onClick={() => goToScreen(entry.type === 'Sales' ? 'sales' : 'service')}>
-            <div>
-              <strong>{entry.customer}</strong>
-              <p>{entry.type} • {entry.agentName} • Next: {entry.next}</p>
-            </div>
-            <span className={toneClass[entry.tone]}>{entry.status}</span>
-          </button>
-        )) : (
-          <div className="empty-state">No saved visits yet. New Sales or Service updates will appear here.</div>
-        )}
+        <div className="agent-recent-list">
+          {recentVisitEntries.length ? recentVisitEntries.slice(0, 2).map((entry) => (
+            <button className="agent-entry-card" key={entry.id} type="button" onClick={() => goToScreen(entry.type === 'Sales' ? 'sales' : 'service')}>
+              <div className="agent-entry-main">
+                <strong>{displayCustomerName(entry.customer)}</strong>
+                <p>{entry.agentName}</p>
+                <small>{entry.type} • Next: {entry.next}</small>
+              </div>
+              <span className={toneClass[entry.tone]}>{entry.status}</span>
+            </button>
+          )) : (
+            <div className="empty-state">No saved visits yet. New Sales or Service updates will appear here.</div>
+          )}
+        </div>
       </section>
     </>
   );
@@ -1426,10 +1525,11 @@ function App() {
           <span>Tap to continue</span>
         </div>
         {filteredEntries.length ? filteredEntries.map((entry) => (
-          <button className="entry-row entry-button" key={entry.id} type="button" onClick={() => goToScreen(entry.type === 'Sales' ? 'sales' : 'service')}>
-            <div>
-              <strong>{entry.customer}</strong>
-              <p>{entry.type} • {entry.agentName} • Next: {entry.next} • Continue update</p>
+          <button className="agent-entry-card agent-visit-entry-card" key={entry.id} type="button" onClick={() => goToScreen(entry.type === 'Sales' ? 'sales' : 'service')}>
+            <div className="agent-entry-main">
+              <strong>{displayCustomerName(entry.customer)}</strong>
+              <p>{entry.agentName}</p>
+              <small>{entry.type} • Next: {entry.next} • Tap to continue</small>
             </div>
             <span className={toneClass[entry.tone]}>{entry.status}</span>
           </button>
@@ -1858,11 +1958,14 @@ function App() {
   const renderReports = () => {
     const leaveStatus = leaveRequest?.status ?? 'No leave pending';
     const attendanceLabel = attendance?.status === 'checked_in' ? 'Checked in today' : attendance?.status === 'checked_out' ? 'Checked out today' : 'Not checked in';
-    const reportCopy: Record<ReportPeriod, { title: string; range: string; visits: string; sales: string; service: string; attendance: string; followUps: string; leave: string }> = {
-      today: { title: 'Daily report', range: '08 Jun', visits: '4', sales: '2', service: '2', attendance: attendanceLabel, followUps: '1', leave: leaveStatus },
-      week: { title: 'Weekly report', range: '09 Jun – 15 Jun', visits: '8', sales: '5', service: '3', attendance: '5 / 6 days present', followUps: '3', leave: leaveStatus },
-      month: { title: 'Monthly report', range: 'June 2026', visits: '31', sales: '18', service: '13', attendance: '21 / 24 days present', followUps: '7', leave: leaveStatus },
-      custom: { title: 'Custom date report', range: `${reportFromDate} to ${reportToDate}`, visits: '12', sales: '7', service: '5', attendance: 'Selected range attendance', followUps: '2', leave: leaveStatus },
+    const currentSalesCount = backendRecentVisitEntries.filter((entry) => entry.type === 'Sales').length;
+    const currentServiceCount = backendRecentVisitEntries.filter((entry) => entry.type === 'Service').length;
+    const currentFollowUps = backendRecentVisitEntries.filter((entry) => entry.tone === 'warning').length;
+    const reportCopy: Record<ReportPeriod, { title: string; range: string; sales: string; service: string; attendance: string; followUps: string; leave: string }> = {
+      today: { title: 'Daily report', range: 'Today', sales: String(currentSalesCount), service: String(currentServiceCount), attendance: attendanceLabel, followUps: String(currentFollowUps), leave: leaveStatus },
+      week: { title: 'Weekly report', range: 'This week', sales: 'Generate from admin report', service: 'Generate from admin report', attendance: 'Generate from admin report', followUps: 'Generate from admin report', leave: leaveStatus },
+      month: { title: 'Monthly report', range: 'This month', sales: 'Generate from admin report', service: 'Generate from admin report', attendance: 'Generate from admin report', followUps: 'Generate from admin report', leave: leaveStatus },
+      custom: { title: 'Custom date report', range: `${reportFromDate} to ${reportToDate}`, sales: 'Generate from admin report', service: 'Generate from admin report', attendance: 'Generate from admin report', followUps: 'Generate from admin report', leave: leaveStatus },
     };
     const activeReport = reportCopy[reportPeriod];
     const kindLabels: Record<AgentReportKind, { title: string; helper: string }> = {
@@ -1910,7 +2013,7 @@ function App() {
           </div>
 
           <button type="button" className="primary-action single-report-generate" onClick={generateReport}>Generate report</button>
-          <p className="report-approval-note">Agent-side report preview. Owner PDF download is available from Admin Reports during the backend pilot.</p>
+          <p className="report-approval-note">Preview uses saved field entries. Full office PDF is available from Admin Reports.</p>
         </section>
 
         <section className="report-preview-card simple-report-preview-card">
@@ -2103,8 +2206,8 @@ function App() {
     const followUpCount = adminRows.reduce((sum, row) => sum + row.followUpsDue.length, 0);
     const period = {
       label: adminPeriod === 'custom' ? `${adminReportFromDate} to ${adminReportToDate}` : adminPeriod === 'today' ? 'Today' : adminPeriod === 'week' ? 'This week' : 'This month',
-      active: `${adminRows.length} agents tracked`,
-      summary: adminRows.length ? `${totalVisits} visits • ${checkedInCount} checked in • ${needsReviewCount} need check` : 'No field activity has been saved yet.',
+      active: totalVisits ? `${totalVisits} field updates today` : 'No submitted work yet today',
+      summary: adminRows.length ? `${checkedInCount} checked in • ${needsReviewCount} need check • ${followUpCount} follow-ups` : 'No field activity has been saved yet.',
       visits: String(totalVisits),
       checkedIn: String(checkedInCount),
       leave: String(adminLeaveRequests.filter((request) => request.status === 'pending').length),
@@ -2132,6 +2235,11 @@ function App() {
       service: 'All service agents',
       agent: 'Selected agent',
     };
+    const adminReportKindLabels: Record<AdminReportKind, string> = {
+      attendance: 'Attendance report',
+      visits: 'Visit report',
+      combined: 'Combined report',
+    };
     const adminReportScopeRows = adminRows.filter((row) => {
       if (adminReportScope === 'office') return true;
       if (adminReportScope === 'sales') return matchesAdminAgentFilter(row, 'sales');
@@ -2142,6 +2250,43 @@ function App() {
     const reportServiceVisits = adminReportScopeRows.reduce((sum, row) => sum + row.serviceVisitCount, 0);
     const reportReadyAgents = adminReportScopeRows.filter((row) => row.status === 'Ready').length;
     const reportReviewAgents = adminReportScopeRows.filter((row) => row.status !== 'Ready').length;
+    const reportSubmittedEntries = teamVisitEntries.filter((entry) => {
+      if (adminReportScope === 'office') return true;
+      const agentRow = adminRows.find((row) => row.id === entry.agentId || row.name === entry.agentName);
+      if (adminReportScope === 'sales') return entry.type === 'Sales' || agentRow?.roleKey === 'sales' || agentRow?.roleKey === 'both';
+      if (adminReportScope === 'service') return entry.type === 'Service' || agentRow?.roleKey === 'service' || agentRow?.roleKey === 'both';
+      return true;
+    });
+    const overviewVisibleEntries = teamVisitEntries.slice(0, 4);
+    const overviewMetricDetails: Record<AdminOverviewMetric, string[]> = {
+      visits: overviewVisibleEntries.length
+        ? overviewVisibleEntries.map((entry) => `${displayCustomerName(entry.customer)} • ${entry.agentName} • ${entry.type}`)
+        : ['No submitted Sales or Service forms today.'],
+      checkedIn: adminRows.filter((row) => row.attendance === 'checked in').length
+        ? adminRows.filter((row) => row.attendance === 'checked in').map((row) => `${row.name} • ${row.role}`)
+        : ['No agent checked in yet.'],
+      leave: adminLeaveRequests.filter((request) => request.status === 'pending').length
+        ? adminLeaveRequests.filter((request) => request.status === 'pending').map((request) => `${request.agentName} • ${formatShortDate(request.fromDate)} to ${formatShortDate(request.toDate)}`)
+        : ['No leave requests waiting.'],
+      followUps: followUpCount
+        ? adminRows.flatMap((row) => row.followUpsDue.map((detail) => `${row.name} • ${detail}`))
+        : ['No follow-up action waiting.'],
+    };
+    const adminOverviewMetrics: Array<{ key: AdminOverviewMetric; value: string; label: string; hint: string; action: string }> = [
+      { key: 'visits', value: overviewPeriod.visits, label: 'Total visits', hint: 'Today', action: 'Show forms' },
+      { key: 'checkedIn', value: overviewPeriod.checkedIn, label: 'Checked in', hint: 'Agents active', action: 'Show active' },
+      { key: 'leave', value: overviewPeriod.leave, label: 'Leave', hint: 'Needs review', action: 'Review' },
+      { key: 'followUps', value: overviewPeriod.followUps, label: 'Follow-ups', hint: 'Need action', action: 'Show action' },
+    ];
+    const openAdminMetric = (key: AdminOverviewMetric) => {
+      setExpandedAdminMetric((current) => current === key ? null : key);
+      if (key === 'leave') {
+        const firstPendingLeave = adminLeaveRequests.find((request) => request.status === 'pending');
+        if (firstPendingLeave) setSelectedAdminApproval(firstPendingLeave.id);
+      }
+      setScreenNotice(null);
+    };
+    const reportVisitCount = reportSubmittedEntries.length || reportSalesVisits + reportServiceVisits;
     const reportChartMax = Math.max(reportSalesVisits, reportServiceVisits, reportReadyAgents, reportReviewAgents, 1);
     const chartWidth = (value: number) => `${Math.max(value === 0 ? 0 : 8, Math.round((value / reportChartMax) * 100))}%`;
     const backendApprovalRequests = [...reviewedAdminLeaveRequests, ...adminLeaveRequests]
@@ -2189,6 +2334,22 @@ function App() {
       }
     };
     const visibleAgentActivityRows = adminRows.filter((row) => matchesAdminAgentFilter(row, adminAgentFilter));
+    const adminOwnFieldEntries = recentVisitEntries.filter((entry) => entry.agentId === session?.agentId || (!entry.agentId && entry.agentName === session?.agentName));
+    const adminFieldEntrySource = adminFieldEntryScope === 'all' ? teamVisitEntries : adminOwnFieldEntries;
+    const normalizedAdminFieldSearch = adminFieldEntrySearch.trim().toLowerCase();
+    const visibleAdminFieldEntries = adminFieldEntrySource.filter((entry) => {
+      if (!normalizedAdminFieldSearch) return true;
+      return [displayCustomerName(entry.customer), entry.customer, entry.agentName, entry.type, entry.status, entry.visitDate, entry.visitTime]
+        .some((value) => String(value ?? '').toLowerCase().includes(normalizedAdminFieldSearch));
+    });
+    const fieldEntriesForAgent = (row: AdminActivityRow) => teamVisitEntries.filter((entry) => entry.agentId === row.id || (!entry.agentId && entry.agentName === row.name));
+    const visibleTeamEntries = teamVisitEntries.filter((entry) => {
+      const matchesAgent = adminEntryAgentFilter === 'all' || entry.agentId === adminEntryAgentFilter || (!entry.agentId && entry.agentName === adminEntryAgentFilter);
+      const matchesType = adminEntryTypeFilter === 'all' || entry.type === adminEntryTypeFilter;
+      return matchesAgent && matchesType;
+    });
+    const shownTeamEntries = showAllAdminEntries ? visibleTeamEntries : visibleTeamEntries.slice(0, 5);
+    const selectedAdminEntry = selectedAdminEntryId ? teamVisitEntries.find((entry) => entry.id === selectedAdminEntryId) : null;
     const visibleCheckedInCount = visibleAgentActivityRows.filter((row) => row.attendance === 'checked in').length;
     const visibleMissingCount = visibleAgentActivityRows.filter((row) => row.status !== 'Ready').length;
     const visibleFollowUpCount = visibleAgentActivityRows.filter((row) => row.followUpsDue.length > 0).length;
@@ -2199,8 +2360,8 @@ function App() {
     const generateAdminReport = () => {
       const rangeLabel = adminPeriod === 'custom' ? `${adminReportFromDate} to ${adminReportToDate}` : period.label.toLowerCase();
       setScreenNotice({
-        title: `${adminReportScopeLabels[adminReportScope]} ready`,
-        message: `${adminReportScopeLabels[adminReportScope]} generated for ${rangeLabel}. Use Download PDF for the owner-ready export.`,
+        title: `${adminReportKindLabels[adminReportKind]} ready`,
+        message: `${adminReportScopeLabels[adminReportScope]} generated for ${rangeLabel}. Download PDF will use this report type.`,
         tone: 'success',
       });
     };
@@ -2210,9 +2371,16 @@ function App() {
         return;
       }
       try {
-        const pdfUrl = await crystalBioFrontendApi.downloadAdminReportPdf(session, { fromDate: adminReportFromDate, toDate: adminReportToDate });
-        window.open(pdfUrl, '_blank');
-        setScreenNotice({ title: 'PDF opened', message: 'Owner-ready report PDF opened in a new tab.', tone: 'success' });
+        const pdfUrl = await crystalBioFrontendApi.downloadAdminReportPdf(session, { fromDate: adminReportFromDate, toDate: adminReportToDate, kind: adminReportKind });
+        const reportName = adminReportKind === 'attendance' ? 'attendance-report' : adminReportKind === 'visits' ? 'visit-report' : 'field-report';
+        const downloadLink = document.createElement('a');
+        downloadLink.href = pdfUrl;
+        downloadLink.download = `crystalbio-${reportName}-${adminReportFromDate}-to-${adminReportToDate}.pdf`;
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        downloadLink.remove();
+        window.setTimeout(() => URL.revokeObjectURL(pdfUrl), 30000);
+        setScreenNotice({ title: 'PDF downloaded', message: `${adminReportKindLabels[adminReportKind]} download started.`, tone: 'success' });
       } catch (error) {
         rememberLaunchIssue('Report PDF download', error);
         setScreenNotice({ title: 'PDF download failed', message: error instanceof Error ? error.message : 'Could not download the report PDF.', tone: 'error' });
@@ -2253,6 +2421,28 @@ function App() {
         )}
       </section>
     );
+    const renderAdminEntryDetail = (backLabel: string, onBack: () => void) => selectedAdminEntry ? (
+      <section className="admin-entry-detail-card" aria-label="Submitted form details">
+        <button type="button" className="admin-detail-back" onClick={onBack}><ChevronLeft size={16} /> {backLabel}</button>
+        <div className="admin-entry-detail-head">
+          <span className={toneClass[selectedAdminEntry.tone]}>{selectedAdminEntry.type}</span>
+          <strong>{displayCustomerName(selectedAdminEntry.customer)}</strong>
+          <p>{selectedAdminEntry.agentName} • {formatVisitWhen(selectedAdminEntry)}</p>
+          <small>Read-only view. Edit from the original field form only if correction is needed.</small>
+        </div>
+        <div className="admin-entry-detail-grid">
+          {(selectedAdminEntry.detailRows?.length ? selectedAdminEntry.detailRows : [
+            { label: 'Submitted by', value: selectedAdminEntry.agentName },
+            { label: 'Status', value: selectedAdminEntry.status },
+            { label: 'Next', value: selectedAdminEntry.next },
+          ]).map((row) => (
+            <div key={`${row.label}-${row.value}`}><span>{row.label}</span><strong>{row.value}</strong></div>
+          ))}
+        </div>
+        <PhotoViewer payload={selectedAdminEntry.photoPayload} label={`${selectedAdminEntry.customer} ${selectedAdminEntry.type}`} />
+      </section>
+    ) : null;
+
     const showOverview = adminTab === 'overview';
     const showFieldEntry = adminTab === 'fieldEntry';
     const showAgents = adminTab === 'agents';
@@ -2275,23 +2465,51 @@ function App() {
                   <span className="admin-hero-icon"><UsersRound size={22} /></span>
                 </section>
                 <div className="admin-metric-grid">
-                  <div className="metric-card admin-metric-card"><strong>{overviewPeriod.visits}</strong><span>Total visits</span><small>Today</small></div>
-                  <div className="metric-card admin-metric-card"><strong>{overviewPeriod.checkedIn}</strong><span>Checked in</span><small>Agents active</small></div>
-                  <div className="metric-card admin-metric-card"><strong>{overviewPeriod.leave}</strong><span>Leave</span><small>Needs review</small></div>
-                  <div className="metric-card admin-metric-card"><strong>{overviewPeriod.followUps}</strong><span>Follow-ups</span><small>Need action</small></div>
+                  {adminOverviewMetrics.map((metric) => (
+                    <button key={metric.key} type="button" className={expandedAdminMetric === metric.key ? 'metric-card admin-metric-card admin-metric-card-open' : 'metric-card admin-metric-card'} aria-expanded={expandedAdminMetric === metric.key} onClick={() => openAdminMetric(metric.key)}>
+                      <strong>{metric.value}</strong><span>{metric.label}</span><small>{metric.hint}</small><em>{expandedAdminMetric === metric.key ? 'Hide' : metric.action}</em>
+                    </button>
+                  ))}
                 </div>
+                {expandedAdminMetric && (
+                  <section className="admin-metric-expanded-card" aria-label={`${adminOverviewMetrics.find((metric) => metric.key === expandedAdminMetric)?.label ?? 'Overview'} details`}>
+                    <div className="admin-report-heading"><label>{adminOverviewMetrics.find((metric) => metric.key === expandedAdminMetric)?.label}</label><span>{overviewMetricDetails[expandedAdminMetric].length}</span></div>
+                    <div className="admin-metric-expanded-list">
+                      {overviewMetricDetails[expandedAdminMetric].slice(0, 4).map((detail) => <span key={detail}>{detail}</span>)}
+                    </div>
+                    {expandedAdminMetric === 'visits' && overviewVisibleEntries.length > 0 && <button type="button" className="secondary-action admin-view-all-entries" onClick={() => openAdminTab('agents')}>Open submitted work</button>}
+                    {expandedAdminMetric === 'leave' && adminLeaveRequests.some((request) => request.status === 'pending') && <button type="button" className="secondary-action admin-view-all-entries" onClick={() => openAdminTab('approvals')}>Open approvals</button>}
+                    {expandedAdminMetric === 'followUps' && followUpCount > 0 && <button type="button" className="secondary-action admin-view-all-entries" onClick={() => openAdminTab('agents')}>Open agents</button>}
+                  </section>
+                )}
                 <section className="admin-office-actions-card admin-today-priority-card">
-                  <div className="admin-report-heading"><label>Today’s action queue</label><span>{adminTodayPriorities.length} actions</span></div>
+                  <div className="admin-report-heading"><label>Latest submitted work</label><span>{teamVisitEntries.length} forms</span></div>
                   <div className="admin-priority-list">
-                    {adminTodayPriorities.map((item) => (
-                      <button key={item.title} type="button" className="admin-priority-row admin-click-row" onClick={() => openTodayPriority(item)}>
-                        <span className="chip chip-warning">{item.label}</span>
-                        <div><strong>{item.title}</strong><small>{item.detail}</small></div>
+                    {overviewVisibleEntries.length ? overviewVisibleEntries.map((entry) => (
+                      <button key={`overview-entry-${entry.id}`} type="button" className="admin-priority-row admin-click-row" onClick={() => { setSelectedAdminEntryId(entry.id); setSelectedAdminEntryReturnTab('agents'); setAdminTab('agents'); }}>
+                        <span className={toneClass[entry.tone]}>{entry.type}</span>
+                        <div className="admin-priority-main"><strong>{displayCustomerName(entry.customer)}</strong><small>{entry.agentName} • {formatVisitWhen(entry)} • {entry.status}</small></div>
                         <em>Open</em>
                       </button>
-                    ))}
+                    )) : (
+                      <div className="empty-state">Submitted Sales and Service forms will appear here.</div>
+                    )}
                   </div>
                 </section>
+                {adminTodayPriorities.length > 0 && (
+                  <section className="admin-office-actions-card admin-today-priority-card">
+                    <div className="admin-report-heading"><label>Needs office action</label><span>{adminTodayPriorities.length}</span></div>
+                    <div className="admin-priority-list">
+                      {adminTodayPriorities.map((item) => (
+                        <button key={item.title} type="button" className="admin-priority-row admin-click-row" onClick={() => openTodayPriority(item)}>
+                          <span className="chip chip-warning">{item.label}</span>
+                          <div><strong>{item.title}</strong><small>{item.detail}</small></div>
+                          <em>Open</em>
+                        </button>
+                      ))}
+                    </div>
+                  </section>
+                )}
               </>
             )}
 
@@ -2303,34 +2521,35 @@ function App() {
           <>
             <section className="admin-action-card admin-field-entry-card">
               <label>Field entry</label>
-              <strong>Submit your own field update or help an agent</strong>
-              <p>Sales and Service entries saved here are shown below and in Admin Reports.</p>
+              <strong>Submit your own field update</strong>
+              <p>Sales and Service entries saved here stay under this admin login.</p>
               <div className="visit-action-grid admin-field-entry-grid">
                 <button type="button" className="visit-action-card" onClick={() => goToScreen('sales', { newSalesVisit: true })}><span className="visit-action-icon"><Plus size={19} /></span><strong>Sales entry</strong><small>Customer visit, quote, follow-up</small></button>
                 <button type="button" className="visit-action-card" onClick={() => goToScreen('service', { newServiceVisit: true })}><span className="visit-action-icon service-icon"><ClipboardList size={18} /></span><strong>Service entry</strong><small>Machine issue, parts, closure</small></button>
               </div>
             </section>
-            <section className="admin-office-actions-card admin-field-entry-guide">
-              <div className="admin-report-heading"><label>Before saving</label><span>Office-assisted</span></div>
-              <div className="admin-office-action-row"><span className="chip chip-soft">Agent</span><div><strong>Confirm who did the visit</strong><small>Use the agent name from the call/WhatsApp update before submitting.</small></div></div>
-              <div className="admin-office-action-row"><span className="chip chip-info">Proof</span><div><strong>Add customer, issue, and next action</strong><small>Reports are clearer when quote status, parts, or follow-up date are captured.</small></div></div>
-            </section>
             <section className="admin-report-list-card admin-field-entry-recent" aria-label="Saved field entries">
-              <div className="admin-report-heading"><label>Saved field entries</label><span>{recentVisitEntries.length} saved</span></div>
-              {recentVisitEntries.length ? recentVisitEntries.slice(0, 8).map((entry) => (
-                <article key={`admin-field-entry-${entry.id}`} className="admin-report-row-card">
-                  <div className="admin-report-row">
-                    <div className="admin-report-row-main">
-                      <strong>{entry.customer}</strong>
-                      <p>{entry.type} • {entry.agentName ?? 'Field team'} • {entry.next}</p>
-                      <small>{entry.status}</small>
-                    </div>
-                    <span className={toneClass[entry.tone]}>{entry.type}</span>
+              <div className="admin-report-heading"><label>Field entries</label><span>{visibleAdminFieldEntries.length} shown</span></div>
+              <div className="admin-field-entry-filter" role="group" aria-label="Field entry list filter">
+                <button type="button" className={adminFieldEntryScope === 'mine' ? 'admin-field-entry-filter-active' : ''} onClick={() => setAdminFieldEntryScope('mine')}>My entries</button>
+                <button type="button" className={adminFieldEntryScope === 'all' ? 'admin-field-entry-filter-active' : ''} onClick={() => setAdminFieldEntryScope('all')}>All entries</button>
+              </div>
+              <label className="search-card visit-search-card admin-field-entry-search">
+                <Search size={16} />
+                <input aria-label="Search field entries" value={adminFieldEntrySearch} onChange={(event) => setAdminFieldEntrySearch(event.target.value)} placeholder="Search customer or agent" />
+              </label>
+              {visibleAdminFieldEntries.length ? visibleAdminFieldEntries.slice(0, 10).map((entry) => (
+                <article key={`admin-field-entry-${entry.id}`} className="admin-field-entry-item-card">
+                  <div className="admin-field-entry-item-main">
+                    <strong>{displayCustomerName(entry.customer)}</strong>
+                    <p>{entry.agentName}</p>
+                    <small>{entry.type} • {formatVisitWhen(entry)} • {entry.status}</small>
                   </div>
-                  <PhotoViewer payload={entry.photoPayload} label={`${entry.customer} ${entry.type}`} />
+                  <span className={toneClass[entry.tone]}>{entry.type}</span>
+                  <PhotoViewer payload={entry.photoPayload} label={`${displayCustomerName(entry.customer)} ${entry.type}`} />
                 </article>
               )) : (
-                <div className="empty-state">Saved Sales and Service entries will appear here after refresh/login too.</div>
+                <div className="empty-state">No matching entries found.</div>
               )}
             </section>
           </>
@@ -2383,53 +2602,57 @@ function App() {
           <>
             {adminAgentsView === 'list' && (
               <>
-                <section className="admin-agents-compact-head">
-                  <div>
-                    <p>Live agent status</p>
-                    <span>Quick check of who is working today, who updated visits, and who needs follow-up. Reports stay separate.</span>
-                  </div>
-                </section>
-                <div className="admin-filter-row admin-agent-filter-row" aria-label="Agent type filters">
-                  {(['all', 'sales', 'service'] as AdminAgentFilter[]).map((filter) => (
-                    <button key={filter} type="button" className={adminAgentFilter === filter ? 'admin-filter-active' : ''} onClick={() => { setAdminAgentFilter(filter); setExpandedAgentActivityId(null); }}>
-                      {filter === 'all' ? 'All' : filter === 'sales' ? 'Sales agents' : 'Service agents'}
-                    </button>
-                  ))}
-                </div>
-                <section className="admin-agent-snapshot-card" aria-label="Visible agent snapshot">
-                  <div><strong>{visibleCheckedInCount}</strong><span>Checked in</span></div>
-                  <div><strong>{visibleMissingCount}</strong><span>Needs check</span></div>
-                  <div><strong>{visibleFollowUpCount}</strong><span>Follow-up/parts</span></div>
-                </section>
-                <section className="admin-report-list-card admin-agent-activity-list">
-                  <div className="admin-report-heading">
-                    <label>Today activity</label>
-                    <span>{visibleAgentActivityRows.length} shown</span>
-                  </div>
-                  {visibleAgentActivityRows.map((row) => {
-                    const detail = adminReportDetails[row.name];
-                    const isExpanded = expandedAgentActivityId === row.name;
-                    return (
-                      <article key={`${adminPeriod}-${row.name}`} className={isExpanded ? 'admin-report-row-card admin-agent-row-expanded' : 'admin-report-row-card'}>
-                        <button type="button" className="admin-report-row admin-click-row" aria-expanded={isExpanded} onClick={() => setExpandedAgentActivityId(isExpanded ? null : row.name)}>
-                          <div className="admin-report-row-main">
-                            <strong>{row.name}</strong>
-                            <p>{row.role} • {row.attendance}</p>
-                            <small>{row.visits}</small>
+                {selectedAdminEntry && selectedAdminEntryReturnTab === 'agents' ? (
+                  renderAdminEntryDetail('Back to entries', () => setSelectedAdminEntryId(null))
+                ) : (
+                  <>
+                    <section className="admin-agent-snapshot-card admin-agent-snapshot-top" aria-label="Team summary">
+                      <div><strong>{checkedInCount}</strong><span>Checked in</span></div>
+                      <div><strong>{needsReviewCount}</strong><span>Need check</span></div>
+                      <div><strong>{followUpCount}</strong><span>Follow-ups</span></div>
+                    </section>
+                    <section className="admin-agents-compact-head">
+                      <div>
+                        <p>Submitted entries</p>
+                        <span>Review submitted Sales and Service forms. Use filters only when needed.</span>
+                      </div>
+                    </section>
+                    <section className="admin-entry-filter-card" aria-label="Submitted entry filters">
+                      <label><span>Agent</span><select aria-label="Entry agent filter" value={adminEntryAgentFilter} onChange={(event) => { setAdminEntryAgentFilter(event.target.value); setShowAllAdminEntries(false); }}>
+                        <option value="all">All entries</option>
+                        {adminRows.map((row) => <option key={row.id} value={row.id}>{row.name}</option>)}
+                      </select></label>
+                      <label><span>Type</span><select aria-label="Entry type filter" value={adminEntryTypeFilter} onChange={(event) => { setAdminEntryTypeFilter(event.target.value as AdminVisitTypeFilter); setShowAllAdminEntries(false); }}>
+                        <option value="all">All</option>
+                        <option value="Sales">Sales</option>
+                        <option value="Service">Service</option>
+                      </select></label>
+                    </section>
+                    <section className="admin-report-list-card admin-agent-activity-list admin-entry-list-card">
+                      <div className="admin-report-heading">
+                        <label>{showAllAdminEntries ? 'All submitted entries' : 'Recent 5 entries'}</label>
+                        <span>{visibleTeamEntries.length} total</span>
+                      </div>
+                      {shownTeamEntries.length ? shownTeamEntries.map((entry) => (
+                        <button key={entry.id} type="button" className="admin-field-entry-item-card admin-agent-entry-item-card admin-click-row" onClick={() => { setSelectedAdminEntryId(entry.id); setSelectedAdminEntryReturnTab('agents'); }}>
+                          <div className="admin-field-entry-item-main">
+                            <strong>{displayCustomerName(entry.customer)}</strong>
+                            <p>{entry.agentName}</p>
+                            <small>{entry.type} • {formatVisitWhen(entry)} • {entry.status}</small>
                           </div>
-                          <span className={row.chipClass}>{row.status}</span>
+                          <span className={toneClass[entry.tone]}>View details</span>
                         </button>
-                        {isExpanded && detail && (
-                          <div className="admin-report-expanded-panel admin-agent-expanded-panel">
-                            <div><strong>Today’s visits</strong>{detail.visits.slice(0, 2).map((item) => <span key={item}>{item}</span>)}</div>
-                            <div><strong>Needs action</strong><span>{detail.officeAction}</span></div>
-                            <div><strong>Missing / risk</strong>{detail.missing.map((item) => <span key={item}>{item}</span>)}</div>
-                          </div>
-                        )}
-                      </article>
-                    );
-                  })}
-                </section>
+                      )) : (
+                        <div className="empty-state">No submitted entries match this filter yet.</div>
+                      )}
+                      {visibleTeamEntries.length > 5 && (
+                        <button type="button" className="secondary-action admin-view-all-entries" onClick={() => setShowAllAdminEntries((current) => !current)}>
+                          {showAllAdminEntries ? 'Show recent 5' : 'View all entries'}
+                        </button>
+                      )}
+                    </section>
+                  </>
+                )}
               </>
             )}
 
@@ -2504,6 +2727,7 @@ function App() {
                   <div><strong>{invitedSeatCount}</strong><span>Invited</span></div>
                   <div><strong>{inactiveSeatCount}</strong><span>Inactive</span></div>
                 </section>
+                <button type="button" className="secondary-action logout-action" onClick={handleLogout}>Logout</button>
                 <section className="admin-report-list-card admin-agent-activity-list">
                   <div className="admin-report-heading profile-list-heading"><label>Team profiles</label><button type="button" className="profile-add-button" disabled onClick={() => setScreenNotice({ title: 'Pilot users pre-loaded', message: 'New pilot users are created outside the frontend with unique passwords for each registered email.', tone: 'info' })}><Plus size={16} /> Pilot users pre-loaded</button></div>
                   {adminSeats.map((seat) => (
@@ -2520,11 +2744,17 @@ function App() {
 
         {showReports && (
           <>
-            {adminTab === 'adminReports' && (
+            {adminTab === 'adminReports' && selectedAdminEntry && selectedAdminEntryReturnTab === 'adminReports' ? (
+              renderAdminEntryDetail('Back to reports', () => setSelectedAdminEntryId(null))
+            ) : adminTab === 'adminReports' && (
               <section className="admin-report-list-card admin-report-setup-card">
-                <div className="admin-report-intro-note">
-                  <strong>One report flow</strong>
-                  <span>Choose dates, choose who it is for, then generate the same summary-first view and PDF.</span>
+                <div className="admin-report-scope-row">
+                  <label>Report type</label>
+                  <select aria-label="Admin report type" value={adminReportKind} onChange={(event) => setAdminReportKind(event.target.value as AdminReportKind)}>
+                    <option value="attendance">Attendance report</option>
+                    <option value="visits">Visit report</option>
+                    <option value="combined">Combined report</option>
+                  </select>
                 </div>
                 <div className="admin-report-scope-row">
                   <label>Report for</label>
@@ -2538,73 +2768,36 @@ function App() {
                 <button type="button" className="primary-action single-report-generate" onClick={generateAdminReport}>Generate report</button>
                 <button type="button" className="secondary-action single-report-generate" onClick={downloadAdminPdf}>Download PDF</button>
 
-                <section className="admin-report-summary-card">
-                  <div className="admin-report-heading"><label>Report summary</label><span>{period.label}</span></div>
+                <section className="admin-report-summary-card admin-owner-report-summary">
+                  <div className="admin-report-heading"><label>Today’s report</label><span>{period.label}</span></div>
                   <div className="admin-report-mini-metrics">
-                    <div><strong>{adminReportScopeRows.length}</strong><span>People</span></div>
-                    <div><strong>{period.visits}</strong><span>Visits</span></div>
+                    <div><strong>{reportVisitCount}</strong><span>Visits</span></div>
                     <div><strong>{period.followUps}</strong><span>Follow-ups</span></div>
-                    <div><strong>{adminReportScopeRows.filter((row) => row.status !== 'Ready').length}</strong><span>Review</span></div>
+                    <div><strong>{adminOfficeActions.length}</strong><span>Office action</span></div>
+                    <div><strong>{checkedInCount}</strong><span>Active</span></div>
                   </div>
-                  <div className="admin-report-chart-block" aria-label="Simple report charts">
+                  <div className="admin-report-chart-block compact-report-chart" aria-label="Simple report charts">
                     <div className="admin-chart-row"><span>Sales</span><div><i style={{ width: chartWidth(reportSalesVisits) }} /></div><strong>{reportSalesVisits}</strong></div>
                     <div className="admin-chart-row"><span>Service</span><div><i className="service-bar" style={{ width: chartWidth(reportServiceVisits) }} /></div><strong>{reportServiceVisits}</strong></div>
-                    <div className="admin-chart-row"><span>Ready</span><div><i style={{ width: chartWidth(reportReadyAgents) }} /></div><strong>{reportReadyAgents}</strong></div>
-                    <div className="admin-chart-row"><span>Review</span><div><i className="warning-bar" style={{ width: chartWidth(reportReviewAgents) }} /></div><strong>{reportReviewAgents}</strong></div>
                   </div>
                 </section>
 
-                <section className="admin-office-actions-card">
-                  <div className="admin-report-heading"><label>Needs office action</label><span>{adminOfficeActions.length}</span></div>
-                  {adminOfficeActions.map((action) => (
-                    <div key={action.title} className="admin-office-action-row">
-                      <span className="chip chip-warning">Action</span>
-                      <div><strong>{action.title}</strong><small>{action.detail}</small></div>
-                    </div>
-                  ))}
-                </section>
+                {adminOfficeActions.length > 0 && (
+                  <section className="admin-office-actions-card">
+                    <div className="admin-report-heading"><label>Office action</label><span>{adminOfficeActions.length}</span></div>
+                    {adminOfficeActions.slice(0, 4).map((action) => (
+                      <div key={`${action.title}-${action.detail}`} className="admin-office-action-row">
+                        <span className="chip chip-warning">Action</span>
+                        <div><strong>{action.title}</strong><small>{action.detail}</small></div>
+                      </div>
+                    ))}
+                  </section>
+                )}
 
-                <div className="admin-report-heading">
-                  <label>{adminReportScope === 'office' ? 'Person-wise report' : 'Selected report'}</label>
-                  <span>{adminReportScopeRows.length} shown</span>
-                </div>
-                {adminReportScopeRows.map((row) => {
-                  const detail = adminReportDetails[row.name];
-                  const isExpanded = expandedAdminReportId === row.name;
-                  return (
-                    <article key={row.name} className={isExpanded ? 'admin-report-row-card admin-report-row-expanded' : 'admin-report-row-card'}>
-                      <button type="button" className="admin-report-row admin-click-row" aria-expanded={isExpanded} onClick={() => setExpandedAdminReportId(isExpanded ? null : row.name)}>
-                        <div className="admin-report-row-main">
-                          <strong>{row.name}</strong>
-                          <p>{row.role} • {row.attendance}</p>
-                          <small>{row.visits}</small>
-                        </div>
-                        <span className={row.chipClass}>{row.status}</span>
-                      </button>
-                      {isExpanded && detail && (
-                        <div className="admin-report-expanded-panel">
-                          <details open>
-                            <summary>Attendance details</summary>
-                            {detail.attendance.map((item) => <p key={item}>{item}</p>)}
-                          </details>
-                          <details open>
-                            <summary>{row.role.startsWith('Sales') ? 'Sales visit details' : 'Service visit details'}</summary>
-                            {detail.visits.map((item) => <p key={item}>{item}</p>)}
-                          </details>
-                          <details>
-                            <summary>Leave details</summary>
-                            <p>{detail.leave}</p>
-                          </details>
-                          <details open>
-                            <summary>Missing information</summary>
-                            {detail.missing.map((item) => <p key={item}>{item}</p>)}
-                          </details>
-                          <div className="admin-expanded-action"><span>Office action</span><strong>{detail.officeAction}</strong></div>
-                        </div>
-                      )}
-                    </article>
-                  );
-                })}
+                <section className="admin-office-actions-card admin-attendance-check-card">
+                  <div className="admin-report-heading"><label>Attendance summary</label><span>{reportReviewAgents ? `${reportReviewAgents} need check` : 'Clear'}</span></div>
+                  <div className="admin-report-empty-note"><strong>{reportReadyAgents} ready • {reportReviewAgents} need check</strong><span>{checkedInCount} checked in today</span></div>
+                </section>
               </section>
             )}
           </>
@@ -2649,12 +2842,24 @@ function App() {
             <div>
               {screen === 'admin' && adminTab !== 'overview' && <button type="button" className="back-button" onClick={() => openAdminTab('overview')}><ChevronLeft size={17} /> Overview</button>}
               {screen !== 'home' && screen !== 'login' && screen !== 'admin' && (
-                <button type="button" className="back-button" onClick={() => goToScreen('home')}><ChevronLeft size={17} /> Home</button>
+                <button
+                  type="button"
+                  className="back-button"
+                  onClick={isAdminSignedIn && (screen === 'sales' || screen === 'service') ? returnToAdminFieldEntry : () => goToScreen('home')}
+                >
+                  <ChevronLeft size={17} /> {isAdminSignedIn && (screen === 'sales' || screen === 'service') ? 'Field entry' : 'Home'}
+                </button>
               )}
-              <p className="muted">{screen === 'login' ? 'Welcome' : screen === 'admin' ? 'Owner access' : timeGreeting()}</p>
-              <h2>{screen === 'login' ? 'CrystalBio' : screen === 'admin' ? 'Admin' : session?.agentName ?? 'Field agent'}</h2>
+              <p className="muted">{screen === 'login' ? 'Welcome' : timeGreeting()}</p>
+              <h2>{screen === 'login' ? 'CrystalBio' : screen === 'admin' ? (session?.role === 'admin' ? session.agentName : 'Admin') : session?.agentName ?? 'Field agent'}</h2>
             </div>
-            <button type="button" className="avatar avatar-button" aria-label={screen === 'admin' && adminTab === 'profiles' ? 'Admin profile selected' : screen === 'profile' ? 'Profile selected' : 'Open profile'} disabled={screen === 'login'} onClick={() => screen === 'admin' ? openAdminTab('profiles') : goToScreen('profile')}>{screen === 'admin' ? <UsersRound size={21} /> : <UserRound size={21} />}</button>
+            {screen === 'admin' ? (
+              <div className="header-action-cluster">
+                <button type="button" className="avatar avatar-button" aria-label={adminTab === 'profiles' ? 'Admin profile selected' : 'Open admin profile'} onClick={() => openAdminTab('profiles')}><UsersRound size={21} /></button>
+              </div>
+            ) : (
+              <button type="button" className="avatar avatar-button" aria-label={screen === 'profile' ? 'Profile selected' : 'Open profile'} disabled={screen === 'login'} onClick={() => goToScreen('profile')}><UserRound size={21} /></button>
+            )}
           </header>
 
           {renderScreen()}

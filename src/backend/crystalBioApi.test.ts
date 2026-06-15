@@ -45,6 +45,32 @@ describe('CrystalBio API layer', () => {
     expect(failed.body.error).toBe('Invalid email or password');
   });
 
+  it('validates saved sessions against the live backend before trusting stored profile data', () => {
+    const backend = createCrystalBioBackend();
+    const admin = createLoginAgent(backend, { name: 'Admin User', role: 'admin', email: 'admin.session@crystalbio.in' });
+    const agent = createLoginAgent(backend, { name: 'Rahul', role: 'sales', email: 'rahul.session@crystalbio.in' });
+    const api = createCrystalBioApi(backend);
+
+    const agentToken = loginToken(api, agent.email!);
+    const validated = api.handle({ method: 'GET', path: '/auth/session', headers: { authorization: `Bearer ${agentToken}` } });
+    expect(validated.status).toBe(200);
+    expect(validated.body.session.agentName).toBe('Rahul');
+    expect(validated.body.session.email).toBe('rahul.session@crystalbio.in');
+
+    const adminToken = loginToken(api, admin.email!);
+    const deactivated = api.handle({
+      method: 'PATCH',
+      path: `/admin/agents/${agent.id}/status`,
+      headers: { authorization: `Bearer ${adminToken}` },
+      body: { active: false },
+    });
+    expect(deactivated.status).toBe(200);
+
+    const rejected = api.handle({ method: 'GET', path: '/auth/session', headers: { authorization: `Bearer ${agentToken}` } });
+    expect(rejected.status).toBe(401);
+    expect(rejected.body.error).toBe('Login session is required');
+  });
+
 
   it('rejects public agent-id login and requires credentials at the API boundary', () => {
     const backend = createCrystalBioBackend();
@@ -348,8 +374,31 @@ describe('CrystalBio API layer', () => {
   it('keeps admin-submitted field visits visible after refresh', () => {
     const backend = createCrystalBioBackend();
     const admin = createLoginAgent(backend, { name: 'Raghavendra', role: 'admin', email: 'raghavendra@crystalbio.in' });
+    const salesAgent = createLoginAgent(backend, { name: 'Manjunath', role: 'sales', email: 'manjunath@crystalbio.in' });
     const api = createCrystalBioApi(backend);
     const adminToken = loginToken(api, admin.email!);
+    const salesToken = loginToken(api, salesAgent.email!);
+
+    const agentOpportunity = api.handle({
+      method: 'POST',
+      path: '/sales-opportunities',
+      headers: { authorization: `Bearer ${salesToken}` },
+      body: { accountName: 'Agent Field Customer' },
+    });
+    api.handle({
+      method: 'POST',
+      path: `/sales-opportunities/${agentOpportunity.body.opportunity.id}/visits`,
+      headers: { authorization: `Bearer ${salesToken}` },
+      body: {
+        visitDate: '2026-06-07',
+        visitTime: '10:20',
+        gps,
+        note: 'Agent did field visit',
+        nextAction: 'follow_up_needed',
+        followUpDate: '2026-06-09',
+        photos: [],
+      },
+    });
 
     const opportunity = api.handle({
       method: 'POST',
@@ -378,11 +427,30 @@ describe('CrystalBio API layer', () => {
       headers: { authorization: `Bearer ${adminToken}` },
     });
     expect(recentVisits.status).toBe(200);
+    expect(recentVisits.body.entries).toHaveLength(1);
     expect(recentVisits.body.entries[0]).toMatchObject({
       customer: 'Admin Field Customer',
       type: 'Sales',
+      agentId: admin.id,
       agentName: 'Raghavendra',
+      visitDate: '2026-06-07',
+      visitTime: '16:10',
     });
+    expect(recentVisits.body.entries[0].detailRows).toEqual(expect.arrayContaining([
+      { label: 'Submitted by', value: 'Raghavendra' },
+      { label: 'Customer', value: 'Admin Field Customer' },
+      { label: 'Visit note', value: 'Admin did field visit' },
+      { label: 'Next action', value: 'No follow-up' },
+    ]));
+
+    const teamRecentVisits = api.handle({
+      method: 'GET',
+      path: '/field-visits?scope=team',
+      headers: { authorization: `Bearer ${adminToken}` },
+    });
+    expect(teamRecentVisits.status).toBe(200);
+    expect(teamRecentVisits.body.entries.some((entry: { agentName: string; customer: string }) => entry.agentName === 'Raghavendra' && entry.customer === 'Admin Field Customer')).toBe(true);
+    expect(teamRecentVisits.body.entries.some((entry: { agentName: string; customer: string }) => entry.agentName === 'Manjunath' && entry.customer === 'Agent Field Customer')).toBe(true);
 
     const report = api.handle({
       method: 'GET',
