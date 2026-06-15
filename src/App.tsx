@@ -139,7 +139,7 @@ const getInitialScreen = (storedSession: FrontendSession | null = readStoredSess
 const getInitialAdminTab = (): AdminTab => {
   if (typeof window === 'undefined') return 'overview';
   const requestedTab = new URLSearchParams(window.location.search).get('adminTab') as AdminTab | null;
-  return requestedTab && ['overview', 'fieldEntry', 'agents', 'approvals', 'adminReports', 'monitoring', 'profiles'].includes(requestedTab) ? requestedTab : 'overview';
+  return requestedTab && ['overview', 'fieldEntry', 'agents', 'approvals', 'adminReports', 'profiles'].includes(requestedTab) ? requestedTab : 'overview';
 };
 
 const getInitialAdminApproval = (): AdminApprovalId | null => {
@@ -2997,7 +2997,6 @@ function App() {
                 { label: 'Agents', tab: 'agents' as AdminTab, icon: UsersRound },
                 { label: 'Approvals', tab: 'approvals' as AdminTab, icon: CalendarCheck },
                 { label: 'Reports', tab: 'adminReports' as AdminTab, icon: FileText },
-                { label: 'Monitor', tab: 'monitoring' as AdminTab, icon: Activity },
               ].map((item) => {
                 const Icon = item.icon;
                 const selected = adminTab === item.tab;
