@@ -1435,15 +1435,17 @@ function App() {
             <button type="button" className="primary-action" disabled={isPasswordSetupSubmitting} onClick={handleSetupPasswordSubmit}>{isPasswordSetupSubmitting ? 'Setting password…' : 'Set password'}</button>
           </div>
         )}
-        <label className="field-card login-field-card">
-          <span>Registered email</span>
-          <input aria-label="Registered email" value={loginEmail} inputMode="email" autoComplete="email" placeholder="name@crystalbio.in" onChange={(event) => setLoginEmail(event.target.value)} />
-        </label>
-        <label className="field-card login-field-card">
-          <span>Password</span>
-          <input aria-label="Password" value={password} type="password" autoComplete="current-password" placeholder="Enter password" onChange={(event) => setPassword(event.target.value)} />
-        </label>
-        <button type="button" className="primary-action login-main-button" onClick={handleAgentLogin}>Login</button>
+        <form aria-label="Login form" className="login-submit-form" onSubmit={(event) => { event.preventDefault(); void handleAgentLogin(); }}>
+          <label className="field-card login-field-card">
+            <span>Registered email</span>
+            <input aria-label="Registered email" value={loginEmail} inputMode="email" autoComplete="email" placeholder="name@crystalbio.in" onChange={(event) => setLoginEmail(event.target.value)} />
+          </label>
+          <label className="field-card login-field-card">
+            <span>Password</span>
+            <input aria-label="Password" value={password} type="password" autoComplete="current-password" placeholder="Enter password" onChange={(event) => setPassword(event.target.value)} />
+          </label>
+          <button type="submit" className="primary-action login-main-button">Login</button>
+        </form>
         <div className="login-help-actions">
           <button type="button" className="text-link" onClick={handleForgotPassword}>Forgot password?</button>
         </div>

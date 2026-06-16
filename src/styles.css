@@ -372,6 +372,11 @@ p { color: var(--muted); line-height: 1.5; }
   border: 1px solid rgba(123, 139, 111, 0.20);
   box-shadow: 0 16px 36px rgba(47, 61, 40, 0.08);
 }
+.login-submit-form {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
 .login-field-card {
   background: #fffef8;
   border-color: rgba(123, 139, 111, 0.24);

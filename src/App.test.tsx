@@ -24,6 +24,16 @@ describe('Crystal Bio agent view shell', () => {
     expect(screen.queryByRole('button', { name: /admin access/i })).not.toBeInTheDocument();
   });
 
+  it('keeps the password field inside a real login form so phone Enter/Go can submit', async () => {
+    window.history.pushState({}, '', '/?screen=login');
+    render(<App />);
+
+    const loginForm = screen.getByRole('form', { name: 'Login form' });
+
+    expect(loginForm).toContainElement(screen.getByLabelText('Password'));
+    expect(screen.getByRole('button', { name: /^login$/i })).toHaveAttribute('type', 'submit');
+  });
+
   it('keeps a saved logged-in session after a browser refresh without returning to login', async () => {
     window.history.pushState({}, '', '/');
     window.localStorage.setItem('crystalbio.session.v1', JSON.stringify({
