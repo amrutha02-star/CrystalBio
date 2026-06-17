@@ -147,6 +147,7 @@ export type FrontendSalesStep2Input = {
   brandName?: string;
   equipmentModel?: string;
   requirement?: string;
+  step2Saved?: boolean;
 };
 
 export type FrontendSalesStep3Input = {
@@ -164,6 +165,7 @@ export type FrontendSalesStep3Input = {
   installationPhoto?: string;
   issuePhoto?: string;
   visitingCardPhoto?: string;
+  step3Saved?: boolean;
 };
 
 export type FrontendSalesVisit = {
@@ -210,6 +212,8 @@ export type FrontendSalesSaveResult = {
     installationPhoto?: string;
     issuePhoto?: string;
     visitingCardPhoto?: string;
+    step2Saved?: boolean;
+    step3Saved?: boolean;
     status: 'open' | 'closed';
   };
   visit: FrontendSalesVisit;
@@ -240,6 +244,8 @@ export type FrontendServiceVisitInput = {
   supportRequiredNote?: string;
   finalRemarks?: string;
   photoNote?: string;
+  step2Saved?: boolean;
+  step3Saved?: boolean;
   gps?: FrontendGps;
   photos?: FrontendPhotoAttachment[];
 };
@@ -284,6 +290,8 @@ export type FrontendServiceSaveResult = {
     supportRequiredNote?: string;
     finalRemarks?: string;
     photoNote?: string;
+    step2Saved?: boolean;
+    step3Saved?: boolean;
     status: 'open' | 'pending_parts' | 'closed';
   };
   visit: FrontendServiceVisit;
@@ -293,6 +301,7 @@ export type FrontendVisitDetailRow = { label: string; value: string };
 
 export type FrontendRecentVisitEntry = {
   id: string;
+  recordId?: string;
   agentId?: string;
   customer: string;
   type: 'Sales' | 'Service';

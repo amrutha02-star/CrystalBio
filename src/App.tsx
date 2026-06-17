@@ -69,7 +69,8 @@ const sampleAttendanceLogs = [
 const screenOptions: AppScreen[] = ['login', 'home', 'visits', 'sales', 'service', 'checkin', 'attendance', 'leave', 'reports', 'profile', 'admin'];
 const sessionStorageKey = 'crystalbio.session.v1';
 const screenStorageKey = 'crystalbio.screen.v1';
-const appBuildVersion = '20260615092000';
+const appBuildVersion = '20260616023405';
+const appVersionReloadKey = 'crystalbio.version-reload.v1';
 
 const isFrontendSession = (value: unknown): value is FrontendSession => {
   const candidate = value as Partial<FrontendSession> | null;
@@ -403,11 +404,15 @@ function App() {
       .catch((error) => {
         if (!isMounted) return;
         rememberLaunchIssue('Saved login validation', error);
-        forgetSession();
-        setSession(null);
-        setIsAdminSignedIn(false);
-        setScreen('login');
-        setStatusMessage('Please log in again.');
+        if (isExpiredSessionError(error)) {
+          forgetSession();
+          setSession(null);
+          setIsAdminSignedIn(false);
+          setScreen('login');
+          setStatusMessage('Please log in again.');
+          return;
+        }
+        setStatusMessage('Saved login kept. Check connection if the screen does not update.');
       });
     return () => {
       isMounted = false;
@@ -415,7 +420,7 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return undefined;
+    if (typeof window === 'undefined' || window.location.hostname !== 'work.convogenie.ai') return undefined;
     let cancelled = false;
     const checkForUpdate = async () => {
       try {
@@ -423,7 +428,11 @@ function App() {
         if (!response.ok) return;
         const version = await response.json() as { version?: string };
         if (!cancelled && version.version && version.version !== appBuildVersion) {
-          window.location.reload();
+          const lastReloadedVersion = window.sessionStorage.getItem(appVersionReloadKey);
+          if (lastReloadedVersion !== version.version) {
+            window.sessionStorage.setItem(appVersionReloadKey, version.version);
+            window.location.reload();
+          }
         }
       } catch {
         // Home-screen app can continue working if the update check is offline.
@@ -558,6 +567,7 @@ function App() {
   const latestVisitEntries: FrontendRecentVisitEntry[] = [
     ...(salesSaveResult ? [{
       id: salesSaveResult.visit.id,
+      recordId: salesSaveResult.opportunity.id,
       customer: salesSaveResult.opportunity.accountName,
       type: 'Sales' as const,
       status: salesSaveResult.visit.nextAction === 'closed' ? 'Closed' : salesSaveResult.visit.nextAction === 'no_follow_up' ? 'No follow-up' : 'Follow-up needed',
@@ -571,6 +581,7 @@ function App() {
     }] : []),
     ...(serviceSaveResult ? [{
       id: serviceSaveResult.visit.id,
+      recordId: serviceSaveResult.serviceRecord.id,
       customer: serviceSaveResult.serviceRecord.customerName,
       type: 'Service' as const,
       status: serviceSaveResult.visit.nextAction === 'closed' ? 'Closed' : serviceSaveResult.visit.nextAction === 'no_follow_up' ? 'No follow-up' : 'Follow-up needed',
@@ -875,6 +886,165 @@ function App() {
     }
   };
 
+  const entryDetailValue = (entry: FrontendRecentVisitEntry, label: string) => (
+    entry.detailRows?.find((row) => row.label === label)?.value ?? ''
+  );
+
+  const savedStatusToBoolean = (value: string) => value.toLowerCase() === 'saved';
+
+  const salesNextActionFromStatus = (status: string): FrontendSalesNextAction => {
+    const normalized = status.toLowerCase();
+    if (normalized.includes('closed')) return 'closed';
+    if (normalized.includes('no follow')) return 'no_follow_up';
+    return 'follow_up_needed';
+  };
+
+  const serviceNextActionFromStatus = (status: string): FrontendServiceNextAction => {
+    const normalized = status.toLowerCase();
+    if (normalized.includes('closed')) return 'closed';
+    if (normalized.includes('no follow')) return 'no_follow_up';
+    return normalized.includes('next visit') ? 'next_visit_needed' : 'parts_required';
+  };
+
+  const openSavedVisitEntry = (entry: FrontendRecentVisitEntry) => {
+    const agentId = entry.agentId ?? session?.agentId ?? 'agent_2';
+    const agentName = entry.agentName || session?.agentName || 'Field agent';
+    const fallbackGps: FrontendGps = { latitude: 0, longitude: 0 };
+
+    if (entry.type === 'Sales') {
+      const nextAction = salesNextActionFromStatus(entry.status);
+      const salesPhoto = parseStoredPhotoPayload(entry.photoPayload);
+      setSalesAccountName(entryDetailValue(entry, 'Customer') || entry.customer);
+      setSalesContactPerson(entryDetailValue(entry, 'Contact person'));
+      setSalesDesignation(entryDetailValue(entry, 'Designation'));
+      setSalesPhone(entryDetailValue(entry, 'Phone'));
+      setSalesEmail(entryDetailValue(entry, 'Email'));
+      setSalesDepartmentAddress(entryDetailValue(entry, 'Department / address'));
+      setSalesLeadSource(entryDetailValue(entry, 'Lead source') || 'Field visit');
+      setSalesProductType(entryDetailValue(entry, 'Product type') || 'Laboratory equipment');
+      setSalesRequirement(entryDetailValue(entry, 'Requirement'));
+      setSalesVisitNote(entryDetailValue(entry, 'Visit note'));
+      setSalesNextAction(nextAction);
+      setSalesFollowUpDate(entryDetailValue(entry, 'Follow-up date'));
+      setSalesQuoteSubmitted((entryDetailValue(entry, 'Quote submitted') as 'yes' | 'no' | '') || '');
+      setSalesBudgetaryProposal(entryDetailValue(entry, 'Budget / proposal'));
+      setSalesQuoteStatus(entryDetailValue(entry, 'Quote status') || 'New inquiry');
+      setSalesFundStatus(entryDetailValue(entry, 'Fund status') || 'Unknown');
+      setSalesProbability(entryDetailValue(entry, 'Probability'));
+      setSalesClosingDate(entryDetailValue(entry, 'Closing date'));
+      setSalesSupportRequired(entryDetailValue(entry, 'Support required'));
+      setSalesOfficeNotes(entryDetailValue(entry, 'Office notes'));
+      setSalesPhotoNote(salesPhoto.note);
+      setSalesPhotoAttachment(salesPhoto.photo);
+      setSalesStep2Saved(savedStatusToBoolean(entryDetailValue(entry, 'Step 2 status')));
+      setSalesStep3Saved(savedStatusToBoolean(entryDetailValue(entry, 'Step 3 status')));
+      setIsSalesStep2Open(false);
+      setIsSalesStep3Open(false);
+      setSalesSaveResult({
+        opportunity: {
+          id: entry.recordId ?? entry.id,
+          ownerAgentId: agentId,
+          accountName: entryDetailValue(entry, 'Customer') || entry.customer,
+          contactPerson: entryDetailValue(entry, 'Contact person') || undefined,
+          designation: entryDetailValue(entry, 'Designation') || undefined,
+          phone: entryDetailValue(entry, 'Phone') || undefined,
+          email: entryDetailValue(entry, 'Email') || undefined,
+          departmentAddress: entryDetailValue(entry, 'Department / address') || undefined,
+          leadSource: entryDetailValue(entry, 'Lead source') || undefined,
+          productType: entryDetailValue(entry, 'Product type') || undefined,
+          requirement: entryDetailValue(entry, 'Requirement') || undefined,
+          quoteSubmitted: (entryDetailValue(entry, 'Quote submitted') as 'yes' | 'no' | '') || undefined,
+          budgetaryProposal: entryDetailValue(entry, 'Budget / proposal') || undefined,
+          quoteStatus: entryDetailValue(entry, 'Quote status') || undefined,
+          fundStatus: entryDetailValue(entry, 'Fund status') || undefined,
+          probability: entryDetailValue(entry, 'Probability') || undefined,
+          closingDate: entryDetailValue(entry, 'Closing date') || undefined,
+          supportRequired: entryDetailValue(entry, 'Support required') || undefined,
+          officeNotes: entryDetailValue(entry, 'Office notes') || undefined,
+          sitePhoto: entry.photoPayload,
+          step2Saved: savedStatusToBoolean(entryDetailValue(entry, 'Step 2 status')),
+          step3Saved: savedStatusToBoolean(entryDetailValue(entry, 'Step 3 status')),
+          status: nextAction === 'closed' ? 'closed' : 'open',
+        },
+        visit: {
+          id: entry.id,
+          opportunityId: entry.recordId ?? entry.id,
+          agentId,
+          agentName,
+          visitNumber: 1,
+          visitDate: entry.visitDate ?? '',
+          visitTime: entry.visitTime ?? '',
+          gps: fallbackGps,
+          note: entryDetailValue(entry, 'Visit note'),
+          nextAction,
+          ...(entryDetailValue(entry, 'Follow-up date') ? { followUpDate: entryDetailValue(entry, 'Follow-up date') } : {}),
+        },
+      });
+      goToScreen('sales');
+      return;
+    }
+
+    const nextAction = serviceNextActionFromStatus(entry.status);
+    const servicePhoto = parseStoredPhotoPayload(entry.photoPayload);
+    setServiceCustomerName(entryDetailValue(entry, 'Customer') || entry.customer);
+    setServiceContactPerson(entryDetailValue(entry, 'Contact person'));
+    setServicePhone(entryDetailValue(entry, 'Phone'));
+    setServiceEmail(entryDetailValue(entry, 'Email'));
+    setServiceDepartmentAddress(entryDetailValue(entry, 'Department / address'));
+    setServiceWorkDone(entryDetailValue(entry, 'Work done'));
+    setServiceNextAction(nextAction);
+    setServiceNextVisitDate(entryDetailValue(entry, 'Next visit date'));
+    setServicePartsRequired(entryDetailValue(entry, 'Parts required'));
+    setServicePartsUsed(entryDetailValue(entry, 'Parts used'));
+    setServiceMachineStatus(entryDetailValue(entry, 'Machine status'));
+    setServiceSupportRequiredNote(entryDetailValue(entry, 'Support note'));
+    setServiceFinalRemarks(entryDetailValue(entry, 'Final remarks'));
+    setServiceOfficeNotes(entryDetailValue(entry, 'Office notes'));
+    setServicePhotoNote(servicePhoto.note);
+    setServicePhotoAttachment(servicePhoto.photo);
+    setServiceStep2Saved(savedStatusToBoolean(entryDetailValue(entry, 'Step 2 status')));
+    setServiceStep3Saved(savedStatusToBoolean(entryDetailValue(entry, 'Step 3 status')));
+    setIsServiceStep2Open(false);
+    setIsServiceStep3Open(false);
+    setServiceSaveResult({
+      serviceRecord: {
+        id: entry.recordId ?? entry.id,
+        ownerAgentId: agentId,
+        customerName: entryDetailValue(entry, 'Customer') || entry.customer,
+        contactPerson: entryDetailValue(entry, 'Contact person') || undefined,
+        phone: entryDetailValue(entry, 'Phone') || undefined,
+        email: entryDetailValue(entry, 'Email') || undefined,
+        departmentAddress: entryDetailValue(entry, 'Department / address') || undefined,
+        partsRequired: entryDetailValue(entry, 'Parts required') || undefined,
+        partsUsed: entryDetailValue(entry, 'Parts used') || undefined,
+        machineStatus: entryDetailValue(entry, 'Machine status') || undefined,
+        supportRequiredNote: entryDetailValue(entry, 'Support note') || undefined,
+        finalRemarks: entryDetailValue(entry, 'Final remarks') || undefined,
+        photoNote: entry.photoPayload,
+        step2Saved: savedStatusToBoolean(entryDetailValue(entry, 'Step 2 status')),
+        step3Saved: savedStatusToBoolean(entryDetailValue(entry, 'Step 3 status')),
+        status: nextAction === 'closed' ? 'closed' : nextAction === 'parts_required' ? 'pending_parts' : 'open',
+      },
+      visit: {
+        id: entry.id,
+        serviceRecordId: entry.recordId ?? entry.id,
+        agentId,
+        agentName,
+        visitNumber: 1,
+        visitDate: entry.visitDate ?? '',
+        visitTime: entry.visitTime ?? '',
+        gps: fallbackGps,
+        serviceType: 'breakdown',
+        workDone: entryDetailValue(entry, 'Work done'),
+        supportRequired: entry.status !== 'Closed',
+        nextAction,
+        ...(entryDetailValue(entry, 'Next visit date') ? { nextVisitDate: entryDetailValue(entry, 'Next visit date') } : {}),
+        ...(entryDetailValue(entry, 'Office notes') ? { officeNotes: entryDetailValue(entry, 'Office notes') } : {}),
+      },
+    });
+    goToScreen('service');
+  };
+
   const PhotoViewer = ({ payload, label }: { payload?: string; label: string }) => {
     const { note, photo } = parseStoredPhotoPayload(payload);
     if (!photo?.dataUrl) {
@@ -1047,6 +1217,10 @@ function App() {
   };
 
   const salesAnySubmitting = isSalesSubmitting || isSalesStep2Submitting || isSalesStep3Submitting;
+  const isSalesStep2Complete = salesStep2Saved || salesSaveResult?.opportunity.step2Saved === true;
+  const isSalesStep3Complete = salesStep3Saved || salesSaveResult?.opportunity.step3Saved === true;
+  const isServiceStep2Complete = serviceStep2Saved || serviceSaveResult?.serviceRecord.step2Saved === true;
+  const isServiceStep3Complete = serviceStep3Saved || serviceSaveResult?.serviceRecord.step3Saved === true;
 
   const handleSalesSubmit = async () => {
     if (!session) {
@@ -1161,6 +1335,7 @@ function App() {
         ...(salesBrandName.trim() ? { brandName: salesBrandName.trim() } : {}),
         ...(salesEquipmentModel.trim() ? { equipmentModel: salesEquipmentModel.trim() } : {}),
         ...(salesRequirement.trim() ? { requirement: salesRequirement.trim() } : {}),
+        step2Saved: true,
       });
       setSalesSaveResult({ ...salesSaveResult, opportunity: { ...salesSaveResult.opportunity, ...opportunity } });
       setSalesStep2Saved(true);
@@ -1196,6 +1371,7 @@ function App() {
         ...(salesRemarksTimeline.trim() ? { remarksTimeline: salesRemarksTimeline.trim() } : {}),
         ...(salesOfficeNotes.trim() ? { officeNotes: salesOfficeNotes.trim() } : {}),
         ...(storedPhotoPayload(salesPhotoNote, salesPhotoAttachment) ? { sitePhoto: storedPhotoPayload(salesPhotoNote, salesPhotoAttachment) } : {}),
+        step3Saved: true,
       });
       setSalesSaveResult({ ...salesSaveResult, opportunity: { ...salesSaveResult.opportunity, ...opportunity } });
       setSalesStep3Saved(true);
@@ -1343,6 +1519,7 @@ function App() {
         ...(serviceIssueCategory.trim() ? { issueCategory: serviceIssueCategory.trim() } : {}),
         ...(serviceIssueDescription.trim() ? { issueDescription: serviceIssueDescription.trim() } : {}),
         ...(serviceWarrantyAmc.trim() ? { warrantyAmc: serviceWarrantyAmc.trim() } : {}),
+        step2Saved: true,
       });
       setServiceSaveResult({ ...serviceSaveResult, serviceRecord: { ...serviceSaveResult.serviceRecord, ...serviceRecord } });
       setServiceStep2Saved(true);
@@ -1375,6 +1552,7 @@ function App() {
         ...(serviceFinalRemarks.trim() ? { finalRemarks: serviceFinalRemarks.trim() } : {}),
         ...(storedPhotoPayload(servicePhotoNote, servicePhotoAttachment) ? { photoNote: storedPhotoPayload(servicePhotoNote, servicePhotoAttachment) } : {}),
         ...(serviceOfficeNotes.trim() ? { officeNotes: serviceOfficeNotes.trim() } : {}),
+        step3Saved: true,
       });
       setServiceSaveResult({ ...serviceSaveResult, serviceRecord: { ...serviceSaveResult.serviceRecord, ...serviceRecord } });
       setServiceStep3Saved(true);
@@ -1501,7 +1679,7 @@ function App() {
         </div>
         <div className="agent-recent-list">
           {recentVisitEntries.length ? recentVisitEntries.slice(0, 2).map((entry) => (
-            <button className="agent-entry-card" key={entry.id} type="button" onClick={() => goToScreen(entry.type === 'Sales' ? 'sales' : 'service')}>
+            <button className="agent-entry-card" key={entry.id} type="button" onClick={() => openSavedVisitEntry(entry)}>
               <div className="agent-entry-main">
                 <strong>{displayCustomerName(entry.customer)}</strong>
                 <p>{entry.agentName}</p>
@@ -1551,7 +1729,7 @@ function App() {
           <span>Tap to continue</span>
         </div>
         {filteredEntries.length ? filteredEntries.map((entry) => (
-          <button className="agent-entry-card agent-visit-entry-card" key={entry.id} type="button" onClick={() => goToScreen(entry.type === 'Sales' ? 'sales' : 'service')}>
+          <button className="agent-entry-card agent-visit-entry-card" key={entry.id} type="button" onClick={() => openSavedVisitEntry(entry)}>
             <div className="agent-entry-main">
               <strong>{displayCustomerName(entry.customer)}</strong>
               <p>{entry.agentName}</p>
@@ -1570,7 +1748,7 @@ function App() {
     <ScreenPanel title="Sales visit" subtitle="Save quickly first. Add remaining details later when free.">
       <div className="form-card highlighted-card">
         <label>Sales progress</label>
-        <span>Step 1: {salesSaveResult ? 'Saved' : 'Pending'} • Step 2: {salesStep2Saved ? 'Saved' : 'Pending'} • Step 3: {salesStep3Saved ? 'Saved' : 'Pending'}</span>
+        <span>Step 1: {salesSaveResult ? 'Saved' : 'Pending'} • Step 2: {isSalesStep2Complete ? 'Saved' : 'Pending'} • Step 3: {isSalesStep3Complete ? 'Saved' : 'Pending'}</span>
       </div>
 
 
@@ -1632,7 +1810,7 @@ function App() {
       <section className={isSalesStep2Open ? 'step-card step-card-open' : 'step-card step-card-collapsed'}>
         <button type="button" className="step-heading step-toggle" aria-expanded={isSalesStep2Open} onClick={() => setIsSalesStep2Open((open) => !open)}>
           <div><span className="step-pill">Step 2</span><h3>Customer & requirement details</h3><p>Add contact and product details when available.</p><span className="step-collapsed-hint">Contact, phone, address, product</span></div>
-          <span className={salesStep2Saved ? 'chip chip-soft' : 'chip chip-info'}>{salesStep2Saved ? 'Saved' : isSalesStep2Open ? 'Open' : 'Tap to open'}</span>
+          <span className={isSalesStep2Complete ? 'chip chip-soft' : 'chip chip-info'}>{isSalesStep2Complete ? 'Saved' : isSalesStep2Open ? 'Open' : 'Tap to open'}</span>
         </button>
         {isSalesStep2Open && <div className="step-body">
         <label className="field-card">
@@ -1682,7 +1860,7 @@ function App() {
       <section className={isSalesStep3Open ? 'step-card step-card-open' : 'step-card step-card-collapsed'}>
         <button type="button" className="step-heading step-toggle" aria-expanded={isSalesStep3Open} onClick={() => setIsSalesStep3Open((open) => !open)}>
           <div><span className="step-pill">Step 3</span><h3>Quote, proof & office details</h3><p>Useful for follow-up, admin reports, and office team work.</p><span className="step-collapsed-hint">Quote status, support, proof, office notes</span></div>
-          <span className={salesStep3Saved ? 'chip chip-soft' : 'chip chip-info'}>{salesStep3Saved ? 'Saved' : isSalesStep3Open ? 'Open' : 'Tap to open'}</span>
+          <span className={isSalesStep3Complete ? 'chip chip-soft' : 'chip chip-info'}>{isSalesStep3Complete ? 'Saved' : isSalesStep3Open ? 'Open' : 'Tap to open'}</span>
         </button>
         {isSalesStep3Open && <div className="step-body">
         <label className="field-card"><span>Quote submitted?</span><select aria-label="Sales quote submitted" value={salesQuoteSubmitted} onChange={(event) => setSalesQuoteSubmitted(event.target.value as 'yes' | 'no' | '')}><option value="">Not updated</option><option value="yes">Yes</option><option value="no">No</option></select></label>
@@ -1725,7 +1903,7 @@ function App() {
         <div className="form-card highlighted-card">
           <label>Latest saved sales entry</label>
           <span>{salesSaveResult.opportunity.accountName} • Visit {salesSaveResult.visit.visitNumber} • {salesSaveResult.visit.nextAction.split('_').join(' ')}</span>
-          <span>Step 2: {salesStep2Saved ? 'saved' : 'pending'} • Step 3: {salesStep3Saved ? 'saved' : 'pending'}</span>
+          <span>Step 2: {isSalesStep2Complete ? 'saved' : 'pending'} • Step 3: {isSalesStep3Complete ? 'saved' : 'pending'}</span>
           <PhotoViewer payload={salesSaveResult.opportunity.sitePhoto} label="saved sales" />
         </div>
       )}
@@ -1738,7 +1916,7 @@ function App() {
       <ScreenPanel title="Service visit" subtitle="Save quickly first. Add equipment, parts, and proof later.">
         <div className="form-card highlighted-card">
           <label>Service progress</label>
-          <span>Step 1: {serviceSaveResult ? 'Saved' : 'Pending'} • Step 2: {serviceStep2Saved ? 'Saved' : 'Pending'} • Step 3: {serviceStep3Saved ? 'Saved' : 'Pending'}</span>
+          <span>Step 1: {serviceSaveResult ? 'Saved' : 'Pending'} • Step 2: {isServiceStep2Complete ? 'Saved' : 'Pending'} • Step 3: {isServiceStep3Complete ? 'Saved' : 'Pending'}</span>
         </div>
 
 
@@ -1773,7 +1951,7 @@ function App() {
         <section className={isServiceStep2Open ? 'step-card step-card-open' : 'step-card step-card-collapsed'}>
           <button type="button" className="step-heading step-toggle" aria-expanded={isServiceStep2Open} onClick={() => setIsServiceStep2Open((open) => !open)}>
             <div><span className="step-pill">Step 2</span><h3>Customer, equipment, issue</h3><p>Add instrument and issue details when available.</p><span className="step-collapsed-hint">Contact, equipment, serial, issue</span></div>
-            <span className={serviceStep2Saved ? 'chip chip-soft' : 'chip chip-info'}>{serviceStep2Saved ? 'Saved' : isServiceStep2Open ? 'Open' : 'Tap to open'}</span>
+            <span className={isServiceStep2Complete ? 'chip chip-soft' : 'chip chip-info'}>{isServiceStep2Complete ? 'Saved' : isServiceStep2Open ? 'Open' : 'Tap to open'}</span>
           </button>
           {isServiceStep2Open && <div className="step-body">
           <label className="field-card"><span>Contact person</span><input aria-label="Service contact person" value={serviceContactPerson} onChange={(event) => setServiceContactPerson(event.target.value)} placeholder="Optional" /></label>
@@ -1794,7 +1972,7 @@ function App() {
         <section className={isServiceStep3Open ? 'step-card step-card-open' : 'step-card step-card-collapsed'}>
           <button type="button" className="step-heading step-toggle" aria-expanded={isServiceStep3Open} onClick={() => setIsServiceStep3Open((open) => !open)}>
             <div><span className="step-pill">Step 3</span><h3>Parts, proof, office details</h3><p>For service closure and admin reporting.</p><span className="step-collapsed-hint">Parts, photos, support, final notes</span></div>
-            <span className={serviceStep3Saved ? 'chip chip-soft' : 'chip chip-info'}>{serviceStep3Saved ? 'Saved' : isServiceStep3Open ? 'Open' : 'Tap to open'}</span>
+            <span className={isServiceStep3Complete ? 'chip chip-soft' : 'chip chip-info'}>{isServiceStep3Complete ? 'Saved' : isServiceStep3Open ? 'Open' : 'Tap to open'}</span>
           </button>
           {isServiceStep3Open && <div className="step-body">
           <label className="field-card"><span>Parts required</span><input aria-label="Service parts required" value={servicePartsRequired} onChange={(event) => setServicePartsRequired(event.target.value)} placeholder="Optional" /></label>
@@ -1828,7 +2006,7 @@ function App() {
           </div>}
         </section>
 
-        {serviceSaveResult && <div className="form-card highlighted-card"><label>Latest saved service visit</label><span>{serviceSaveResult.serviceRecord.customerName} • Visit {serviceSaveResult.visit.visitNumber} • {serviceSaveResult.visit.nextAction.split('_').join(' ')}</span><span>Step 2: {serviceStep2Saved ? 'saved' : 'pending'} • Step 3: {serviceStep3Saved ? 'saved' : 'pending'}</span><PhotoViewer payload={serviceSaveResult.serviceRecord.photoNote} label="saved service" /></div>}
+        {serviceSaveResult && <div className="form-card highlighted-card"><label>Latest saved service visit</label><span>{serviceSaveResult.serviceRecord.customerName} • Visit {serviceSaveResult.visit.visitNumber} • {serviceSaveResult.visit.nextAction.split('_').join(' ')}</span><span>Step 2: {isServiceStep2Complete ? 'saved' : 'pending'} • Step 3: {isServiceStep3Complete ? 'saved' : 'pending'}</span><PhotoViewer payload={serviceSaveResult.serviceRecord.photoNote} label="saved service" /></div>}
       </ScreenPanel>
     );
   };

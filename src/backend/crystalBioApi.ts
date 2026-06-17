@@ -407,6 +407,7 @@ export function createCrystalBioApi(backend: Backend, options: { mailer?: Crysta
               .filter((visit) => canSeeAll || visit.agentId === session.agentId || opportunity.ownerAgentId === session.agentId)
               .map((visit) => ({
                 id: visit.id,
+                recordId: opportunity.id,
                 customer: opportunity.accountName,
                 type: 'Sales' as const,
                 status: salesVisitStatus(visit.nextAction),
@@ -421,6 +422,8 @@ export function createCrystalBioApi(backend: Backend, options: { mailer?: Crysta
                   ['Submitted by', visit.agentName],
                   ['Visit date', visit.visitTime ? `${visit.visitDate} • ${visit.visitTime}` : visit.visitDate],
                   ['Customer', opportunity.accountName],
+                  ['Step 2 status', opportunity.step2Saved ? 'Saved' : 'Pending'],
+                  ['Step 3 status', opportunity.step3Saved ? 'Saved' : 'Pending'],
                   ['Contact person', opportunity.contactPerson],
                   ['Phone', opportunity.phone],
                   ['Email', opportunity.email],
@@ -447,6 +450,7 @@ export function createCrystalBioApi(backend: Backend, options: { mailer?: Crysta
               .filter((visit) => canSeeAll || visit.agentId === session.agentId || record.ownerAgentId === session.agentId)
               .map((visit) => ({
                 id: visit.id,
+                recordId: record.id,
                 customer: record.customerName,
                 type: 'Service' as const,
                 status: serviceVisitStatus(visit.nextAction),
@@ -461,6 +465,8 @@ export function createCrystalBioApi(backend: Backend, options: { mailer?: Crysta
                   ['Submitted by', visit.agentName],
                   ['Visit date', visit.visitTime ? `${visit.visitDate} • ${visit.visitTime}` : visit.visitDate],
                   ['Customer', record.customerName],
+                  ['Step 2 status', record.step2Saved ? 'Saved' : 'Pending'],
+                  ['Step 3 status', record.step3Saved ? 'Saved' : 'Pending'],
                   ['Contact person', record.contactPerson],
                   ['Phone', record.phone],
                   ['Email', record.email],

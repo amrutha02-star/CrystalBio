@@ -269,19 +269,21 @@ describe('CrystalBio API layer', () => {
       method: 'PATCH',
       path: `/sales-opportunities/${opportunity.body.opportunity.id}`,
       headers: { authorization: `Bearer ${token}` },
-      body: { email: 'lab@example.com', leadSource: 'Field visit', productType: 'Laboratory equipment' },
+      body: { email: 'lab@example.com', leadSource: 'Field visit', productType: 'Laboratory equipment', step2Saved: true },
     });
     expect(step2.status).toBe(200);
     expect(step2.body.opportunity.email).toBe('lab@example.com');
+    expect(step2.body.opportunity.step2Saved).toBe(true);
 
     const step3 = api.handle({
       method: 'PATCH',
       path: `/sales-opportunities/${opportunity.body.opportunity.id}`,
       headers: { authorization: `Bearer ${token}` },
-      body: { quoteSubmitted: 'yes', quoteStatus: 'Quote pending', officeNotes: 'Prepare quote' },
+      body: { quoteSubmitted: 'yes', quoteStatus: 'Quote pending', officeNotes: 'Prepare quote', step3Saved: true },
     });
     expect(step3.status).toBe(200);
     expect(step3.body.opportunity.quoteStatus).toBe('Quote pending');
+    expect(step3.body.opportunity.step3Saved).toBe(true);
     expect(backend.getSalesOpportunity(opportunity.body.opportunity.id).visits).toHaveLength(1);
   });
 
@@ -319,6 +321,16 @@ describe('CrystalBio API layer', () => {
     expect(visit.status).toBe(201);
     expect(visit.body.visit.agentName).toBe('Meera');
     expect(visit.body.visit.visitNumber).toBe(1);
+
+    const step2 = api.handle({
+      method: 'PATCH',
+      path: `/service-records/${record.body.serviceRecord.id}`,
+      headers: { authorization: `Bearer ${token}` },
+      body: { issueDescription: 'Noise during spin cycle', step2Saved: true },
+    });
+    expect(step2.status).toBe(200);
+    expect(step2.body.serviceRecord.issueDescription).toBe('Noise during spin cycle');
+    expect(step2.body.serviceRecord.step2Saved).toBe(true);
   });
 
   it('requires logged-in owner or admin identity to patch service record details', () => {
@@ -454,6 +466,7 @@ describe('CrystalBio API layer', () => {
     expect(recentVisits.status).toBe(200);
     expect(recentVisits.body.entries).toHaveLength(1);
     expect(recentVisits.body.entries[0]).toMatchObject({
+      recordId: opportunity.body.opportunity.id,
       customer: 'Admin Field Customer',
       type: 'Sales',
       agentId: admin.id,

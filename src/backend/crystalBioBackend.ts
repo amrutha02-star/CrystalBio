@@ -72,6 +72,8 @@ export type SalesOpportunity = {
   installationPhoto?: string;
   issuePhoto?: string;
   visitingCardPhoto?: string;
+  step2Saved?: boolean;
+  step3Saved?: boolean;
   status: 'open' | 'closed';
   visits: SalesVisitUpdate[];
 };
@@ -128,6 +130,8 @@ export type ServiceRecord = {
   supportRequiredNote?: string;
   finalRemarks?: string;
   photoNote?: string;
+  step2Saved?: boolean;
+  step3Saved?: boolean;
   status: 'open' | 'pending_parts' | 'closed';
   visits: ServiceVisitUpdate[];
 };
@@ -566,6 +570,8 @@ export function createCrystalBioBackend(initialState?: CrystalBioBackendState) {
         installationPhoto: input.installationPhoto,
         issuePhoto: input.issuePhoto,
         visitingCardPhoto: input.visitingCardPhoto,
+        step2Saved: input.step2Saved ?? false,
+        step3Saved: input.step3Saved ?? false,
         status: 'open',
         visits: [],
       };
@@ -614,6 +620,8 @@ export function createCrystalBioBackend(initialState?: CrystalBioBackendState) {
         installationPhoto: input.installationPhoto,
         issuePhoto: input.issuePhoto,
         visitingCardPhoto: input.visitingCardPhoto,
+        step2Saved: input.step2Saved,
+        step3Saved: input.step3Saved,
       };
       Object.entries(allowedUpdates).forEach(([key, value]) => {
         if (value !== undefined) {
@@ -670,6 +678,8 @@ export function createCrystalBioBackend(initialState?: CrystalBioBackendState) {
         issueCategory: (input as ServiceRecord).issueCategory,
         issueDescription: (input as ServiceRecord).issueDescription,
         warrantyAmc: (input as ServiceRecord).warrantyAmc,
+        step2Saved: input.step2Saved ?? false,
+        step3Saved: input.step3Saved ?? false,
         status: 'open',
         visits: [],
       };
@@ -709,6 +719,8 @@ export function createCrystalBioBackend(initialState?: CrystalBioBackendState) {
         'supportRequiredNote',
         'finalRemarks',
         'photoNote',
+        'step2Saved',
+        'step3Saved',
       ];
       allowedFields.forEach((field) => {
         if (field in input) {

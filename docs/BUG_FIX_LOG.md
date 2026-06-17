@@ -23,6 +23,36 @@ Use this file to keep a simple history of what was fixed, how it was checked, an
 
 ## Fixes
 
+### 2026-06-16 — Previous visit entries reopen saved records
+
+- Fixed by: Iris
+- Approved by: Periwinkle
+- Source bug report: `docs/qa-runs/QA_RUN_BLOOM_2026-06-16.md`, BUG-20260616-006
+- Severity: High
+- Journey: Agent Visits / Previous entries continuation for saved Sales records, with a quick Service regression check path.
+- Problem: Tapping a saved previous Sales entry could open a blank pending Sales form, making saved work look missing.
+- Fix made: Previous Sales/Service entries now include their saved record ID and use the saved detail rows to refill the existing Sales or Service form/status when tapped.
+- Checks run: Full `npm test -- --run`; `npm run build`.
+- Result: Passed. Full test suite reports 11 files and 95 tests passed; production build completed.
+- Bloom retest: Retest tapping saved Sales previous entries after refresh/re-login, verify saved customer/details and Step 1/2/3 status, and do one quick Service previous-entry check.
+- Final acceptance: Waiting for Bloom retest and Periwinkle/Rahul acceptance.
+- Notes: Small continuation fix only; no redesign, GPS-rule, auth, admin-report, or saved-status business-rule changes.
+
+### 2026-06-16 — Sales/Service Step 2 status saves correctly
+
+- Fixed by: Iris
+- Approved by: Periwinkle
+- Source bug report: `docs/qa-runs/QA_RUN_BLOOM_2026-06-15.md`, BUG-20260616-003
+- Severity: High
+- Journey: Field-agent Sales and Service Step 2 save completion/status on mobile and backend/admin visibility
+- Problem: After saving Step 2 on mobile, Sales and Service still showed Step 2 as pending in the progress header and latest saved entry.
+- Fix made: Step 2 and Step 3 saves now store explicit completion flags on the saved Sales/Service record, and the agent progress/header cards read from those saved flags. Admin field-visit details also show Step 2/Step 3 status.
+- Checks run: Full `npm test -- --run`; `npm run build`.
+- Result: Passed. Full test suite reports 10 files and 93 tests passed; production build completed.
+- Bloom retest: Retest mobile Sales Step 2 save and mobile Service Step 2 save, including the progress header and latest saved entry after Step 2 and after Step 3.
+- Final acceptance: Waiting for Bloom retest and Periwinkle/Rahul acceptance.
+- Notes: No route, navigation, form layout, Step 1 GPS behavior, bottom-nav spacing, or photo-control styling was changed.
+
 ### 2026-06-15 — Login Enter/Go submits from password field
 
 - Fixed by: Iris
