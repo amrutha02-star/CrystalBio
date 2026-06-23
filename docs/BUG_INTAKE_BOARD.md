@@ -59,6 +59,20 @@ For live-user problems, Bloom should include:
 - Verification: `npm test -- --run src/App.test.tsx` passed 20/20; `npm run build` passed; `npm run backend:build` passed; built dist contained `Back to dashboard`, 16px input CSS, and no old `20260623020524` marker. Live API health returned OK; live `version.json` returned `20260623170035`; live JS/CSS markers confirmed `Back to dashboard`, 16px input CSS, new app build version, and no old app build version. Mobile-sized Chromium loaded the live login page with no runtime-error lines.
 - Deploy note: Frontend-only deploy; backend was not restarted. Backup created at `/var/www/crystalbio.backup-20260623170035-pre-admin-back-zoom`. The monitor page file `public/periwinkle-live-monitor-a93f27.html` was not intentionally included in this deploy.
 - Bloom follow-up: Full post-deploy user-journey QA remains scheduled for 2026-06-23 23:15 IST using only Bloom assigned credentials.
+- Bloom post-deploy QA update — 2026-06-23 17:45 UTC: Passed with assigned Bloom QA admin/agent accounts. Live version/API health OK; Admin dashboard entry detail showed `Back to dashboard` and returned to Overview; Field Entry detail showed `Back to field entries` and returned to Field Entry; Sales form inputs/textareas/selects computed at 16px and Chromium focus did not zoom. Bloom also checked login/session, attendance, Sales/Service save/update/persistence, admin Field Entry/Agents/Approvals/Reports/PDF/Profile, mobile baseline, console errors, and Bloom-only cleanup. Cleanup removed only Bloom-created QA records after dry-run/backup/backend restart; live post-clean checks showed 0 Bloom post-deploy field rows, no current Bloom attendance, and 0 Bloom leave rows. Evidence: `docs/qa-runs/QA_RUN_BLOOM_POST_DEPLOY_BUG-20260623-017_2026-06-23.md` and `dogfood-output/bloom-postdeploy-20260623-api-e2e-20260623174734.json`. Status: Needs Periwinkle review for acceptance.
+
+### BUG-20260623-016 — Admin data does not refresh live while screen stays open
+
+- Reported by: Amrutha
+- Time noticed: 2026-06-23 13:37 IST
+- Screen: Admin overview / Field Entry / Reports
+- User journey affected: Admin expects newly submitted field details to appear without closing/reopening or manually refreshing the app.
+- Actual behavior: Live API has current data, but an already-open admin screen can stay stale because admin data refresh happens mainly on login, date/filter changes, or same-admin saves. Field Entry/Admin overview do not continuously poll for other agents' new submissions.
+- Expected behavior: Admin operational screens should safely refresh recent team data while open and show clear freshness, without changing the approved mobile design.
+- Severity: High for daily live review confidence
+- Status: Needs Periwinkle review; daytime fix/deploy requires Amrutha/Rahul approval because real users are active.
+- Verification so far: Live API health OK; live app version `20260623020524`; today's backend report returned 5 Sales visits, 1 Service visit, 6 checked-in agents, and latest `/field-visits?scope=team` entries around 13:27–13:32 IST. No evidence of data loss from this check.
+- Recommended next step: Add a narrow auto-refresh/visible refreshed-time behavior for admin Overview, Field Entry, and Reports; test with a live/Bloom submission; deploy only in approved window unless urgent daytime approval is given.
 
 ### BUG-20260622-015 — Admin overview Total visits shows older submitted forms and rows do not open
 
