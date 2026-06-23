@@ -520,10 +520,14 @@ describe('Crystal Bio agent view shell', () => {
     expect(screen.queryByRole('button', { name: /open submitted work/i })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Report Back Test Lab.*Raghavendra.*Sales.*Open/i }));
     expect(screen.getByLabelText('Submitted form details')).toBeInTheDocument();
-    expect(screen.getByText('Back to field entries')).toBeInTheDocument();
+    expect(screen.getByText('Back to dashboard')).toBeInTheDocument();
     expect(screen.getByText('Sales agent: Raghavendra')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /Back to field entries/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Back to dashboard/i }));
+    expect(screen.getByRole('heading', { name: 'Admin overview' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /total visits today show forms/i })).toBeInTheDocument();
 
+    fireEvent.click(screen.getByRole('button', { name: 'Field entry' }));
+    expect(screen.getByRole('heading', { name: 'Field entry' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Report Back Test Lab.*View details/i }));
     expect(screen.getByLabelText('Submitted form details')).toBeInTheDocument();
     expect(screen.getByText('Back to field entries')).toBeInTheDocument();

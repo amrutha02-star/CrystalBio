@@ -21,6 +21,10 @@
 }
 
 * { box-sizing: border-box; }
+html {
+  -webkit-text-size-adjust: 100%;
+  touch-action: manipulation;
+}
 body {
   margin: 0;
   min-width: 320px;
@@ -30,6 +34,7 @@ body {
     linear-gradient(135deg, #e3ecd9 0%, #f3f7ef 48%, #fffaf0 100%);
 }
 button, input, textarea, select { font: inherit; }
+input, textarea, select { font-size: 16px; }
 button { border: 0; color: inherit; text-align: left; cursor: pointer; }
 button:disabled { cursor: not-allowed; opacity: 0.72; }
 button:not(:disabled):active { transform: translateY(1px); }
@@ -420,7 +425,7 @@ p { color: var(--muted); line-height: 1.5; }
   outline: 0;
   background: transparent;
   color: var(--ink);
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1.35;
   padding: 4px 0 0;
   resize: vertical;
@@ -2858,7 +2863,7 @@ p { color: var(--muted); line-height: 1.5; }
   .step-card .form-card { padding: 8px 10px; margin-bottom: 7px; }
   .step-card .field-card textarea { min-height: 40px; }
   .step-card .field-card input,
-  .step-card .field-card select { min-height: 28px; font-size: 15px; }
+  .step-card .field-card select { min-height: 28px; font-size: 16px; }
   .compact-date-card { max-width: calc(50% - 4px); }
   .inline-field-grid { gap: 7px; }
   .inline-field-grid .field-card span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

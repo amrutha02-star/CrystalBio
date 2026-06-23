@@ -7,6 +7,7 @@ Purpose: one simple dashboard so Rahul can see what Periwinkle, Bloom, and Iris 
 ## Simple summary right now
 
 - Live app/API are up.
+- BUG-20260623-017 is deployed live as version `20260623170035`: Admin dashboard entry detail now returns to dashboard, and phone form inputs use 16px anti-zoom sizing.
 - One-week live usage update from Amrutha: employees are using the app well; only one or two minor issues were seen; no big outage occurred.
 - No current Critical or High launch-blocking bug is approved for Iris.
 - Latest Bloom night QA found no new Critical or High launch blocker.
@@ -46,11 +47,10 @@ Purpose: one simple dashboard so Rahul can see what Periwinkle, Bloom, and Iris 
 
 - Every 5 minutes: live API monitor checks CrystalBio health.
 - 9:00 PM IST: Bloom heavy QA starts.
-- 9:00 PM IST tonight: Bloom runs the expanded attendance/error-pattern/downloaded-report sweep (`3015386bee18`).
-- 10:30 PM IST tonight: Iris approved narrow fix window for Field Entry performance, saved-entry UX/text cleanup, Field Entry visibility follow-up if needed, and downloaded report attendance section (`8bab3f427c41`).
-- 11:15 PM IST tonight: Bloom post-deploy QA for Field Entry performance and saved-entry UX/text cleanup — reload speed, lightweight list payload, entries beyond 10, entry detail/photo opening, neutral `View details`, no read-only/progress clutter, direct follow-up fields, and pending Step 2/3 visibility (`34ce092c3961`).
+- 10:30 PM IST tonight: Periwinkle deployed the approved narrow fix for BUG-20260623-017 as version `20260623170035` — Admin dashboard entry Back returns to dashboard, and form inputs stop phone focus-zoom.
+- 11:15 PM IST tonight: Bloom runs a full post-deploy user-journey QA using only Bloom assigned credentials, including dashboard Back, Field Entry Back, Sales/Service, Attendance, Admin, Reports/PDF, mobile input zoom, console/API errors, and Bloom-only cleanup (`d59a22793e7a`).
 - 00:05 AM IST: nightly attendance auto-checkout and Bloom QA cleanup/audit runs after the calendar day changes (`faeccaf5a2d2`).
-- 2:30 AM IST: Bloom retests Iris fixes.
+- 2:30 AM IST: Bloom retests any Iris fixes if a separate approved Iris fix exists.
 - 7:30 AM IST: Periwinkle morning summary.
 
 ## Current bug/fix status

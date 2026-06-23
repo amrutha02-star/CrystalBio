@@ -75,7 +75,7 @@ const sampleAttendanceLogs = [
 const screenOptions: AppScreen[] = ['login', 'home', 'visits', 'sales', 'service', 'checkin', 'attendance', 'leave', 'reports', 'profile', 'admin'];
 const sessionStorageKey = 'crystalbio.session.v1';
 const screenStorageKey = 'crystalbio.screen.v1';
-const appBuildVersion = '20260623020524';
+const appBuildVersion = '20260623170035';
 const appVersionReloadKey = 'crystalbio.version-reload.v1';
 const isPublicMonitorPath = () => typeof window !== 'undefined' && window.location.pathname.includes('periwinkle-live-monitor');
 
@@ -3205,13 +3205,8 @@ function App() {
       setScreenNotice(null);
     };
     const openOverviewEntryDetail = (entry: FrontendRecentVisitEntry) => {
-      setAdminFieldEntryScope('all');
-      setAdminFieldEntryTypeFilter('all');
-      setAdminFieldEntrySearch('');
-      setShowAllAdminFieldEntries(false);
       setExpandedAdminMetric(null);
-      setAdminTab('fieldEntry');
-      openAdminEntryDetail(entry, 'fieldEntry');
+      openAdminEntryDetail(entry, 'overview');
     };
     const successfulLoginEvents = adminLoginActivity.filter((event) => event.success);
     const failedLoginEvents = adminLoginActivity.filter((event) => !event.success);
@@ -3467,7 +3462,9 @@ function App() {
         {(showOverview || showReports) && (
           <>
             {showOverview && (
-              <>
+              selectedAdminEntry && selectedAdminEntryReturnTab === 'overview' ? (
+                renderAdminEntryDetail('Back to dashboard', closeAdminEntryDetail)
+              ) : <>
                 <section className="admin-hero-card">
                   <div>
                     <p>Today field status</p>

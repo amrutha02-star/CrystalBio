@@ -45,6 +45,21 @@ For live-user problems, Bloom should include:
 
 ## Current bug queue
 
+### BUG-20260623-017 — Admin dashboard entry Back goes to wrong place and form inputs zoom on phone
+
+- Reported by: Amrutha
+- Time noticed: 2026-06-23
+- Screen: Admin overview submitted-entry detail; Sales/Service form inputs on phone
+- User journey affected: Admin opens an entry from the dashboard and expects Back to return to the dashboard. Field users/admins filling forms should not have the page unexpectedly zoom while typing.
+- Actual behavior: Dashboard entry detail could behave like a Field Entry detail and send the user away from the dashboard context. Some form inputs used small mobile font sizes, which can trigger iPhone/browser focus zoom.
+- Expected behavior: Entry opened from Admin dashboard returns to Admin dashboard. Entry opened from Field Entry returns to Field Entry. Form inputs stay stable while typing.
+- Severity: High for admin navigation confidence and phone form usability
+- Status: Deployed live by Periwinkle on 2026-06-23 22:32 IST as version `20260623170035`.
+- Fix update: Dashboard entry detail now stays in dashboard context with `Back to dashboard`. Field Entry detail still uses `Back to field entries`. Sales/Service inputs, text areas, and selects now use 16px mobile sizing to prevent iPhone/browser focus zoom.
+- Verification: `npm test -- --run src/App.test.tsx` passed 20/20; `npm run build` passed; `npm run backend:build` passed; built dist contained `Back to dashboard`, 16px input CSS, and no old `20260623020524` marker. Live API health returned OK; live `version.json` returned `20260623170035`; live JS/CSS markers confirmed `Back to dashboard`, 16px input CSS, new app build version, and no old app build version. Mobile-sized Chromium loaded the live login page with no runtime-error lines.
+- Deploy note: Frontend-only deploy; backend was not restarted. Backup created at `/var/www/crystalbio.backup-20260623170035-pre-admin-back-zoom`. The monitor page file `public/periwinkle-live-monitor-a93f27.html` was not intentionally included in this deploy.
+- Bloom follow-up: Full post-deploy user-journey QA remains scheduled for 2026-06-23 23:15 IST using only Bloom assigned credentials.
+
 ### BUG-20260622-015 — Admin overview Total visits shows older submitted forms and rows do not open
 
 - Reported by: Amrutha
