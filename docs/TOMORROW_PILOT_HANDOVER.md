@@ -34,14 +34,14 @@ cd /path/to/CrystalBio
 CRYSTALBIO_DB_PATH=/var/data/crystalbio-db.json npm run clean:pilot-data
 ```
 
-Then write cleanup:
+Then write cleanup only for an approved full reset. This logs out active users, so do not use it for normal Bloom QA cleanup:
 
 ```bash
 cd /path/to/CrystalBio
-CRYSTALBIO_DB_PATH=/var/data/crystalbio-db.json npm run clean:pilot-data -- --write
+CRYSTALBIO_DB_PATH=/var/data/crystalbio-db.json npm run clean:pilot-data -- --write --reset-all-sessions-and-activity
 ```
 
-This keeps user accounts and clears sessions, attendance, sales entries, service entries, and leave requests. It also writes a pre-clean backup.
+This keeps user accounts and clears sessions, attendance, sales entries, service entries, and leave requests. It also writes a pre-clean backup. Normal Bloom QA cleanup must use `--bloom-only` and must not log out real users.
 
 ### 3. Confirm tomorrow user list
 

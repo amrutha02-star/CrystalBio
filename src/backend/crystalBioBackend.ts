@@ -40,6 +40,10 @@ export type AttendanceRecord = {
   checkOutGps?: GPSLocation;
   status: 'checked_in' | 'checked_out';
   note?: string;
+  workTypes?: string[];
+  autoCheckedOut?: boolean;
+  autoCheckOutReason?: 'missed_checkout_night_auto_close' | string;
+  systemRestored?: boolean;
 };
 
 export type SalesNextAction = 'follow_up_needed' | 'no_follow_up' | 'closed';
@@ -256,7 +260,12 @@ type ServiceRecordInput = Omit<Partial<ServiceRecord>, 'id' | 'ownerAgentId' | '
 
 export type LoginInput = string | { agentId?: string; email?: string; password?: string; loginCode?: string; passcode?: string };
 
-const dateFromTimestamp = (timestamp: string) => timestamp.slice(0, 10);
+const istDateFormatter = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' });
+const dateFromTimestamp = (timestamp: string) => {
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) return timestamp.slice(0, 10);
+  return istDateFormatter.format(date);
+};
 
 const requireText = (value: string | undefined, message: string) => {
   if (!value || value.trim().length === 0) throw new ValidationError(message);
@@ -296,8 +305,10 @@ export function createCrystalBioBackend(initialState?: CrystalBioBackendState) {
     return agent;
   };
 
-  const activeAttendanceFor = (agentId: string) =>
-    [...attendance.values()].find((record) => record.agentId === agentId && record.status === 'checked_in');
+  const activeAttendanceFor = (agentId: string, date?: string) =>
+    [...attendance.values()]
+      .filter((record) => record.agentId === agentId && record.status === 'checked_in' && (!date || record.date === date))
+      .sort((a, b) => b.checkInAt.localeCompare(a.checkInAt))[0];
 
   const isInRange = (date: string, fromDate: string, toDate: string) => date >= fromDate && date <= toDate;
 
@@ -478,31 +489,42 @@ export function createCrystalBioBackend(initialState?: CrystalBioBackendState) {
       };
     },
 
-    checkIn(agentId: string, input: { timestamp: string; gps?: GPSLocation; note?: string }): AttendanceRecord {
+    checkIn(agentId: string, input: { timestamp: string; gps?: GPSLocation; note?: string; workTypes?: string[] }): AttendanceRecord {
       const agent = getAgent(agentId);
       requireText(input.timestamp, 'Check-in time is required');
       requireGps(input.gps);
-      if (activeAttendanceFor(agentId)) throw new ValidationError('Agent is already checked in');
+      const checkInDate = dateFromTimestamp(input.timestamp);
+      if (activeAttendanceFor(agentId, checkInDate)) throw new ValidationError('Agent is already checked in');
+      const selectedWorkTypes = Array.isArray(input.workTypes) ? input.workTypes.filter(Boolean) : [];
 
       const record: AttendanceRecord = {
         id: nextId('attendance'),
         agentId: agent.id,
         agentName: agent.name,
-        date: dateFromTimestamp(input.timestamp),
+        date: checkInDate,
         checkInAt: input.timestamp,
         checkInGps: input.gps as GPSLocation,
         status: 'checked_in',
         note: input.note,
+        ...(selectedWorkTypes.length ? { workTypes: selectedWorkTypes } : {}),
       };
       attendance.set(record.id, record);
       return record;
+    },
+
+    getCurrentAttendance(agentId: string, input: { timestamp: string }): AttendanceRecord | null {
+      getAgent(agentId);
+      requireText(input.timestamp, 'Current time is required');
+      const currentDate = dateFromTimestamp(input.timestamp);
+      return activeAttendanceFor(agentId, currentDate) ?? null;
     },
 
     checkOut(agentId: string, input: { timestamp: string; gps?: GPSLocation }): AttendanceRecord {
       getAgent(agentId);
       requireText(input.timestamp, 'Check-out time is required');
       requireGps(input.gps);
-      const record = activeAttendanceFor(agentId);
+      const checkOutDate = dateFromTimestamp(input.timestamp);
+      const record = activeAttendanceFor(agentId, checkOutDate) ?? activeAttendanceFor(agentId);
       if (!record) throw new ValidationError('Agent must be checked in before checkout');
       record.checkOutAt = input.timestamp;
       record.checkOutGps = input.gps;
@@ -646,6 +668,15 @@ export function createCrystalBioBackend(initialState?: CrystalBioBackendState) {
         requireText(input.followUpDate, 'Follow-up date is required when follow-up is needed');
       }
 
+      const duplicateVisit = opportunity.visits.find((visit) =>
+        visit.agentId === agent.id
+        && visit.visitDate === input.visitDate
+        && visit.note.trim() === input.note.trim()
+        && visit.nextAction === input.nextAction
+        && (visit.followUpDate ?? '') === (input.followUpDate ?? '')
+      );
+      if (duplicateVisit) return duplicateVisit;
+
       const update: SalesVisitUpdate = {
         ...input,
         gps: input.gps as GPSLocation,
@@ -744,6 +775,18 @@ export function createCrystalBioBackend(initialState?: CrystalBioBackendState) {
       if (input.nextAction === 'next_visit_needed' || input.nextAction === 'parts_required') {
         requireText(input.nextVisitDate, 'Next visit date is required when another service visit is needed');
       }
+
+      const duplicateVisit = record.visits.find((visit) =>
+        visit.agentId === agent.id
+        && visit.visitDate === input.visitDate
+        && visit.serviceType === input.serviceType
+        && visit.workDone.trim() === input.workDone.trim()
+        && visit.supportRequired === input.supportRequired
+        && visit.nextAction === input.nextAction
+        && (visit.nextVisitDate ?? '') === (input.nextVisitDate ?? '')
+        && (visit.officeNotes ?? '').trim() === (input.officeNotes ?? '').trim()
+      );
+      if (duplicateVisit) return duplicateVisit;
 
       const update: ServiceVisitUpdate = {
         ...input,

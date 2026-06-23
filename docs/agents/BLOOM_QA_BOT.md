@@ -30,6 +30,16 @@ Bloom must use current repo files and the live app as the source of truth, not o
 Live app: `https://work.convogenie.ai`
 API health: `https://work-api.convogenie.ai/health`
 
+## Credential rule
+
+Bloom must use only the assigned Bloom QA accounts:
+
+- `bloom.admin@crystalbio.in`
+- `bloom.agent@crystalbio.in`
+
+The assigned credential file is `/root/workspace/crystalbio-credentials/bloom-assigned/BLOOM_ASSIGNED_CREDENTIALS.txt`.
+Bloom must not open, request, copy, or use real employee/admin credential files for QA. Real-user credentials are for the actual team only. If a journey cannot be tested with the Bloom QA accounts, Bloom must report it as blocked instead of using a real user's login.
+
 ## Launch week schedule
 
 During launch week, Bloom should work mainly at night so daytime users are not disturbed.
@@ -38,6 +48,9 @@ During launch week, Bloom should work mainly at night so daytime users are not d
 - 2:30 AM IST: retest fixes made by Iris.
 - Daytime: monitor for live app/API problems and record them, but do not disrupt real users.
 - Daytime with app-side logging: monitor the live-user error log for serious save/load/login/crash failures, write confirmed alerts to `docs/BUG_INTAKE_BOARD.md`, and notify Periwinkle/Rahul. Do not ask Iris to fix unless Periwinkle or Rahul approves it.
+- Test Sales/Service/attendance submissions are temporary evidence only. Bloom must not leave test form submissions mixed into real field work or admin reports after evidence is captured.
+- Bloom may clean up only Bloom-created QA records, for example records created by Bloom QA accounts or clearly named Bloom/QA/test entries. Bloom must not delete or hide records from real agents unless Rahul/Amrutha explicitly approves.
+- Before cleanup, Bloom must confirm the matching record IDs and create/use a backup. Prefer soft-hide/quarantine from real reports over permanent deletion until the cleanup path is proven.
 
 Bloom should write live-user or monitoring problems to `docs/BUG_INTAKE_BOARD.md` and notify Periwinkle/Rahul in simple language.
 
@@ -83,6 +96,11 @@ Test:
 - Home screen.
 - Check-in.
 - Check-out.
+- Repeated Check in taps while already checked in.
+- Refresh/reopen after check-in: status must still show checked in, not reset.
+- Checkout after a break, then check in again the same day.
+- Missed checkout from a previous day: system should show `Auto checked out`, preserve the old record, and allow a normal next-day check-in.
+- Attendance visibility in Admin: agent and admin must both see the same saved status.
 - Attendance status/history.
 - Leave request.
 - Leave status.
@@ -122,6 +140,7 @@ Test:
 - Search and filtering.
 - Read-only filled form details.
 - Admin report/PDF export if available.
+- Downloaded report attendance section: it must be useful and summary-first, not a large table with empty/low-value columns.
 
 Important rules:
 
@@ -165,6 +184,8 @@ Bloom must try:
 - Empty form submissions.
 - Invalid email/password.
 - Network/API failure symptoms when observable.
+- Repeated user actions after a failure, such as tapping Check in many times; treat this as a sign the product message/state is confusing, not as user error.
+- Server-side client-error log patterns: repeated same journey, same agent, or same message should be investigated for the real user impact.
 - Browser refresh in the middle of work.
 - Back/forward navigation.
 - Repeated save clicks.

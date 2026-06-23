@@ -155,6 +155,35 @@ const buildLoginActivityEvent = (input: { email?: string; success: boolean; mess
   ...(input.session ? { agentId: input.session.agentId, agentName: input.session.agentName, role: input.session.role } : {}),
 });
 
+const maskEmail = (email?: string) => {
+  if (!email) return undefined;
+  const [name = '', domain = ''] = email.trim().toLowerCase().split('@');
+  if (!domain) return 'hidden email';
+  const visibleName = name.length <= 2 ? `${name.slice(0, 1)}…` : `${name.slice(0, 2)}…${name.slice(-1)}`;
+  return `${visibleName}@${domain}`;
+};
+
+const publicLoginActivityEvent = (event: LoginActivityEvent) => ({
+  id: event.id,
+  createdAt: event.createdAt,
+  success: event.success,
+  message: event.success ? 'Login successful' : event.message,
+  email: maskEmail(event.email),
+  role: event.role,
+});
+
+const publicClientErrorEvent = (event: ClientErrorEvent) => ({
+  id: event.id,
+  createdAt: event.createdAt,
+  type: event.type,
+  severity: event.severity,
+  journey: event.journey,
+  message: event.message,
+  path: event.path,
+  status: event.status,
+  role: event.role,
+});
+
 const shortDateLabel = (value?: string) => value || 'No date set';
 
 const compactDetailRows = (rows: Array<[string, unknown]>) => rows
@@ -258,6 +287,18 @@ export function createCrystalBioApi(backend: Backend, options: { mailer?: Crysta
           return ok({ logged: true, event }, 201);
         }
 
+        if (request.method === 'GET' && pathname === '/public/monitor') {
+          const loginLimit = Number.parseInt(query.loginLimit ?? query.limit ?? '120', 10);
+          const errorLimit = Number.parseInt(query.errorLimit ?? query.limit ?? '80', 10);
+          const loginActivity = loginActivityLogStore.list(Number.isFinite(loginLimit) ? loginLimit : 120).map(publicLoginActivityEvent);
+          const clientErrors = clientErrorLogStore.list(Number.isFinite(errorLimit) ? errorLimit : 80).map(publicClientErrorEvent);
+          return ok({
+            generatedAt: new Date().toISOString(),
+            loginActivity,
+            clientErrors,
+          });
+        }
+
         if (request.method === 'GET' && pathname === '/admin/client-error-logs') {
           const session = sessionFor(request);
           backend.getAdminReport(session.agentId, { fromDate: '1900-01-01', toDate: '2999-12-31' });
@@ -289,6 +330,12 @@ export function createCrystalBioApi(backend: Backend, options: { mailer?: Crysta
           const session = sessionFor(request);
           const attendance = backend.checkIn(session.agentId, requireBody(request.body) as any);
           return ok({ attendance }, 201);
+        }
+
+        if (request.method === 'GET' && pathname === '/attendance/current') {
+          const session = sessionFor(request);
+          const attendance = backend.getCurrentAttendance(session.agentId, { timestamp: new Date().toISOString() });
+          return ok({ attendance });
         }
 
         if (request.method === 'POST' && pathname === '/attendance/check-out') {
@@ -402,10 +449,24 @@ export function createCrystalBioApi(backend: Backend, options: { mailer?: Crysta
           const session = sessionFor(request);
           const state = backend.exportState();
           const canSeeAll = session.role === 'admin' && query.scope === 'team';
-          const entries = [
-            ...state.sales.flatMap((opportunity) => opportunity.visits
+          const requestedEntryId = query.entryId?.trim();
+          const includePhotoPayload = query.includePayload === 'true' || Boolean(requestedEntryId);
+          const visibleSalesVisits = state.sales.flatMap((opportunity) => {
+            const matchingVisits = opportunity.visits
               .filter((visit) => canSeeAll || visit.agentId === session.agentId || opportunity.ownerAgentId === session.agentId)
-              .map((visit) => ({
+              .sort((first, second) => `${second.visitDate}T${second.visitTime}`.localeCompare(`${first.visitDate}T${first.visitTime}`));
+            const visitsToShow = requestedEntryId ? matchingVisits.filter((visit) => visit.id === requestedEntryId) : matchingVisits.slice(0, 1);
+            return visitsToShow.map((visit) => ({ opportunity, visit }));
+          });
+          const visibleServiceVisits = state.service.flatMap((record) => {
+            const matchingVisits = record.visits
+              .filter((visit) => canSeeAll || visit.agentId === session.agentId || record.ownerAgentId === session.agentId)
+              .sort((first, second) => `${second.visitDate}T${second.visitTime}`.localeCompare(`${first.visitDate}T${first.visitTime}`));
+            const visitsToShow = requestedEntryId ? matchingVisits.filter((visit) => visit.id === requestedEntryId) : matchingVisits.slice(0, 1);
+            return visitsToShow.map((visit) => ({ record, visit }));
+          });
+          const entries = [
+            ...visibleSalesVisits.map(({ opportunity, visit }) => ({
                 id: visit.id,
                 recordId: opportunity.id,
                 customer: opportunity.accountName,
@@ -417,7 +478,7 @@ export function createCrystalBioApi(backend: Backend, options: { mailer?: Crysta
                 agentName: visit.agentName,
                 visitDate: visit.visitDate,
                 visitTime: visit.visitTime,
-                photoPayload: opportunity.sitePhoto ?? photoPayloadFromVisit(visit.photos),
+                ...(includePhotoPayload ? { photoPayload: opportunity.sitePhoto ?? photoPayloadFromVisit(visit.photos) } : {}),
                 detailRows: compactDetailRows([
                   ['Submitted by', visit.agentName],
                   ['Visit date', visit.visitTime ? `${visit.visitDate} • ${visit.visitTime}` : visit.visitDate],
@@ -445,10 +506,8 @@ export function createCrystalBioApi(backend: Backend, options: { mailer?: Crysta
                   ['Office notes', opportunity.officeNotes],
                 ]),
                 sortDate: `${visit.visitDate}T${visit.visitTime}`,
-              }))),
-            ...state.service.flatMap((record) => record.visits
-              .filter((visit) => canSeeAll || visit.agentId === session.agentId || record.ownerAgentId === session.agentId)
-              .map((visit) => ({
+              })),
+            ...visibleServiceVisits.map(({ record, visit }) => ({
                 id: visit.id,
                 recordId: record.id,
                 customer: record.customerName,
@@ -460,7 +519,7 @@ export function createCrystalBioApi(backend: Backend, options: { mailer?: Crysta
                 agentName: visit.agentName,
                 visitDate: visit.visitDate,
                 visitTime: visit.visitTime,
-                photoPayload: record.photoNote ?? photoPayloadFromVisit(visit.photos),
+                ...(includePhotoPayload ? { photoPayload: record.photoNote ?? photoPayloadFromVisit(visit.photos) } : {}),
                 detailRows: compactDetailRows([
                   ['Submitted by', visit.agentName],
                   ['Visit date', visit.visitTime ? `${visit.visitDate} • ${visit.visitTime}` : visit.visitDate],
@@ -488,7 +547,7 @@ export function createCrystalBioApi(backend: Backend, options: { mailer?: Crysta
                   ['Office notes', visit.officeNotes],
                 ]),
                 sortDate: `${visit.visitDate}T${visit.visitTime}`,
-              }))),
+              })),
           ]
             .sort((first, second) => second.sortDate.localeCompare(first.sortDate))
             .slice(0, 30)

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { createCrystalBioFrontendApi } from './crystalBioFrontendApi';
 
 describe('CrystalBio frontend API client', () => {
-  it('logs in and checks in against configured backend URL', async () => {
+  it('logs in and checks in against configured backend URL with selected work type', async () => {
     const fetcher = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
       if (String(url).endsWith('/auth/login')) {
         return new Response(JSON.stringify({
@@ -18,6 +18,7 @@ describe('CrystalBio frontend API client', () => {
           checkInTime: '2026-06-08T09:00:00.000Z',
           checkInGps: { latitude: 12.9716, longitude: 77.5946 },
           status: 'checked_in',
+          workTypes: ['Sales visit', 'In office'],
         },
       }), { status: 201, headers: { 'content-type': 'application/json' } });
     }) as unknown as typeof fetch;
@@ -30,16 +31,18 @@ describe('CrystalBio frontend API client', () => {
     });
 
     const session = await api.login('agent_2');
-    const attendance = await api.checkIn(session);
+    const attendance = await api.checkIn(session, undefined, ['Sales visit', 'In office'], 'Route plan');
 
     expect(session.agentName).toBe('QA Test Agent');
     expect(attendance.status).toBe('checked_in');
+    expect(attendance.workTypes).toEqual(['Sales visit', 'In office']);
     expect(fetcher).toHaveBeenCalledWith('http://127.0.0.1:8787/auth/login', expect.objectContaining({ method: 'POST' }));
     expect(fetcher).toHaveBeenCalledWith(
       'http://127.0.0.1:8787/attendance/check-in',
       expect.objectContaining({
         method: 'POST',
         headers: expect.objectContaining({ authorization: 'Bearer token-1' }),
+        body: JSON.stringify({ timestamp: '2026-06-08T09:00:00.000Z', gps: { latitude: 12.9716, longitude: 77.5946 }, workTypes: ['Sales visit', 'In office'], note: 'Route plan' }),
       }),
     );
   });
@@ -425,7 +428,7 @@ describe('CrystalBio frontend API client', () => {
           agentName: 'QA Test Agent',
           visitNumber: 1,
           visitDate: '2026-06-08',
-          visitTime: '11:18',
+          visitTime: '16:48',
           gps: { latitude: 12.9716, longitude: 77.5946 },
           note: 'Requirement confirmed',
           nextAction: 'follow_up_needed',
@@ -474,7 +477,7 @@ describe('CrystalBio frontend API client', () => {
         headers: expect.objectContaining({ authorization: 'Bearer token-1' }),
         body: JSON.stringify({
           visitDate: '2026-06-08',
-          visitTime: '11:18',
+          visitTime: '16:48',
           gps: { latitude: 12.9716, longitude: 77.5946 },
           note: 'Requirement confirmed',
           nextAction: 'follow_up_needed',
@@ -542,7 +545,7 @@ describe('CrystalBio frontend API client', () => {
       agentName: 'QA Test Agent',
       visitNumber: 1,
       visitDate: '2026-06-08',
-      visitTime: '11:18',
+      visitTime: '16:48',
       note: 'Requirement confirmed',
       nextAction: 'no_follow_up',
     });
@@ -582,7 +585,7 @@ describe('CrystalBio frontend API client', () => {
           agentName: 'Service Agent',
           visitNumber: 1,
           visitDate: '2026-06-08',
-          visitTime: '14:20',
+          visitTime: '19:50',
           gps: { latitude: 12.9716, longitude: 77.5946 },
           serviceType: 'breakdown',
           workDone: 'Diagnosed issue',
@@ -637,7 +640,7 @@ describe('CrystalBio frontend API client', () => {
         headers: expect.objectContaining({ authorization: 'Bearer token-1' }),
         body: JSON.stringify({
           visitDate: '2026-06-08',
-          visitTime: '14:20',
+          visitTime: '19:50',
           gps: { latitude: 12.9716, longitude: 77.5946 },
           serviceType: 'breakdown',
           workDone: 'Diagnosed issue',
@@ -675,7 +678,7 @@ describe('CrystalBio frontend API client', () => {
       agentName: 'Service Agent',
       visitNumber: 1,
       visitDate: '2026-06-08',
-      visitTime: '14:20',
+      visitTime: '19:50',
       serviceType: 'breakdown',
       workDone: 'Diagnosed issue',
       nextAction: 'parts_required',

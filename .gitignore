@@ -3,3 +3,12 @@ dist
 dist-backend
 .env
 .DS_Store
+
+# Local/live runtime data and generated QA artifacts do not belong in repo status.
+data/
+dogfood-output/
+audit-artifacts/
+design-previews/
+tmp/
+**/__pycache__/
+*.pyc

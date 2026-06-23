@@ -5,12 +5,15 @@ import { createCrystalBioPersistentHttpApp } from './crystalBioPersistentHttpApp
 import { createCrystalBioMailerFromEnv } from './crystalBioMailer';
 import { createJsonlClientErrorLogStore, createJsonlLoginActivityLogStore } from './crystalBioClientErrorLogStore';
 import { JsonFileCrystalBioStore } from './crystalBioPersistence';
+import { assertPostgresRuntimeReady, createCrystalBioPersistenceConfig } from './crystalBioPersistenceConfig';
 
 const main = async () => {
   const port = Number(process.env.PORT ?? 8787);
   const host = process.env.HOST ?? '127.0.0.1';
+  const persistenceConfig = createCrystalBioPersistenceConfig(process.env);
+  assertPostgresRuntimeReady(persistenceConfig);
   const allowedOrigin = process.env.CRYSTALBIO_ALLOWED_ORIGIN ?? 'http://localhost:5173';
-  const databasePath = resolve(process.env.CRYSTALBIO_DB_PATH ?? 'data/crystalbio-db.json');
+  const databasePath = resolve(persistenceConfig.jsonDatabasePath);
   const clientErrorLogPath = resolve(process.env.CRYSTALBIO_CLIENT_ERROR_LOG_PATH ?? 'data/crystalbio-client-errors.jsonl');
   const loginActivityLogPath = resolve(process.env.CRYSTALBIO_LOGIN_ACTIVITY_LOG_PATH ?? 'data/crystalbio-login-activity.jsonl');
   const seedDemoUsers = process.env.CRYSTALBIO_SEED_DEMO === 'true';

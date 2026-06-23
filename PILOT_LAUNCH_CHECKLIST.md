@@ -44,7 +44,7 @@ Watch for these during pilot days 1–3:
 
 - Backups are configured before handover: daily `npm run backup:db` against the live `CRYSTALBIO_DB_PATH`.
 - Monitoring is configured before handover: `npm run monitor:api` every 5 minutes, with a login smoke test if monitor credentials are available.
-- Clean test/QA activity with `npm run clean:pilot-data -- --write` after taking/confirming a backup.
+- Clean normal Bloom QA activity with `npm run clean:pilot-data -- --bloom-only --write` after taking/confirming a backup. Do not clear live login sessions during daytime use.
 
 ## 5. Pilot limitations to explain plainly
 

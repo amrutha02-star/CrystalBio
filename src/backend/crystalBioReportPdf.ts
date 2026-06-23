@@ -21,8 +21,23 @@ const safe = (value: unknown, fallback = '-') => {
 };
 
 const titleCase = (value: string | undefined) => safe(value).replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
-const timeOnly = (value?: string) => (value ? value.slice(11, 16) : '-');
+const istTimeZone = 'Asia/Kolkata';
+const formatDate = (value?: string) => {
+  if (!value) return '-';
+  const [year, month, day] = value.slice(0, 10).split('-').map(Number);
+  if (year && month && day) return `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return safe(value);
+  return new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: istTimeZone }).format(date);
+};
+const timeOnly = (value?: string) => {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value.slice(11, 16) || '-';
+  return new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: istTimeZone }).format(date);
+};
 const yesNo = (value: boolean | undefined) => (value ? 'Yes' : 'No');
+const dateTimeShort = (value?: string) => (value ? `${formatDate(value)} ${timeOnly(value)}` : '-');
 
 const addHeader = (doc: Doc, report: AdminReport, title = 'Field Operations Report') => {
   doc.rect(0, 0, 595, 86).fill(pale);
@@ -30,8 +45,8 @@ const addHeader = (doc: Doc, report: AdminReport, title = 'Field Operations Repo
   doc.font('Helvetica-Bold').fontSize(14).fillColor('#ffffff').text('CB', 48, 36);
   doc.font('Helvetica-Bold').fontSize(19).fillColor(text).text('Crystal Bio', 92, 22);
   doc.font('Helvetica-Bold').fontSize(12).fillColor(olive).text(title, 92, 45);
-  doc.font('Helvetica').fontSize(9).fillColor(muted).text(`Period: ${report.fromDate} to ${report.toDate}`, 92, 62);
-  doc.font('Helvetica').fontSize(8).fillColor(muted).text(`Generated: ${new Date().toISOString().slice(0, 16).replace('T', ' ')}`, 405, 34, { width: 150, align: 'right' });
+  doc.font('Helvetica').fontSize(9).fillColor(muted).text(`Period: ${formatDate(report.fromDate)} to ${formatDate(report.toDate)}`, 92, 62);
+  doc.font('Helvetica').fontSize(8).fillColor(muted).text(`Generated: ${dateTimeShort(new Date().toISOString())} IST`, 405, 34, { width: 150, align: 'right' });
 };
 
 const ensureSpace = (doc: Doc, height: number, report: AdminReport) => {
@@ -127,34 +142,75 @@ const drawAttendanceOverview = (doc: Doc, report: AdminReport) => {
 };
 
 const drawAttendance = (doc: Doc, report: AdminReport) => {
-  section(doc, report, 'Person-wise attendance', 'For weekly, monthly, or custom-date downloads, this is the main attendance view.');
+  const details = report.attendancePeriodSummaries ?? [];
+  const attendanceRecords = report.attendanceDetails ?? [];
+  const latestByAgent = new Map<string, NonNullable<AdminReport['attendanceDetails']>[number]>();
+  attendanceRecords.forEach((record) => {
+    const previous = latestByAgent.get(record.agentId);
+    if (!previous || record.checkInAt > previous.checkInAt) latestByAgent.set(record.agentId, record);
+  });
+  const activeRecords = attendanceRecords.filter((record) => record.status === 'checked_in');
+  const autoClosedRecords = attendanceRecords.filter((record) => record.autoCheckedOut);
+  const noUpdateRows = details.filter((row) => row.noUpdateDays > 0 && row.workedDays === 0 && row.leaveAppliedDays === 0);
+
+  section(doc, report, 'Attendance exceptions and office action', 'Summary-first view of check-ins, missed checkouts, auto-closed rows, leave, and no-update days.');
+  const y = doc.y;
+  const cards = [
+    { label: 'Checked in', value: new Set(attendanceRecords.map((record) => record.agentId)).size, hint: 'people with attendance' },
+    { label: 'Still open', value: new Set(activeRecords.map((record) => record.agentId)).size, hint: 'needs checkout check', accent: activeRecords.length ? amber : olive },
+    { label: 'Auto checkout', value: autoClosedRecords.length, hint: 'system closed', accent: autoClosedRecords.length ? amber : olive },
+    { label: 'No update', value: noUpdateRows.length, hint: 'people', accent: noUpdateRows.length ? red : olive },
+  ];
+  cards.forEach((card, index) => metric(doc, 40 + (index * 129), y, 118, card.label, card.value, card.hint, card.accent ?? olive));
+  doc.y = y + 78;
+
+  const actionItems: string[] = [];
+  if (activeRecords.length) actionItems.push(`Still checked in: ${activeRecords.map((record) => record.agentName).join(', ')}`);
+  if (autoClosedRecords.length) actionItems.push(`Auto checked out: ${autoClosedRecords.map((record) => `${record.agentName} (${formatDate(record.date)})`).join(', ')}`);
+  const pendingLeavePeople = details.filter((row) => row.pendingLeaveDays > 0).map((row) => `${row.agentName} (${row.pendingLeaveDays})`);
+  if (pendingLeavePeople.length) actionItems.push(`Pending leave days: ${pendingLeavePeople.join(', ')}`);
+  if (noUpdateRows.length) actionItems.push(`No update in this period: ${noUpdateRows.map((row) => row.agentName).join(', ')}`);
+  if (!actionItems.length) actionItems.push('No attendance exception found for this period.');
+  actionItems.slice(0, 5).forEach((item) => bullet(doc, report, item, item.startsWith('No attendance') ? 'normal' : 'warning'));
+  doc.moveDown(0.4);
+
+  section(doc, report, 'Person-wise attendance summary', 'Compact business view; detailed raw attendance rows remain in the saved system data.');
   const cols = [
-    { label: 'Person', x: 48, w: 105 },
-    { label: 'Role', x: 155, w: 54 },
-    { label: 'Days', x: 211, w: 38 },
-    { label: 'Worked', x: 251, w: 48 },
-    { label: 'Checked out', x: 301, w: 58 },
-    { label: 'Leave applied', x: 361, w: 62 },
-    { label: 'Approved / Pending', x: 425, w: 72 },
-    { label: 'No update', x: 499, w: 46 },
+    { label: 'Person', x: 48, w: 108 },
+    { label: 'Worked', x: 158, w: 44 },
+    { label: 'Last check-in', x: 204, w: 80 },
+    { label: 'Last checkout', x: 286, w: 82 },
+    { label: 'Leave', x: 370, w: 52 },
+    { label: 'No update', x: 424, w: 54 },
+    { label: 'Office note', x: 480, w: 64 },
   ];
   tableHeader(doc, doc.y, cols);
   doc.y += 22;
-  const details = report.attendancePeriodSummaries ?? [];
   if (!details.length) {
     tableRow(doc, report, [{ text: 'No people found for this period', x: 48, w: 480 }], 30);
     return;
   }
-  details.forEach((row) => tableRow(doc, report, [
-    { text: row.agentName, x: 48, w: 105 },
-    { text: titleCase(row.role), x: 155, w: 54 },
-    { text: String(row.totalDays), x: 211, w: 38 },
-    { text: String(row.workedDays), x: 251, w: 48 },
-    { text: String(row.checkedOutDays), x: 301, w: 58 },
-    { text: String(row.leaveAppliedDays), x: 361, w: 62 },
-    { text: `${row.approvedLeaveDays} / ${row.pendingLeaveDays}`, x: 425, w: 72 },
-    { text: String(row.noUpdateDays), x: 499, w: 46 },
-  ], 31));
+  details.forEach((row) => {
+    const latest = latestByAgent.get(row.agentId);
+    const note = latest?.autoCheckedOut
+      ? 'Auto checked out'
+      : latest?.status === 'checked_in'
+        ? 'Still checked in'
+        : row.pendingLeaveDays > 0
+          ? 'Leave pending'
+          : row.noUpdateDays > 0
+            ? 'No update'
+            : 'OK';
+    tableRow(doc, report, [
+      { text: row.agentName, x: 48, w: 108 },
+      { text: `${row.workedDays}/${row.totalDays}`, x: 158, w: 44 },
+      { text: dateTimeShort(latest?.checkInAt), x: 204, w: 80 },
+      { text: latest?.autoCheckedOut ? `Auto ${timeOnly(latest.checkOutAt)}` : dateTimeShort(latest?.checkOutAt), x: 286, w: 82 },
+      { text: `${row.leaveAppliedDays} (${row.approvedLeaveDays}/${row.pendingLeaveDays})`, x: 370, w: 52 },
+      { text: String(row.noUpdateDays), x: 424, w: 54 },
+      { text: note, x: 480, w: 64 },
+    ], 34);
+  });
 };
 
 const drawSales = (doc: Doc, report: AdminReport) => {
@@ -178,7 +234,7 @@ const drawSales = (doc: Doc, report: AdminReport) => {
     { text: opportunity.accountName, x: 126, w: 112 },
     { text: opportunity.contactPerson || opportunity.phone || opportunity.email || '-', x: 240, w: 78 },
     { text: opportunity.requirement || opportunity.productType || opportunity.brandName || '-', x: 320, w: 116 },
-    { text: `${titleCase(visit.nextAction)}${visit.followUpDate ? ` • ${visit.followUpDate}` : ''}`, x: 438, w: 106 },
+    { text: `${titleCase(visit.nextAction)}${visit.followUpDate ? ` • ${formatDate(visit.followUpDate)}` : ''}`, x: 438, w: 106 },
   ], 38));
 };
 
@@ -243,7 +299,7 @@ const drawLeave = (doc: Doc, report: AdminReport) => {
   section(doc, report, 'Leave / approval status');
   leave.forEach((item) => tableRow(doc, report, [
     { text: item.agentName, x: 48, w: 130 },
-    { text: `${item.fromDate} to ${item.toDate}`, x: 182, w: 130 },
+    { text: `${formatDate(item.fromDate)} to ${formatDate(item.toDate)}`, x: 182, w: 130 },
     { text: item.reason, x: 316, w: 118 },
     { text: titleCase(item.status), x: 438, w: 90 },
   ], 30));

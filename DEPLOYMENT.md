@@ -65,6 +65,12 @@ Use `PILOT_LAUNCH_CHECKLIST.md` as the step-by-step launch runbook before sharin
 - Login is registered email + password. Email OTP backup can be added later.
 - During the first pilot days, monitor: login failures, failed saves, form errors, sync/network issues, crashes, and report/PDF generation failures.
 
+## PostgreSQL + Cloudflare production direction
+
+For the production-ready path, use [`docs/POSTGRES_CLOUDFLARE_MIGRATION.md`](./docs/POSTGRES_CLOUDFLARE_MIGRATION.md).
+
+Short version: keep Cloudflare for the app/domain/security layer, move business data from JSON-file storage to PostgreSQL, keep photos/files in object storage such as Cloudflare R2 later, and do the live cutover only after staging migration + Bloom QA.
+
 ## What is intentionally deferred
 
 - Excel export is skipped for now.

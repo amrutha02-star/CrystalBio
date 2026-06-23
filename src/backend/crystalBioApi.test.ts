@@ -31,6 +31,30 @@ describe('CrystalBio API layer', () => {
     expect(checkIn.body.attendance.agentId).toBe(agent.id);
   });
 
+  it('returns current checked-in attendance for saved-session reloads', () => {
+    const backend = createCrystalBioBackend();
+    const agent = createLoginAgent(backend, { name: 'Rahul', role: 'sales', email: 'rahul.current@crystalbio.in' });
+    const api = createCrystalBioApi(backend);
+    const token = loginToken(api, agent.email!);
+
+    api.handle({
+      method: 'POST',
+      path: '/attendance/check-in',
+      headers: { authorization: `Bearer ${token}` },
+      body: { timestamp: new Date().toISOString(), gps, workTypes: ['Sales visit'] },
+    });
+
+    const current = api.handle({
+      method: 'GET',
+      path: '/attendance/current',
+      headers: { authorization: `Bearer ${token}` },
+    });
+
+    expect(current.status).toBe(200);
+    expect(current.body.attendance.status).toBe('checked_in');
+    expect(current.body.attendance.agentId).toBe(agent.id);
+  });
+
   it('accepts credential login and rejects bad credential login through auth API', () => {
     const backend = createCrystalBioBackend();
     const agent = backend.createAgent({ name: 'Rahul', role: 'sales', employeeId: 'CB-S-014', email: 'rahul.sales@crystalbio.in', password });
@@ -68,6 +92,37 @@ describe('CrystalBio API layer', () => {
     expect(activity.body.events.some((event: any) => event.success && event.agentName === 'Rahul')).toBe(true);
     expect(activity.body.events.some((event: any) => !event.success && event.email === agent.email)).toBe(true);
     expect(JSON.stringify(activity.body.events)).not.toContain('wrong-password');
+  });
+
+  it('serves a no-credentials monitor snapshot with masked login emails', () => {
+    const backend = createCrystalBioBackend();
+    const agent = createLoginAgent(backend, { name: 'Rahul', role: 'sales', email: 'rahul.publicmonitor@crystalbio.in' });
+    const errors: any[] = [];
+    const logins: any[] = [];
+    const api = createCrystalBioApi(backend, {
+      loginActivityLogStore: {
+        add(event) { logins.push(event); },
+        list(limit = 100) { return logins.slice(-limit).reverse(); },
+      },
+      clientErrorLogStore: {
+        add(event) { errors.push(event); },
+        list(limit = 50) { return errors.slice(-limit).reverse(); },
+      },
+    });
+
+    api.handle({ method: 'POST', path: '/auth/login', body: { email: agent.email, password } });
+    api.handle({ method: 'POST', path: '/auth/login', body: { email: agent.email, password: 'wrong-password' } });
+    api.handle({ method: 'POST', path: '/client-error-logs', body: { severity: 'high', journey: 'App screen error', message: 'Save failed', path: '/sales' } });
+
+    const monitor = api.handle({ method: 'GET', path: '/public/monitor' });
+
+    expect(monitor.status).toBe(200);
+    expect(monitor.body.loginActivity).toHaveLength(2);
+    expect(monitor.body.clientErrors).toHaveLength(1);
+    expect(JSON.stringify(monitor.body)).toContain('ra…r@crystalbio.in');
+    expect(JSON.stringify(monitor.body)).not.toContain('rahul.publicmonitor@crystalbio.in');
+    expect(JSON.stringify(monitor.body)).not.toContain('Rahul');
+    expect(JSON.stringify(monitor.body)).not.toContain('wrong-password');
   });
 
   it('validates saved sessions against the live backend before trusting stored profile data', () => {
@@ -453,10 +508,25 @@ describe('CrystalBio API layer', () => {
         gps,
         note: 'Admin did field visit',
         nextAction: 'no_follow_up',
-        photos: [],
+        photos: [{ source: 'upload', fileName: 'field-proof.jpg', contentType: 'image/jpeg', sizeBytes: 280000, dataUrl: 'data:image/jpeg;base64,large-proof-payload' }],
       },
     });
     expect(visit.status).toBe(201);
+    const followUpVisit = api.handle({
+      method: 'POST',
+      path: `/sales-opportunities/${opportunity.body.opportunity.id}/visits`,
+      headers: { authorization: `Bearer ${adminToken}` },
+      body: {
+        visitDate: '2026-06-07',
+        visitTime: '17:10',
+        gps,
+        note: 'Follow-up on same saved form',
+        nextAction: 'follow_up_needed',
+        followUpDate: '2026-06-08',
+        photos: [],
+      },
+    });
+    expect(followUpVisit.status).toBe(201);
 
     const recentVisits = api.handle({
       method: 'GET',
@@ -472,14 +542,26 @@ describe('CrystalBio API layer', () => {
       agentId: admin.id,
       agentName: 'Raghavendra',
       visitDate: '2026-06-07',
-      visitTime: '16:10',
+      visitTime: '17:10',
     });
+    expect(recentVisits.body.entries.filter((entry: { recordId: string }) => entry.recordId === opportunity.body.opportunity.id)).toHaveLength(1);
     expect(recentVisits.body.entries[0].detailRows).toEqual(expect.arrayContaining([
       { label: 'Submitted by', value: 'Raghavendra' },
       { label: 'Customer', value: 'Admin Field Customer' },
-      { label: 'Visit note', value: 'Admin did field visit' },
-      { label: 'Next action', value: 'No follow-up' },
+      { label: 'Visit note', value: 'Follow-up on same saved form' },
+      { label: 'Next action', value: 'Follow-up needed' },
     ]));
+    expect(recentVisits.body.entries[0].photoPayload).toBeUndefined();
+
+    const recentVisitDetail = api.handle({
+      method: 'GET',
+      path: `/field-visits?entryId=${visit.body.visit.id}&includePayload=true`,
+      headers: { authorization: `Bearer ${adminToken}` },
+    });
+    expect(recentVisitDetail.status).toBe(200);
+    expect(recentVisitDetail.body.entries).toHaveLength(1);
+    expect(recentVisitDetail.body.entries[0].photoPayload).toContain('field-proof.jpg');
+    expect(recentVisitDetail.body.entries[0].photoPayload).toContain('large-proof-payload');
 
     const teamRecentVisits = api.handle({
       method: 'GET',
@@ -495,6 +577,6 @@ describe('CrystalBio API layer', () => {
       path: '/admin/reports?fromDate=2026-06-07&toDate=2026-06-07',
       headers: { authorization: `Bearer ${adminToken}` },
     });
-    expect(report.body.report.agentSummaries.find((summary: { agentName: string }) => summary.agentName === 'Raghavendra').salesVisitCount).toBe(1);
+    expect(report.body.report.agentSummaries.find((summary: { agentName: string }) => summary.agentName === 'Raghavendra').salesVisitCount).toBe(2);
   });
 });

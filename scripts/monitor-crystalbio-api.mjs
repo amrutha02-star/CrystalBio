@@ -1,8 +1,14 @@
 #!/usr/bin/env node
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname } from 'node:path';
+
 const apiUrl = (process.env.CRYSTALBIO_API_URL ?? 'https://work-api.convogenie.ai').replace(/\/$/, '');
 const email = process.env.CRYSTALBIO_MONITOR_EMAIL;
 const password = process.env.CRYSTALBIO_MONITOR_PASSWORD;
 const monitorClientErrors = process.env.CRYSTALBIO_MONITOR_CLIENT_ERRORS === 'true';
+const monitorDuplicateSaves = process.env.CRYSTALBIO_MONITOR_DUPLICATE_SAVES === 'true';
+const databasePath = process.env.CRYSTALBIO_DB_PATH ?? '/var/lib/crystalbio/crystalbio-db.json';
+const duplicateStatePath = process.env.CRYSTALBIO_DUPLICATE_MONITOR_STATE_PATH ?? '/var/lib/crystalbio/monitor-duplicate-save-state.json';
 
 const timeoutFetch = async (url, options = {}) => {
   const controller = new AbortController();
@@ -62,6 +68,68 @@ if (monitorClientErrors) {
     });
     if (serious.length) {
       throw new Error(serious.slice(0, 5).map((event) => `${event.severity}: ${event.journey} - ${event.message} (${event.agentName ?? 'unknown user'})`).join(' | '));
+    }
+  });
+}
+
+const normalized = (value) => String(value ?? '').trim().replace(/\s+/g, ' ').toLowerCase();
+const duplicateKey = (kind, record, visit) => {
+  if (kind === 'sales') {
+    return [
+      kind,
+      visit.agentId,
+      visit.visitDate,
+      normalized(record.accountName),
+      normalized(visit.note),
+      normalized(visit.nextAction),
+      visit.followUpDate ?? '',
+    ].join('|');
+  }
+  return [
+    kind,
+    visit.agentId,
+    visit.visitDate,
+    normalized(record.customerName),
+    normalized(visit.serviceType),
+    normalized(visit.workDone),
+    normalized(visit.supportRequired),
+    normalized(visit.nextAction),
+    visit.nextVisitDate ?? '',
+  ].join('|');
+};
+
+if (monitorDuplicateSaves) {
+  await check('Duplicate Sales/Service save monitor', async () => {
+    if (!existsSync(databasePath)) throw new Error(`DB missing: ${databasePath}`);
+    const database = JSON.parse(readFileSync(databasePath, 'utf8'));
+    const counts = new Map();
+    const examples = new Map();
+    for (const [kind, records] of [['sales', database.sales ?? []], ['service', database.service ?? []]]) {
+      for (const record of records) {
+        for (const visit of record.visits ?? []) {
+          const key = duplicateKey(kind, record, visit);
+          counts.set(key, (counts.get(key) ?? 0) + 1);
+          if (!examples.has(key)) {
+            examples.set(key, `${kind}: ${record.accountName ?? record.customerName ?? 'Unknown customer'} / ${visit.agentName ?? visit.agentId ?? 'Unknown agent'} / ${visit.visitDate}`);
+          }
+        }
+      }
+    }
+    const currentDuplicates = {};
+    for (const [key, count] of counts.entries()) {
+      if (count > 1) currentDuplicates[key] = count;
+    }
+    let previous = {};
+    const hasPreviousState = existsSync(duplicateStatePath);
+    if (hasPreviousState) {
+      previous = JSON.parse(readFileSync(duplicateStatePath, 'utf8'));
+    }
+    mkdirSync(dirname(duplicateStatePath), { recursive: true });
+    writeFileSync(duplicateStatePath, JSON.stringify(currentDuplicates, null, 2));
+    if (!hasPreviousState) return;
+    const newOrWorse = Object.entries(currentDuplicates).filter(([key, count]) => count > (previous[key] ?? 0));
+    if (newOrWorse.length) {
+      throw new Error(newOrWorse.slice(0, 5).map(([key, count]) => `${examples.get(key)} repeated ${count} times`).join(' | '));
     }
   });
 }

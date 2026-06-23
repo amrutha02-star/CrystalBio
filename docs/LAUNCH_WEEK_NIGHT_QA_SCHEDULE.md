@@ -14,6 +14,27 @@ During the day:
 - Deployments should be avoided unless Rahul says it is urgent.
 - Live-user problems should be written into `docs/BUG_INTAKE_BOARD.md`.
 
+## Tonight's approved deployment notes — 2026-06-17
+
+- Admin home: remove the `Latest submitted work` section from the admin overview. Submitted Sales/Service work remains under Agents and Field Entry.
+- Admin checked-in card: implement the approved expanded design, not the daytime partial patch. It must show checked-in person, role, check-in time, and selected work-mode chip (`Sales visit`, `Service visit`, `In office`, or combined). Store the selected mode with the attendance record. If older records have no mode, show `Mode not recorded` instead of guessing.
+- Verification required before calling done: build/test, browser check, live version check, and Bloom mobile retest with assigned QA credentials.
+
+## Tonight's approved focus — 2026-06-19
+
+- Keep heavy testing for night only. Daytime work should monitor and document unless Rahul/Amrutha approves an urgent live change.
+- Bloom must retest Attendance deeply, not only the happy path:
+  - normal check-in,
+  - repeated Check in taps,
+  - refresh/reopen after check-in,
+  - checkout then check-in again after a break,
+  - missed previous-day checkout showing `Auto checked out`,
+  - Admin and agent views matching,
+  - Bloom QA data removed from live reports after evidence.
+- Bloom must watch for error patterns like the attendance issue: repeated same API error, repeated same user action, same user hitting the same failure, or errors that cause users to tap buttons many times.
+- Tonight fix candidate: downloaded report attendance section. Current issue from Amrutha: the attendance section is a big table with overload and little useful information. Improve it to be summary-first and business-useful, then Bloom must retest the downloaded report.
+- After every dry run or cleanup, Periwinkle/Bloom must audit that real client data is intact, with Sales/Service/Leave/user-profile data checked separately from the approved QA cleanup or attendance repair.
+
 ## Night workflow
 
 Use this order:

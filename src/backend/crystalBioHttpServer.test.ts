@@ -151,7 +151,7 @@ describe('CrystalBio HTTP server adapter', () => {
 
     expect(response.status).toBe(200);
     expect(response.headers.get('content-type')).toContain('application/pdf');
-    expect(response.headers.get('content-disposition')).toContain('crystalbio-field-report-2026-06-07-to-2026-06-08.pdf');
+    expect(response.headers.get('content-disposition')).toContain('crystalbio-field-report-07062026-to-08062026.pdf');
     expect(bytes.subarray(0, 4).toString('utf8')).toBe('%PDF');
     expect(bytes.length).toBeGreaterThan(1000);
   });
@@ -175,7 +175,7 @@ describe('CrystalBio HTTP server adapter', () => {
 
     expect(response.status).toBe(200);
     expect(response.headers.get('content-type')).toContain('application/pdf');
-    expect(response.headers.get('content-disposition')).toContain('crystalbio-attendance-report-2026-06-07-to-2026-06-08.pdf');
+    expect(response.headers.get('content-disposition')).toContain('crystalbio-attendance-report-07062026-to-08062026.pdf');
     expect(bytes.subarray(0, 4).toString('utf8')).toBe('%PDF');
     expect(bytes.length).toBeGreaterThan(1000);
   });

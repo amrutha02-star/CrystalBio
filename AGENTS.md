@@ -17,6 +17,7 @@ Mandatory CrystalBio start checklist:
    - `docs/agents/IRIS_BUG_FIXER.md` and `docs/BUG_FIX_WORKFLOW.md` when assigning approved bug fixes to Iris.
    - `docs/LAUNCH_WEEK_NIGHT_QA_SCHEDULE.md` for the night testing/fixing rhythm during launch week.
    - `docs/BUG_INTAKE_BOARD.md` for the current bug queue and live-user issue tracking.
+   - `docs/BOT_COORDINATION_STATUS.md` for the plain-English summary of what Periwinkle, Bloom, and Iris are doing now.
 
 Locked working rules:
 
@@ -25,9 +26,15 @@ Locked working rules:
 - Keep agent screens simple, phone-first, and non-technical.
 - Preserve the existing route/navigation/form structure unless the user asks to change structure.
 - Separate agent, admin, field entry, profile/access, approvals, reports, and monitoring responsibilities.
+- Do not modify the live CrystalBio app/admin page or any monitor-named page/route unless Amrutha/Rahul explicitly asks for a change. If a `periwinkle-live-monitor...html` URL shows the normal logged-in app/admin overview, treat it as a routing/session-state confusion to review and document first, not as permission to redesign or edit the page.
 - Separate what is fixed, what is tested, what is deployed, and what still needs checking.
 - During launch week, avoid routine daytime deploys because real team members are using the app. Prefer night testing, fixing, retesting, and review.
+- QA/test form submissions must not be mixed with real field work. If Bloom creates test Sales/Service/attendance records, mark them as Bloom-owned QA data and remove or hide them from real reports as soon as the test evidence is captured.
+- Do not bulk-delete or guess-delete submitted field records. Any cleanup must be limited to records that are clearly Bloom/QA-created and backed up first. Bloom may clean up only the records she created; Iris and Periwinkle must not delete real-user work.
 - Verify changes with a real build/test, screenshot, browser check, or live URL/API check before saying they are done.
 - Keep user updates short and business-facing; do not paste logs or implementation detail unless asked.
+- Keep Periwinkle lightweight: durable rules and status belong in this file and the linked docs, not in long Telegram history. Start a fresh session/new thread for each new phase when possible. For routine status, summarize in 5-10 short lines and link/update docs instead of pasting raw logs.
+- Do not work from memory for recurring CrystalBio lessons. If Amrutha corrects a workflow, immediately update `AGENTS.md` or the relevant linked `docs/` file, then use that file in future sessions before speaking.
+- Keep the repository clean as part of finishing work: commit approved source/doc changes in focused git commits, move generated screenshots/logs/temp outputs out of the repo or into ignored paths, and do not leave important deployed changes only in the working tree.
 
 If the user asks anything about CrystalBio and you have not read this file in the current session, read it before answering. If the user says Periwinkle is forgetting instructions, immediately re-read this file plus README/DESIGN before continuing.

@@ -19,6 +19,22 @@ describe('CrystalBio backend core', () => {
     expect(attendance.checkInGps).toEqual(gps);
   });
 
+  it('stores the selected check-in work type for admin attendance detail', () => {
+    const backend = createCrystalBioBackend();
+    const agent = backend.createAgent({ name: 'Rahul', role: 'both' });
+    const admin = backend.createAgent({ name: 'Admin User', role: 'admin' });
+
+    const attendance = backend.checkIn(agent.id, {
+      timestamp: '2026-06-07T09:30:00.000Z',
+      gps,
+      workTypes: ['Sales visit', 'In office'],
+    });
+    const report = backend.getAdminReport(admin.id, { fromDate: '2026-06-07', toDate: '2026-06-07' });
+
+    expect(attendance.workTypes).toEqual(['Sales visit', 'In office']);
+    expect(report.attendanceDetails?.find((record) => record.id === attendance.id)?.workTypes).toEqual(['Sales visit', 'In office']);
+  });
+
   it('requires checkout GPS before closing attendance', () => {
     const backend = createCrystalBioBackend();
     const agent = backend.createAgent({ name: 'Meera', role: 'service' });
@@ -30,6 +46,48 @@ describe('CrystalBio backend core', () => {
         gps: undefined,
       }),
     ).toThrow(ValidationError);
+  });
+
+  it('blocks same-day repeated check-in but allows next-day check-in after missed checkout', () => {
+    const backend = createCrystalBioBackend();
+    const agent = backend.createAgent({ name: 'Rahul', role: 'sales' });
+
+    const firstDay = backend.checkIn(agent.id, { timestamp: '2026-06-17T09:00:00.000Z', gps });
+    expect(() => backend.checkIn(agent.id, { timestamp: '2026-06-17T09:05:00.000Z', gps })).toThrow(ValidationError);
+
+    const nextDay = backend.checkIn(agent.id, { timestamp: '2026-06-18T09:00:00.000Z', gps });
+
+    expect(firstDay.status).toBe('checked_in');
+    expect(nextDay.date).toBe('2026-06-18');
+    expect(nextDay.status).toBe('checked_in');
+  });
+
+  it('allows a new same-day check-in after checkout for breaks or return visits', () => {
+    const backend = createCrystalBioBackend();
+    const agent = backend.createAgent({ name: 'Rahul', role: 'sales' });
+
+    const morning = backend.checkIn(agent.id, { timestamp: '2026-06-18T09:00:00.000Z', gps });
+    const morningOut = backend.checkOut(agent.id, { timestamp: '2026-06-18T12:00:00.000Z', gps });
+    const afternoon = backend.checkIn(agent.id, { timestamp: '2026-06-18T14:00:00.000Z', gps });
+
+    expect(morningOut.id).toBe(morning.id);
+    expect(morningOut.status).toBe('checked_out');
+    expect(afternoon.id).not.toBe(morning.id);
+    expect(afternoon.status).toBe('checked_in');
+    expect(afternoon.date).toBe('2026-06-18');
+  });
+
+  it('checks out today’s active session before an older missed-checkout session', () => {
+    const backend = createCrystalBioBackend();
+    const agent = backend.createAgent({ name: 'Rahul', role: 'sales' });
+
+    const missedYesterday = backend.checkIn(agent.id, { timestamp: '2026-06-17T09:00:00.000Z', gps });
+    const today = backend.checkIn(agent.id, { timestamp: '2026-06-18T09:00:00.000Z', gps });
+    const checkedOut = backend.checkOut(agent.id, { timestamp: '2026-06-18T18:00:00.000Z', gps });
+
+    expect(checkedOut.id).toBe(today.id);
+    expect(checkedOut.status).toBe('checked_out');
+    expect(missedYesterday.status).toBe('checked_in');
   });
 
   it('saves repeated sales visits as separate visit updates under one opportunity', () => {
@@ -63,6 +121,27 @@ describe('CrystalBio backend core', () => {
     expect(visit1.visitNumber).toBe(1);
     expect(visit2.visitNumber).toBe(2);
     expect(backend.getSalesOpportunity(opportunity.id).visits).toHaveLength(2);
+  });
+
+  it('returns the existing sales visit when the same save is submitted again', () => {
+    const backend = createCrystalBioBackend();
+    const agent = backend.createAgent({ name: 'Rahul', role: 'sales' });
+    const opportunity = backend.createSalesOpportunity(agent.id, { accountName: 'Apollo Diagnostics' });
+    const input = {
+      visitDate: '2026-06-07',
+      visitTime: '11:18',
+      gps,
+      note: 'Requirement confirmed',
+      nextAction: 'follow_up_needed' as const,
+      followUpDate: '2026-06-10',
+      photos: [],
+    };
+
+    const visit1 = backend.addSalesVisitUpdate(agent.id, opportunity.id, input);
+    const visit2 = backend.addSalesVisitUpdate(agent.id, opportunity.id, { ...input, visitTime: '11:19' });
+
+    expect(visit2.id).toBe(visit1.id);
+    expect(backend.getSalesOpportunity(opportunity.id).visits).toHaveLength(1);
   });
 
   it('updates sales opportunity details without creating another visit', () => {

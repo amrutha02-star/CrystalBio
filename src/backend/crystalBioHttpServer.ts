@@ -7,6 +7,8 @@ export type CrystalBioApiHandler = {
   handle(request: ApiRequest): ApiResponse;
 };
 
+export const dateFileToken = (value: string) => value.slice(0, 10).split('-').reverse().join('');
+
 export type CrystalBioHttpServerOptions = {
   allowedOrigin?: string;
   host?: string;
@@ -100,7 +102,7 @@ export function createCrystalBioHttpServer(api: CrystalBioApiHandler, options: C
         const report = apiResponse.body.report;
         const pdf = await renderAdminReportPdf(report, { kind: pdfKind });
         const reportName = pdfKind === 'attendance' ? 'attendance-report' : pdfKind === 'visits' ? 'visit-report' : 'field-report';
-        writePdf(response, `crystalbio-${reportName}-${report.fromDate}-to-${report.toDate}.pdf`, pdf, allowedOrigin);
+        writePdf(response, `crystalbio-${reportName}-${dateFileToken(report.fromDate)}-to-${dateFileToken(report.toDate)}.pdf`, pdf, allowedOrigin);
         return;
       }
       const body = await readJsonBody(request, requestLimitBytes);

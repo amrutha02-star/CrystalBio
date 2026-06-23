@@ -21,10 +21,14 @@ export type FrontendAttendance = {
   agentName: string;
   date: string;
   checkInTime: string;
-  checkInGps: FrontendGps;
+  checkInGps?: FrontendGps;
   status: 'checked_in' | 'checked_out';
   checkOutTime?: string;
   checkOutGps?: FrontendGps;
+  workTypes?: string[];
+  autoCheckedOut?: boolean;
+  autoCheckOutReason?: string;
+  systemRestored?: boolean;
 };
 
 export type FrontendLeaveRequest = {
@@ -62,6 +66,11 @@ export type FrontendAdminSeatInvite = FrontendAdminSeatInput & {
   emailDelivery?: 'queued' | 'not_configured';
 };
 
+export type FrontendAdminAttendanceDetail = FrontendAttendance & {
+  checkInAt?: string;
+  checkOutAt?: string;
+};
+
 export type FrontendAdminReport = {
   fromDate: string;
   toDate: string;
@@ -82,6 +91,7 @@ export type FrontendAdminReport = {
     serviceVisitCount: number;
     followUpsDue: string[];
   }>;
+  attendanceDetails?: FrontendAdminAttendanceDetail[];
   followUpsDue: string[];
 };
 
@@ -109,6 +119,12 @@ export type FrontendClientErrorEvent = {
   agentId?: string;
   agentName?: string;
   role?: 'sales' | 'service' | 'both' | 'admin';
+};
+
+export type FrontendPublicMonitorSnapshot = {
+  generatedAt: string;
+  loginActivity: FrontendLoginActivityEvent[];
+  clientErrors: FrontendClientErrorEvent[];
 };
 
 export type FrontendSalesNextAction = 'follow_up_needed' | 'no_follow_up' | 'closed';
@@ -215,6 +231,7 @@ export type FrontendSalesSaveResult = {
     step2Saved?: boolean;
     step3Saved?: boolean;
     status: 'open' | 'closed';
+    visits?: FrontendSalesVisit[];
   };
   visit: FrontendSalesVisit;
 };
@@ -293,6 +310,7 @@ export type FrontendServiceSaveResult = {
     step2Saved?: boolean;
     step3Saved?: boolean;
     status: 'open' | 'pending_parts' | 'closed';
+    visits?: FrontendServiceVisit[];
   };
   visit: FrontendServiceVisit;
 };
@@ -385,6 +403,8 @@ export function createCrystalBioFrontendApi(options: ApiClientOptions = {}) {
   const baseUrl = options.baseUrl ? trimSlash(options.baseUrl) : undefined;
   const fetcher = options.fetcher ?? fetch;
   const now = options.now ?? (() => new Date());
+  const formatIstDate = (date: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(date);
+  const formatIstTime = (date: Date) => new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: false }).format(date);
   const gpsProvider = options.gpsProvider ?? (baseUrl ? browserGpsProvider : async () => demoGps);
   let demoCheckedIn = false;
 
@@ -566,6 +586,14 @@ export function createCrystalBioFrontendApi(options: ApiClientOptions = {}) {
       return result.entries;
     },
 
+    async getRecentVisitDetail(session: FrontendSession, input: { id: string; scope?: 'own' | 'team' }): Promise<FrontendRecentVisitEntry | null> {
+      if (!baseUrl) return null;
+      const query = new URLSearchParams({ entryId: input.id, includePayload: 'true' });
+      if (input.scope === 'team') query.set('scope', 'team');
+      const result = await get<{ entries: FrontendRecentVisitEntry[] }>(`/field-visits?${query.toString()}`, session.token);
+      return result.entries[0] ?? null;
+    },
+
     async getAdminLeaveRequests(session: FrontendSession): Promise<FrontendLeaveRequest[]> {
       if (!baseUrl) return [];
       const result = await get<{ leaveRequests: FrontendLeaveRequest[] }>('/admin/leave-requests', session.token);
@@ -582,6 +610,11 @@ export function createCrystalBioFrontendApi(options: ApiClientOptions = {}) {
       if (!baseUrl) return [];
       const result = await get<{ events: FrontendClientErrorEvent[] }>('/admin/client-error-logs?limit=80', session.token);
       return result.events;
+    },
+
+    async getPublicMonitorSnapshot(): Promise<FrontendPublicMonitorSnapshot> {
+      if (!baseUrl) return { generatedAt: now().toISOString(), loginActivity: [], clientErrors: [] };
+      return get<FrontendPublicMonitorSnapshot>('/public/monitor?loginLimit=120&errorLimit=80');
     },
 
     async reviewLeaveRequest(session: FrontendSession, leaveRequestId: string, status: 'approved' | 'rejected'): Promise<FrontendLeaveRequest> {
@@ -639,23 +672,40 @@ export function createCrystalBioFrontendApi(options: ApiClientOptions = {}) {
       return gpsProvider();
     },
 
-    async checkIn(session: FrontendSession, gpsOverride?: FrontendGps): Promise<FrontendAttendance> {
+    async getCurrentAttendance(session: FrontendSession): Promise<FrontendAttendance | null> {
+      if (!baseUrl) return demoCheckedIn ? {
+        id: 'local-attendance-1',
+        agentId: session.agentId,
+        agentName: session.agentName,
+        date: formatIstDate(now()),
+        checkInTime: now().toISOString(),
+        checkInGps: { latitude: 12.9716, longitude: 77.5946 },
+        status: 'checked_in',
+        workTypes: ['Sales visit'],
+      } : null;
+      const result = await get<{ attendance: BackendAttendance | null }>('/attendance/current', session.token);
+      return result.attendance ? normalizeAttendance(result.attendance) : null;
+    },
+
+    async checkIn(session: FrontendSession, gpsOverride?: FrontendGps, workTypes?: string[], note?: string): Promise<FrontendAttendance> {
       const gps = gpsOverride ?? await gpsProvider();
+      const selectedWorkTypes = workTypes?.filter(Boolean) ?? [];
       if (!baseUrl) {
         demoCheckedIn = true;
         return {
           id: 'local-attendance-1',
           agentId: session.agentId,
           agentName: session.agentName,
-          date: now().toISOString().slice(0, 10),
+          date: formatIstDate(now()),
           checkInTime: now().toISOString(),
           checkInGps: gps,
           status: 'checked_in',
+          ...(selectedWorkTypes.length ? { workTypes: selectedWorkTypes } : {}),
         };
       }
       const result = await post<{ attendance: BackendAttendance }>(
         '/attendance/check-in',
-        { timestamp: now().toISOString(), gps },
+        { timestamp: now().toISOString(), gps, workTypes: selectedWorkTypes, note },
         session.token,
       );
       return normalizeAttendance(result.attendance);
@@ -669,7 +719,7 @@ export function createCrystalBioFrontendApi(options: ApiClientOptions = {}) {
           id: 'local-attendance-1',
           agentId: session.agentId,
           agentName: session.agentName,
-          date: now().toISOString().slice(0, 10),
+          date: formatIstDate(now()),
           checkInTime: now().toISOString(),
           checkInGps: gps,
           checkOutTime: now().toISOString(),
@@ -709,8 +759,8 @@ export function createCrystalBioFrontendApi(options: ApiClientOptions = {}) {
     async submitSalesVisit(session: FrontendSession, input: FrontendSalesVisitInput): Promise<FrontendSalesSaveResult> {
       const gps = input.gps ?? await gpsProvider();
       const visitTimestamp = now();
-      const visitDate = visitTimestamp.toISOString().slice(0, 10);
-      const visitTime = visitTimestamp.toTimeString().slice(0, 5);
+      const visitDate = formatIstDate(visitTimestamp);
+      const visitTime = formatIstTime(visitTimestamp);
       if (!baseUrl) {
         return {
           opportunity: {
@@ -765,6 +815,43 @@ export function createCrystalBioFrontendApi(options: ApiClientOptions = {}) {
       return { opportunity: opportunityResult.opportunity, visit: visitResult.visit };
     },
 
+    async addSalesVisitUpdate(session: FrontendSession, opportunityId: string, input: Omit<FrontendSalesVisitInput, 'accountName'>): Promise<FrontendSalesVisit> {
+      const gps = input.gps ?? await gpsProvider();
+      const visitTimestamp = now();
+      const visitDate = formatIstDate(visitTimestamp);
+      const visitTime = formatIstTime(visitTimestamp);
+      if (!baseUrl) {
+        return {
+          id: `local-sales-visit-${visitTimestamp.getTime()}`,
+          opportunityId,
+          agentId: session.agentId,
+          agentName: session.agentName,
+          visitNumber: 1,
+          visitDate,
+          visitTime,
+          gps,
+          note: input.note,
+          nextAction: input.nextAction,
+          ...(input.followUpDate ? { followUpDate: input.followUpDate } : {}),
+          photos: input.photos ?? [],
+        };
+      }
+      const visitResult = await post<{ visit: FrontendSalesVisit }>(
+        `/sales-opportunities/${opportunityId}/visits`,
+        {
+          visitDate,
+          visitTime,
+          gps,
+          note: input.note,
+          nextAction: input.nextAction,
+          ...(input.followUpDate ? { followUpDate: input.followUpDate } : {}),
+          photos: input.photos ?? [],
+        },
+        session.token,
+      );
+      return visitResult.visit;
+    },
+
     async submitSalesStep2(session: FrontendSession, opportunityId: string, input: FrontendSalesStep2Input): Promise<FrontendSalesSaveResult['opportunity']> {
       if (!baseUrl) {
         return {
@@ -803,8 +890,8 @@ export function createCrystalBioFrontendApi(options: ApiClientOptions = {}) {
     async submitServiceVisit(session: FrontendSession, input: FrontendServiceVisitInput): Promise<FrontendServiceSaveResult> {
       const gps = input.gps ?? await gpsProvider();
       const visitTimestamp = now();
-      const visitDate = visitTimestamp.toISOString().slice(0, 10);
-      const visitTime = visitTimestamp.toTimeString().slice(0, 5);
+      const visitDate = formatIstDate(visitTimestamp);
+      const visitTime = formatIstTime(visitTimestamp);
       if (!baseUrl) {
         return {
           serviceRecord: {
@@ -879,6 +966,49 @@ export function createCrystalBioFrontendApi(options: ApiClientOptions = {}) {
         session.token,
       );
       return { serviceRecord: recordResult.serviceRecord, visit: visitResult.visit };
+    },
+
+    async addServiceVisitUpdate(session: FrontendSession, serviceRecordId: string, input: Omit<FrontendServiceVisitInput, 'customerName'>): Promise<FrontendServiceVisit> {
+      const gps = input.gps ?? await gpsProvider();
+      const visitTimestamp = now();
+      const visitDate = formatIstDate(visitTimestamp);
+      const visitTime = formatIstTime(visitTimestamp);
+      if (!baseUrl) {
+        return {
+          id: `local-service-visit-${visitTimestamp.getTime()}`,
+          serviceRecordId,
+          agentId: session.agentId,
+          agentName: session.agentName,
+          visitNumber: 1,
+          visitDate,
+          visitTime,
+          gps,
+          serviceType: input.serviceType,
+          workDone: input.workDone,
+          supportRequired: input.supportRequired,
+          nextAction: input.nextAction,
+          ...(input.nextVisitDate ? { nextVisitDate: input.nextVisitDate } : {}),
+          photos: input.photos ?? [],
+          ...(input.officeNotes ? { officeNotes: input.officeNotes } : {}),
+        };
+      }
+      const visitResult = await post<{ visit: FrontendServiceVisit }>(
+        `/service-records/${serviceRecordId}/visits`,
+        {
+          visitDate,
+          visitTime,
+          gps,
+          serviceType: input.serviceType,
+          workDone: input.workDone,
+          supportRequired: input.supportRequired,
+          nextAction: input.nextAction,
+          ...(input.nextVisitDate ? { nextVisitDate: input.nextVisitDate } : {}),
+          photos: input.photos ?? [],
+          ...(input.officeNotes ? { officeNotes: input.officeNotes } : {}),
+        },
+        session.token,
+      );
+      return visitResult.visit;
     },
 
     async submitServiceStep2(session: FrontendSession, serviceRecordId: string, input: Partial<FrontendServiceVisitInput>): Promise<FrontendServiceSaveResult['serviceRecord']> {
