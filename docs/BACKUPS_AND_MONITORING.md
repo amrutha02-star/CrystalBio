@@ -92,26 +92,56 @@ Until the next monitoring version adds a full alert dashboard, actively watch fo
 - blank screens/crashes,
 - weak-network retry complaints from agents.
 
-## 4. Clean test data before handover
+## 4. Clean test data safely
 
-Dry-run first:
+Important launch-week rule: do **not** bulk-delete all submitted field data while real team members are using the app. QA/test Sales, Service, and attendance submissions must not remain mixed with real field work, but cleanup must be narrow and backed up.
+
+Safe approach:
+
+1. Identify only Bloom-created QA records, such as:
+   - records owned by Bloom QA accounts,
+   - records with obvious Bloom/QA/test names,
+   - records whose evidence is already captured in `docs/qa-runs/`.
+2. Create a backup before any change.
+3. Prefer a soft-hide/quarantine flag from real admin reports before permanent deletion.
+4. Bloom may clean up only Bloom-created QA records. Periwinkle/Iris must not delete real-user records or guess based on vague text.
+
+Full pre-handover cleanup is still available when the pilot data must be reset and the team approves it.
+
+Bloom-only dry-run for normal launch-week QA cleanup:
+
+```bash
+CRYSTALBIO_DB_PATH=/var/data/crystalbio-db.json npm run clean:pilot-data -- --bloom-only
+```
+
+Bloom-only write, only after checking the dry-run output:
+
+```bash
+CRYSTALBIO_DB_PATH=/var/data/crystalbio-db.json npm run clean:pilot-data -- --bloom-only --write
+```
+
+Full reset dry-run, only for approved handover/reset:
 
 ```bash
 CRYSTALBIO_DB_PATH=/var/data/crystalbio-db.json npm run clean:pilot-data
 ```
 
-Write the cleanup:
+Full reset write, only for explicitly approved handover/reset. This is intentionally guarded because it logs users out:
 
 ```bash
-CRYSTALBIO_DB_PATH=/var/data/crystalbio-db.json npm run clean:pilot-data -- --write
+CRYSTALBIO_DB_PATH=/var/data/crystalbio-db.json npm run clean:pilot-data -- --write --reset-all-sessions-and-activity
 ```
 
-The cleanup keeps user accounts and clears:
+The full reset keeps user accounts and clears:
 
-- sessions,
+- login sessions,
 - attendance,
 - Sales entries,
 - Service entries,
 - leave requests.
 
+Normal Bloom QA cleanup must use `--bloom-only`; it must not clear real users' login sessions.
+
 It also writes a `pre-clean` backup before changing the file.
+
+Live-backend verification rule learned on 2026-06-23: the backend keeps data in memory while running. For Bloom cleanup on the live JSON backend, do not claim cleanup is complete after only editing/checking the file. Safe sequence is: dry-run, stop backend briefly, run `--bloom-only --write`, restart backend, verify `/health`, then verify the same live user path/API list (for example Bloom agent `/field-visits`) shows zero Bloom rows. This prevents the running backend from writing old in-memory Bloom records back to disk.

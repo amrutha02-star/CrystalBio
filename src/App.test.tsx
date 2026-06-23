@@ -1,13 +1,15 @@
 import '@testing-library/jest-dom/vitest';
 import { act } from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
 
 describe('Crystal Bio agent view shell', () => {
   beforeEach(() => {
     window.localStorage.clear();
     window.history.pushState({}, '', '/?screen=home');
+    Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: vi.fn(() => 'blob:crystalbio-report') });
+    Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: vi.fn() });
   });
 
   it('shows a clean single login form without redundant access copy', async () => {
@@ -24,6 +26,19 @@ describe('Crystal Bio agent view shell', () => {
     expect(screen.queryByRole('button', { name: /admin access/i })).not.toBeInTheDocument();
   });
 
+  it('shows the Periwinkle live monitor without asking for a CrystalBio login', async () => {
+    window.history.pushState({}, '', '/periwinkle-live-monitor-a93f27.html');
+
+    render(<App />);
+
+    expect(screen.getByText('Admin monitoring screen')).toBeInTheDocument();
+    expect(screen.getAllByRole('heading', { name: 'Live monitor' }).length).toBeGreaterThan(0);
+    expect(screen.getByText('Periwinkle public monitor • no company login needed')).toBeInTheDocument();
+    expect(screen.queryByText('Login screen')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Registered email')).not.toBeInTheDocument();
+    expect(screen.queryByRole('navigation', { name: 'Admin navigation' })).not.toBeInTheDocument();
+  });
+
   it('keeps the password field inside a real login form so phone Enter/Go can submit', async () => {
     window.history.pushState({}, '', '/?screen=login');
     render(<App />);
@@ -32,6 +47,16 @@ describe('Crystal Bio agent view shell', () => {
 
     expect(loginForm).toContainElement(screen.getByLabelText('Password'));
     expect(screen.getByRole('button', { name: /^login$/i })).toHaveAttribute('type', 'submit');
+  });
+
+  it('submits login when Enter/Go is pressed from the password field', async () => {
+    window.history.pushState({}, '', '/?screen=login');
+    render(<App />);
+
+    fireEvent.keyDown(screen.getByLabelText('Password'), { key: 'Enter', code: 'Enter' });
+
+    await waitFor(() => expect(screen.getByText('Agent home screen')).toBeInTheDocument());
+    expect(screen.queryByText('Login screen')).not.toBeInTheDocument();
   });
 
   it('keeps a saved logged-in session after a browser refresh without returning to login', async () => {
@@ -79,9 +104,13 @@ describe('Crystal Bio agent view shell', () => {
     await waitFor(() => expect(screen.getByText('Checked in. Sales visit saved with GPS.')).toBeInTheDocument());
     expect(screen.getByText('Checked in for field work')).toBeInTheDocument();
     fireEvent.click(screen.getByLabelText('Attendance'));
-    expect(screen.getByText('Started today • Sales visit')).toBeInTheDocument();
+    expect(screen.getAllByText(/Started at .*Sales visit/).length).toBeGreaterThan(0);
     expect(screen.getAllByText('Checked in').length).toBeGreaterThan(0);
-    expect(screen.getByRole('button', { name: /check out/i })).toBeInTheDocument();
+    expect(screen.queryByText('Saved work mode')).not.toBeInTheDocument();
+    const checkOut = screen.getByRole('button', { name: /check out/i });
+    expect(checkOut).toBeInTheDocument();
+    fireEvent.click(checkOut);
+    await waitFor(() => expect(screen.getByRole('button', { name: /check in again/i })).toBeInTheDocument());
   });
 
   it('sends attendance check-out after check-in', async () => {
@@ -96,9 +125,12 @@ describe('Crystal Bio agent view shell', () => {
     await waitFor(() => expect(screen.getByText('Checked out. End location saved.')).toBeInTheDocument());
     expect(screen.getByText('Ready for field work')).toBeInTheDocument();
     fireEvent.click(screen.getByLabelText('Attendance'));
-    expect(screen.getByText('Completed today • Sales visit')).toBeInTheDocument();
+    expect(screen.getAllByText(/Finished at .*Sales visit/).length).toBeGreaterThan(0);
     expect(screen.getAllByText('Checked out').length).toBeGreaterThan(0);
-    expect(screen.getByRole('button', { name: /check in/i })).toBeInTheDocument();
+    const checkInAgain = screen.getByRole('button', { name: /check in again/i });
+    expect(checkInAgain).toBeEnabled();
+    fireEvent.click(checkInAgain);
+    expect(screen.getByRole('heading', { name: 'Check in again' })).toBeInTheDocument();
   });
 
   it('keeps agent bottom navigation focused on work screens because profile is in the top header', async () => {
@@ -159,8 +191,8 @@ describe('Crystal Bio agent view shell', () => {
     expect(screen.queryByRole('button', { name: /previous entries/i })).not.toBeInTheDocument();
     expect(screen.getByLabelText('Sales quick contact person')).toBeInTheDocument();
     expect(screen.getByLabelText('Sales quick phone')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /customer & requirement details.*tap to open/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /quote, proof & office details.*tap to open/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /customer & requirement details/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /quote & office details/i })).toBeInTheDocument();
     expect(screen.queryByText('Office action markers')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /save step 1/i })).toBeInTheDocument();
 
@@ -170,8 +202,8 @@ describe('Crystal Bio agent view shell', () => {
     expect(screen.queryByText('Save the site update first')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Service quick equipment')).toBeInTheDocument();
     expect(screen.getByLabelText('Service quick contact person')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /customer, equipment, issue.*tap to open/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /parts, proof, office details.*tap to open/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /customer, equipment, issue/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /parts & office details/i })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /arrange parts/i })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /save step 1/i })).toBeInTheDocument();
 
@@ -208,8 +240,9 @@ describe('Crystal Bio agent view shell', () => {
     fireEvent.change(screen.getByLabelText('My report preset'), { target: { value: 'week' } });
     expect(screen.getByText(/Weekly report/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^monthly$/i })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /^generate report$/i }));
-    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Weekly report ready'));
+    expect(screen.queryByRole('button', { name: /^generate report$/i })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /^download report$/i }));
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Report downloaded'));
     expect(screen.getAllByText(/Weekly report/).length).toBeGreaterThan(0);
     expect(screen.queryByText(/fixed demo values/i)).not.toBeInTheDocument();
   });
@@ -250,31 +283,56 @@ describe('Crystal Bio agent view shell', () => {
     expect(screen.getByRole('status')).toHaveClass('save-toast');
     expect(screen.queryByRole('status')).not.toHaveClass('screen-notice');
     await waitFor(() => expect(screen.queryByRole('status')).not.toBeInTheDocument(), { timeout: 4500 });
-    expect(screen.getByRole('button', { name: /save step 1 changes/i })).toBeEnabled();
-    expect(screen.getByText(/QA Test Lab • Visit 1 • follow up needed/i)).toBeInTheDocument();
-    expect(screen.getAllByText(/Step 2: pending • Step 3: pending/i).length).toBeGreaterThan(0);
+    expect(screen.getByText('Saved Sales Entry')).toBeInTheDocument();
+    expect(screen.getByText('What do you want to do now?')).toBeInTheDocument();
+    expect(screen.queryByText('Follow-up timeline')).not.toBeInTheDocument();
+    expect(screen.getByText(/QA Test Lab/)).toBeInTheDocument();
+    expect(screen.getByText((content) => /^\d{2}\/\d{2}\/\d{4} • \d{2}:\d{2}$/.test(content))).toBeInTheDocument();
+    expect(screen.queryByText(/^\d{4}-\d{2}-\d{2} • \d{2}:\d{2}$/)).not.toBeInTheDocument();
+    expect(screen.getByText(/Step 2\s+pending/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /add follow-up 2/i })).toBeEnabled();
+    fireEvent.click(screen.getByRole('button', { name: /add follow-up/i }));
+    expect(screen.getByRole('button', { name: /save follow-up/i })).toBeEnabled();
+    expect(screen.getByLabelText('Sales email')).toBeEnabled();
+    fireEvent.change(screen.getByLabelText('Sales follow-up status'), { target: { value: 'no_follow_up' } });
+    expect(screen.queryByLabelText('Sales follow-up note')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /save status/i })).toBeEnabled();
+    fireEvent.change(screen.getByLabelText('Sales follow-up status'), { target: { value: 'follow_up_needed' } });
+    expect(screen.getByLabelText('Sales follow-up note')).toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText('Sales visit note'), { target: { value: 'Updated after first save.' } });
-    fireEvent.click(screen.getByRole('button', { name: /save step 1 changes/i }));
-    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Sales Step 1 updated'));
+    fireEvent.change(screen.getByLabelText('Sales follow-up note'), { target: { value: 'Updated after first save.' } });
+    fireEvent.click(screen.getByRole('button', { name: /save follow-up/i }));
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Follow-up saved'));
+    expect(screen.getByText('Follow-up 2')).toBeInTheDocument();
+    expect(screen.getAllByText('Updated after first save.').length).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: /add follow-up 3/i })).toBeEnabled();
 
-    fireEvent.click(screen.getByRole('button', { name: /customer & requirement details.*tap to open/i }));
     fireEvent.change(screen.getByLabelText('Sales email'), { target: { value: 'lab@example.com' } });
     fireEvent.click(screen.getByRole('button', { name: /save step 2/i }));
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Sales Step 2 saved'));
-    expect(screen.getAllByText(/Step 2: saved • Step 3: pending/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Step 2\s+saved/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Step 3\s+pending/i).length).toBeGreaterThan(0);
+    expect(screen.getByLabelText('Sales quote submitted')).toBeEnabled();
 
-    fireEvent.click(screen.getByRole('button', { name: /quote, proof & office details.*tap to open/i }));
+    expect(screen.getAllByLabelText('Sales camera photo')).toHaveLength(1);
+    expect(screen.getByLabelText('Sales camera photo')).toHaveClass('visually-hidden');
+    expect(screen.getByLabelText('Sales upload photo')).toHaveClass('visually-hidden');
+    expect(screen.getByLabelText('Sales camera photo').closest('.photo-button')).toHaveTextContent(/^Camera$/);
+    expect(screen.getByLabelText('Sales upload photo').closest('.photo-button')).toHaveTextContent(/^Upload$/);
+    expect(screen.queryByText('Photos if needed')).not.toBeInTheDocument();
+    expect(screen.getAllByLabelText('Sales camera photo')).toHaveLength(1);
+    expect(screen.queryByText('Photos if needed')).not.toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('Sales quote submitted'), { target: { value: 'yes' } });
     fireEvent.change(screen.getByLabelText('Sales office notes'), { target: { value: 'Prepare quote follow-up' } });
     fireEvent.click(screen.getByRole('button', { name: /save step 3/i }));
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Sales Step 3 saved'));
-    expect(screen.getAllByText(/Step 2: saved • Step 3: saved/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Step 2\s+saved/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Step 3\s+saved/i).length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByLabelText('Home'));
     fireEvent.click(screen.getByRole('button', { name: /sales new visit/i }));
     expect(screen.getByRole('button', { name: /save step 1/i })).toBeEnabled();
-    fireEvent.click(screen.getByRole('button', { name: /customer & requirement details.*tap to open/i }));
+    fireEvent.click(screen.getByRole('button', { name: /customer & requirement details/i }));
     expect(screen.getByRole('button', { name: /save step 2/i })).toBeDisabled();
 
     fireEvent.click(screen.getByLabelText('Home'));
@@ -285,21 +343,37 @@ describe('Crystal Bio agent view shell', () => {
     fireEvent.change(screen.getByLabelText('Service next visit date'), { target: { value: '2026-06-21' } });
     fireEvent.click(screen.getByRole('button', { name: /save step 1/i }));
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Service visit saved'));
-    expect(screen.getByRole('button', { name: /save step 1 changes/i })).toBeEnabled();
-    expect(screen.getByText(/QA Service Lab • Visit 1 • parts required/i)).toBeInTheDocument();
-    expect(screen.getAllByText(/Step 2: pending • Step 3: pending/i).length).toBeGreaterThan(0);
-    fireEvent.change(screen.getByLabelText('Service work done'), { target: { value: 'Updated after first save.' } });
-    fireEvent.click(screen.getByRole('button', { name: /save step 1 changes/i }));
-    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Service Step 1 updated'));
-    fireEvent.click(screen.getByRole('button', { name: /customer, equipment, issue.*tap to open/i }));
+    expect(screen.getByText('Saved Service Entry')).toBeInTheDocument();
+    expect(screen.getByText('What do you want to do now?')).toBeInTheDocument();
+    expect(screen.queryByText('Follow-up timeline')).not.toBeInTheDocument();
+    expect(screen.getByText(/QA Service Lab/)).toBeInTheDocument();
+    expect(screen.getByText(/Step 2\s+pending/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /add follow-up 2/i })).toBeEnabled();
+    fireEvent.click(screen.getByRole('button', { name: /add follow-up/i }));
+    expect(screen.getByRole('button', { name: /save follow-up/i })).toBeEnabled();
+    expect(screen.getByLabelText('Service issue description')).toBeEnabled();
+    fireEvent.change(screen.getByLabelText('Service follow-up status'), { target: { value: 'no_follow_up' } });
+    expect(screen.queryByLabelText('Service follow-up note')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /save status/i })).toBeEnabled();
+    fireEvent.change(screen.getByLabelText('Service follow-up status'), { target: { value: 'parts_required' } });
+    expect(screen.getByLabelText('Service follow-up note')).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Service follow-up note'), { target: { value: 'Updated after first save.' } });
+    fireEvent.click(screen.getByRole('button', { name: /save follow-up/i }));
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Follow-up saved'));
+    expect(screen.getByText('Follow-up 2')).toBeInTheDocument();
+    expect(screen.getAllByText('Updated after first save.').length).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: /add follow-up 3/i })).toBeEnabled();
     fireEvent.change(screen.getByLabelText('Service issue description'), { target: { value: 'Noise during spin cycle' } });
     fireEvent.click(screen.getByRole('button', { name: /save step 2/i }));
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Service Step 2 saved'));
-    fireEvent.click(screen.getByRole('button', { name: /parts, proof, office details.*tap to open/i }));
+    expect(screen.getByLabelText('Service final remarks')).toBeEnabled();
+    expect(screen.getAllByLabelText('Service camera photo')).toHaveLength(1);
+    expect(screen.queryByText('Service photos')).not.toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('Service final remarks'), { target: { value: 'Customer informed about parts timeline' } });
     fireEvent.click(screen.getByRole('button', { name: /save step 3/i }));
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Service Step 3 saved'));
-    expect(screen.getAllByText(/Step 2: saved • Step 3: saved/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Step 2\s+saved/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Step 3\s+saved/i).length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByLabelText('Attendance'));
     fireEvent.click(screen.getByRole('button', { name: /request leave/i }));
@@ -309,7 +383,7 @@ describe('Crystal Bio agent view shell', () => {
     fireEvent.change(screen.getByLabelText('Leave note'), { target: { value: 'Family appointment' } });
     fireEvent.click(screen.getByRole('button', { name: /submit leave request/i }));
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Leave request sent'));
-    expect(screen.getAllByText(/2026-06-12 to 2026-06-13/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/12\/06\/2026 to 13\/06\/2026/i).length).toBeGreaterThan(0);
     expect(screen.getByText('pending')).toBeInTheDocument();
     expect(screen.getByText('Note: Family appointment')).toBeInTheDocument();
   }, 10000);
@@ -335,7 +409,7 @@ describe('Crystal Bio agent view shell', () => {
     expect(screen.getAllByText(/pending/i).length).toBeGreaterThan(0);
     expect(screen.queryByText('Launch monitoring')).not.toBeInTheDocument();
     expect(screen.queryByText('No user-action failures captured')).not.toBeInTheDocument();
-    expect(screen.getByText('Latest submitted work')).toBeInTheDocument();
+    expect(screen.queryByText('Latest submitted work')).not.toBeInTheDocument();
     expect(screen.queryByText('Today’s action queue')).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Admin overview' })).toBeInTheDocument();
     expect(screen.getByLabelText('Overview selected')).toBeInTheDocument();
@@ -354,14 +428,28 @@ describe('Crystal Bio agent view shell', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Agents' }));
     expect(screen.getByRole('heading', { name: 'Agents' })).toBeInTheDocument();
-    expect(screen.getByText('Submitted entries')).toBeInTheDocument();
-    expect(screen.getByText('Recent 5 entries')).toBeInTheDocument();
-    expect(screen.getByLabelText('Entry agent filter')).toBeInTheDocument();
-    expect(screen.getByLabelText('Entry type filter')).toBeInTheDocument();
+    expect(screen.getByText('Team today')).toBeInTheDocument();
+    expect(screen.getByLabelText('Team summary')).toBeInTheDocument();
+    expect(screen.getByLabelText('Agent status filters')).toBeInTheDocument();
+    expect(screen.getByLabelText('Agent filters')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'All agents' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Sales' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Service' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'In office' })).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'Checked in' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('button', { name: 'Not in' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('button', { name: 'Checked out' }).length).toBeGreaterThan(0);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Checked out' })[0]);
+    expect(screen.getAllByRole('button', { name: 'Checked out' })[0]).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByLabelText('Agent list')).toBeInTheDocument();
+    expect(screen.queryByText('Submitted entries')).not.toBeInTheDocument();
+    expect(screen.queryByText('Recent 5 entries')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Entry agent filter')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Entry type filter')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /view all entries/i })).not.toBeInTheDocument();
     expect(screen.queryByLabelText('Activity date range preset')).not.toBeInTheDocument();
     expect(screen.queryByText('Team status')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /view team status/i })).not.toBeInTheDocument();
-    expect(screen.getByLabelText('Team summary')).toBeInTheDocument();
     expect(screen.queryByText('QA Test Agent')).not.toBeInTheDocument();
     expect(screen.queryByText('Sales Agent')).not.toBeInTheDocument();
 
@@ -370,6 +458,38 @@ describe('Crystal Bio agent view shell', () => {
     expect(screen.queryByText(/Sick leave/i)).not.toBeInTheDocument();
   });
 
+
+  it('shows a clear show-all control when Field Entry has more than 10 matching rows', async () => {
+    window.history.pushState({}, '', '/?screen=admin');
+    window.localStorage.setItem('crystalbio.session.v1', JSON.stringify({
+      token: 'admin-token',
+      agentId: 'admin_1',
+      agentName: 'Raghavendra',
+      role: 'admin',
+      phone: 'Registered mobile',
+      email: 'sales@crystalbio.in',
+    }));
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Field entry' }));
+    for (let index = 1; index <= 11; index += 1) {
+      fireEvent.click(screen.getByRole('button', { name: /sales entry/i }));
+      await waitFor(() => expect(screen.getByRole('heading', { name: 'Sales visit' })).toBeInTheDocument());
+      fireEvent.change(screen.getByLabelText('Sales customer name'), { target: { value: `Visibility Test Customer ${index}` } });
+      fireEvent.change(screen.getByLabelText('Sales visit note'), { target: { value: 'Testing Field Entry visibility' } });
+      fireEvent.change(screen.getByLabelText('Sales next action'), { target: { value: 'no_follow_up' } });
+      fireEvent.click(screen.getByRole('button', { name: /^save step 1$/i }));
+      await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Sales Step 1 saved'));
+      fireEvent.click(screen.getByRole('button', { name: /field entry/i }));
+    }
+
+    expect(screen.getByText('10 of 11 shown')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Show all 11 entries' })).toBeInTheDocument();
+    expect(screen.queryByText('Visibility Test Customer 1')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Show all 11 entries' }));
+    expect(screen.getByText('11 of 11 shown')).toBeInTheDocument();
+    expect(screen.getByText('Visibility Test Customer 1')).toBeInTheDocument();
+  }, 20000);
 
   it('keeps report entry details inside Reports instead of jumping to Agents', async () => {
     window.history.pushState({}, '', '/?screen=admin');
@@ -395,10 +515,27 @@ describe('Crystal Bio agent view shell', () => {
     fireEvent.click(screen.getByRole('button', { name: /field entry/i }));
     const overviewButtons = screen.getAllByRole('button', { name: 'Overview' });
     fireEvent.click(overviewButtons[overviewButtons.length - 1]);
-    expect(screen.getByText('Latest submitted work')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Sales Report Back Test Lab Raghavendra/i })).toBeInTheDocument();
+    expect(screen.queryByText('Latest submitted work')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /total visits today show forms/i }));
+    expect(screen.queryByRole('button', { name: /open submitted work/i })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Report Back Test Lab.*Raghavendra.*Sales.*Open/i }));
+    expect(screen.getByLabelText('Submitted form details')).toBeInTheDocument();
+    expect(screen.getByText('Back to field entries')).toBeInTheDocument();
+    expect(screen.getByText('Sales agent: Raghavendra')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Back to field entries/i }));
 
-    fireEvent.click(screen.getByRole('button', { name: 'Field entry' }));
+    fireEvent.click(screen.getByRole('button', { name: /Report Back Test Lab.*View details/i }));
+    expect(screen.getByLabelText('Submitted form details')).toBeInTheDocument();
+    expect(screen.getByText('Back to field entries')).toBeInTheDocument();
+    expect(screen.queryByText(/Read-only view/i)).not.toBeInTheDocument();
+    expect(screen.queryByText('Submitted by')).not.toBeInTheDocument();
+    expect(screen.queryByText('Step 2 status')).not.toBeInTheDocument();
+    expect(screen.getByText('Sales agent: Raghavendra')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /edit this entry/i })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /edit this entry/i }));
+    expect(screen.getByRole('heading', { name: 'Sales visit' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /edit saved details/i })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /field entry/i }));
     fireEvent.click(screen.getByRole('button', { name: 'Reports' }));
     expect(screen.getByRole('heading', { name: 'Admin reports' })).toBeInTheDocument();
     expect(screen.getByText('Today’s report')).toBeInTheDocument();
@@ -428,8 +565,8 @@ describe('Crystal Bio agent view shell', () => {
     expect(screen.getByText('Attendance summary')).toBeInTheDocument();
     expect(screen.queryByText('8 sales visits • 3 follow-ups')).not.toBeInTheDocument();
     expect(screen.queryByText('Send quote to QA Test Lab')).not.toBeInTheDocument();
-    fireEvent.click(await screen.findByRole('button', { name: /^generate report$/i }));
-    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Attendance report ready'));
-    expect(screen.getByRole('status')).toHaveTextContent('Whole office report generated');
+    expect(screen.queryByRole('button', { name: /^generate report$/i })).not.toBeInTheDocument();
+    fireEvent.click(await screen.findByRole('button', { name: /^download pdf$/i }));
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('PDF downloaded'));
   });
 });

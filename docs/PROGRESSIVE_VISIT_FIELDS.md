@@ -19,6 +19,7 @@ This is not a project phase split. It is the actual agent-facing form model.
 - Backend records should support partial updates without losing previously saved details.
 - Agent/engineer name comes from login and is never typed manually in the visit form.
 - GPS/current location is mandatory for the actual visit update in Step 1.
+- Saved-entry detail must follow the approved saved-entry preview: top summary stays customer-first with customer/lab name, Sales/Service agent, next follow-up/status, and Step 1 / Step 2 / Step 3 saved-or-pending chips. Immediately below that, show the main action card so the agent does not scroll through the full form first: primary `Add follow-up`, plus `Complete pending details` when Step 2 or Step 3 is pending, and `Edit original details` for saved Step 1/original details. Then show a simple follow-up timeline. Full saved form details move lower down as timeline/collapsed sections in the original Step 1 / Step 2 / Step 3 order. Follow-up date/note fields appear only when a real follow-up/action is selected, not when `No follow-up` is selected. Repeated row actions like `View details` must use one neutral consistent style.
 
 ## Sales visit steps
 
@@ -78,13 +79,9 @@ Fields:
 - Closing date
 - Support required
 - Remarks and timeline
-- Photos:
-  - Site photo
-  - Equipment plate photo
-  - Installation photo
-  - Issue photo
-  - Visiting card photo
 - Notes for office team
+
+Photo rule: photo capture belongs in Step 1 only. Do not repeat Camera/Upload controls in Step 3.
 
 Current implementation status: implemented in the frontend progressive screen and covered by frontend/backend patch tests. Continue QA for photo/proof usability and admin visibility.
 
@@ -144,12 +141,9 @@ Fields to reconcile with client sheet:
 - Support required
 - Office notes
 - Customer confirmation/signature, if present
-- Photos:
-  - Equipment photo
-  - Serial plate photo
-  - Issue photo
-  - Installation/site photo
 - Final remarks
+
+Photo rule: photo capture belongs in Step 1 only. Do not repeat Camera/Upload controls in Step 3.
 
 Current implementation status: implemented in the frontend progressive screen and covered by frontend/backend patch tests. Continue QA for photo/proof usability and admin visibility.
 

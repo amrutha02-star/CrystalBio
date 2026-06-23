@@ -1,17 +1,24 @@
 # CrystalBio Bot Coordination Status
 
-Last refreshed: 2026-06-16 07:22 IST / 2026-06-16 01:52 UTC
+Last refreshed: 2026-06-23 08:37 IST / 2026-06-23 03:07 UTC
 
 Purpose: one simple dashboard so Rahul can see what Periwinkle, Bloom, and Iris are doing without reading logs.
 
 ## Simple summary right now
 
-- Periwinkle, Bloom, and Iris services are all running.
-- Night automation is scheduled for launch week.
-- Bloom is testing and monitoring.
-- Periwinkle is supposed to review Bloom findings and approve what Iris can fix.
-- Iris is supposed to fix only approved bugs, then hand them back to Bloom for retesting.
-- The main confusion right now is that the work exists across several files, but there was no single plain-English dashboard until this file.
+- Live app/API are up.
+- One-week live usage update from Amrutha: employees are using the app well; only one or two minor issues were seen; no big outage occurred.
+- No current Critical or High launch-blocking bug is approved for Iris.
+- Latest Bloom night QA found no new Critical or High launch blocker.
+- The latest report-button correction is deployed live: Admin uses direct `Download PDF`; Agent uses `Download report`.
+- Today’s approved polish item is done live: Camera/Upload controls are clean and no native `Choose File` text appears inside the custom buttons.
+- Admin usability corrections from Amrutha's screenshots are done live: Reports Today count is date-range-only, Field Entry has Sales/Service filters, detail Back restores list position, photos preview in-app, and entry details use one sticky Back with native browser/Android Back support.
+- Simplified follow-up layout deployed as version `20260623015713`: saved entries show the top action, a compact Follow-up details composer, Visit updates, then original Step 1/2/3 details.
+- Bloom cleanup correction recorded: first cleanup checked the database file but missed live backend in-memory state, so one Bloom `test` row reappeared. Correct live cleanup sequence is now documented in `docs/BACKUPS_AND_MONITORING.md`: dry-run, stop backend briefly, write Bloom-only cleanup, restart, verify health, then verify Bloom live Recent visits/API count is 0.
+- Bloom field-test entries are currently verified removed from the live API: Bloom agent Recent visits = 0; remaining Bloom Sales/Service records = 0; real user records untouched.
+- Sunday deploy completed after Amrutha's swipe-back follow-up: native browser/iOS edge-swipe/Android Back support is now live selectively for safe admin detail journeys — Field Entry/Reports entry details, Approvals detail, Agents person detail, and Profile person detail.
+- Production Stage 1–2 managed staging setup is prepared: scripts now check required managed credentials, create/verify the Cloudflare R2 staging bucket when credentials are available, and run the PostgreSQL staging migration/count check against a managed staging database. External managed Postgres/R2 credentials are not present in this shell yet, so no managed resource was created. Live app still uses JSON; no live database/photo cutover has been done.
+- Iris should not start routine fixes unless Periwinkle/Rahul approves a specific bug.
 
 ## Who owns what
 
@@ -39,12 +46,78 @@ Purpose: one simple dashboard so Rahul can see what Periwinkle, Bloom, and Iris 
 
 - Every 5 minutes: live API monitor checks CrystalBio health.
 - 9:00 PM IST: Bloom heavy QA starts.
-- 11:00 PM IST: Periwinkle triage/review starts.
-- 11:30 PM IST: Iris approved night fixes start.
+- 9:00 PM IST tonight: Bloom runs the expanded attendance/error-pattern/downloaded-report sweep (`3015386bee18`).
+- 10:30 PM IST tonight: Iris approved narrow fix window for Field Entry performance, saved-entry UX/text cleanup, Field Entry visibility follow-up if needed, and downloaded report attendance section (`8bab3f427c41`).
+- 11:15 PM IST tonight: Bloom post-deploy QA for Field Entry performance and saved-entry UX/text cleanup — reload speed, lightweight list payload, entries beyond 10, entry detail/photo opening, neutral `View details`, no read-only/progress clutter, direct follow-up fields, and pending Step 2/3 visibility (`34ce092c3961`).
+- 00:05 AM IST: nightly attendance auto-checkout and Bloom QA cleanup/audit runs after the calendar day changes (`faeccaf5a2d2`).
 - 2:30 AM IST: Bloom retests Iris fixes.
 - 7:30 AM IST: Periwinkle morning summary.
 
 ## Current bug/fix status
+
+### BUG-20260617-007 — Admin checked-in card / attendance work mode
+
+- Owner now: Periwinkle/Rahul acceptance.
+- Status: **deployed live and Bloom retest passed**. Live app is version `20260618013516`; the live bundle contains `Mode not recorded` / `workTypes` markers.
+- What changed in source/live: selected check-in work mode is saved with attendance and shown in Admin overview attendance detail. Older records show `Mode not recorded`. The earlier 4-row display problem and “Already checked in” communication remain covered.
+- Checks passed: targeted App/API/backend tests, frontend build, backend build, live API health, live version check, live bundle marker check, Bloom QA agent/admin live retest.
+- Bloom retest evidence: `docs/qa-runs/QA_RUN_BLOOM_2026-06-18_ATTENDANCE_ADMIN.md`.
+- Cleanup: Amrutha caught that Bloom attendance was still visible after the first cleanup report. Periwinkle rechecked the live DB, found 3 Bloom attendance rows, ran Bloom-only dry-run, created backup `crystalbio-db.json.2026-06-18T02-23-42-459Z.bak`, cleaned only Bloom-owned attendance rows, restarted backend, and verified 0 Bloom attendance/Sales/Service/leave rows remain.
+
+### BUG-20260618-008 — Field Entry saved cards are not clickable
+
+- Owner now: Periwinkle/Rahul acceptance.
+- Status: deployed live as version `20260618023542` after Amrutha approved daytime deploy.
+- What changed in source/live: Admin Field Entry saved Sales/Service rows now open the read-only filled-form detail view and show a clear Back to field entries action.
+- Checks passed: `src/App.test.tsx` 18/18, production build, live bundle marker check, and API health.
+
+### 2026-06-19 night fixes — Field Entry performance, saved-entry UX, attendance PDF
+
+- Owner now: Bloom retest, then Periwinkle/Rahul acceptance.
+- Status: deployed live as version `20260619170148`.
+- What changed live: Field Entry list payload is lightweight, saved-entry detail/actions are cleaner and neutral, and downloaded attendance PDF is summary-first with office-action exceptions.
+- Checks passed: targeted tests 63/63, frontend build, backend build, live API health, live version/bundle, Field Entry payload, live attendance PDF, and mobile browser Field Entry detail check.
+- Bloom retest needed: Field Entry reload/detail/photo, saved Sales/Service continuation, and downloaded attendance PDF counts/exceptions.
+
+### Admin Agents restructure — not part of tonight acceptance
+
+- Owner now: Amrutha review, then night deployment only.
+- Status: deployed live as version `20260619233205` after Amrutha approved early-morning fix.
+- What changed live: Agents now shows team/people status, attendance, check-in/out, work mode, follow-ups, agent detail, and a link into Field Entry filtered for that agent. The top Team today counts are clickable filters, and Sales / Service / In office / Checked in / Not in / Checked out behave as clear filters, not passive pills.
+- What stayed intact: submitted Sales/Service rows remain owned by Field Entry; other admin pages were not intentionally changed.
+- Checks passed: `src/App.test.tsx` 19/19, production build, local browser preview, live API/version/bundle check, and live login-page console check. One Bloom QA Sales test entry was created for Amrutha review: `BLOOM QA CHECK SALES 202606192335`.
+- Plan doc: `docs/ADMIN_AGENTS_SCREEN_RESTRUCTURE_PLAN.md`.
+
+### App-wide IST date format hotfix — deployed now
+
+- Owner now: Periwinkle acceptance.
+- Status: deployed live as version `20260620020839` after Amrutha asked to fix and deploy immediately.
+- What changed live: User-facing app dates, report ranges, PDF report dates, report filenames, and client-side visit/attendance date handling now use India/Kolkata rules. Display format is `dd/mm/yyyy`; downloaded report file tokens use `ddmmyyyy`.
+- Checks passed: full test suite 103/103, frontend build, backend build, live API health, live version/bundle check, live login-page console check, and live attendance PDF filename check.
+
+### BUG-20260618-009 — Check-in confusion / repeated already-checked-in errors
+
+- Owner now: Periwinkle; Bloom live retest passed for the check-in/reload/check-out/re-check-in journey, but live-user overnight auto-checkout needed a follow-up correction.
+- Status: live data corrected after Amrutha reported 2026-06-19 logs still appearing today; 6 open 2026-06-19 sessions were auto-closed with backup/audit and backend restart.
+- What changed live: Attendance now clearly shows Not checked in / Checked in / Checked out; after check-in the app asks the backend for current attendance on reload, so the home dashboard stays checked-in after refresh; the main action becomes Check out; selected work mode sits inside the main checked-in card; Check out uses a warmer action colour; after checkout the app shows Check in again for agents returning from a break/second visit; missed checkouts are auto-closed at night and shown as `Auto checked out` for admin review.
+- Evidence before fix: live client-error log had 25 check-in/attendance-related entries, including repeated `/attendance/check-in` `Agent is already checked in` errors.
+- Verification: targeted API/app tests passed 34/34, production frontend build, backend build, production DB backup, live DB repair audit, backend restart, API health OK, live version `20260619034400`, live bundle contains `Auto checked out`, and monitor page still shows the standalone `CrystalBio Live Monitor` layout.
+- Latest live correction: at 2026-06-20 04:45 IST, Periwinkle found the 23:59 IST auto-checkout had run before the date changed, so 2026-06-19 sessions were not eligible. Manual backup/write repair closed Surendra, Deekshak, Madhu, Dr. Swati Priya, Sanjeev, and Ajay AS as `Auto checked out`; open attendance is now 0; API health OK; non-Bloom business data hash stayed unchanged.
+- Night automation: cron job `faeccaf5a2d2` now runs daily at 18:35 UTC / 00:05 IST and the script uses Asia/Kolkata date logic by default, so same-day missed checkouts are handled after midnight.
+
+### Admin home — remove Latest submitted work
+
+- Owner now: Periwinkle/Rahul acceptance.
+- Status: **deployed live and Bloom check passed**. Live bundle no longer contains `Latest submitted work`.
+- Intended result: Admin home keeps the four action cards and office-action needs; submitted Sales/Service work remains under Field Entry, not Admin home or Agents.
+- Bloom evidence: `docs/qa-runs/QA_RUN_BLOOM_2026-06-18_ATTENDANCE_ADMIN.md`.
+
+### Live monitor page
+
+- Owner now: Periwinkle/Bloom monitoring.
+- Status: refreshed and working.
+- Latest verified monitor page: `17 Jun 2026, 07:53 pm IST`; counts were 0 real-user errors, 78 needs-classification, 18 Bloom/testing failures, 95 failed logins, 80 successful logins.
+- Automation: static monitor page now refreshes every 5 minutes from server-side logs, while the API monitor cron continues separately.
 
 ### BUG-20260615-001 — Login keyboard Enter/Go does not submit
 
@@ -87,10 +160,11 @@ Purpose: one simple dashboard so Rahul can see what Periwinkle, Bloom, and Iris 
 
 ### BUG-20260616-006 — Previous saved entry opens as blank form
 
-- Owner now: deploy decision, then Bloom retest after deployment.
-- Status: source fix exists locally and builds; it is not visible on the live site yet.
-- Periwinkle check: live is serving version `20260616020715` and asset `index-B9qABPPT.js`; that asset does not contain the saved-entry fix markers. Local build version `20260616023405` does contain them and passed test/build.
-- Next: deploy the current build during a safe window, confirm the live asset/version changed, then Bloom retests Sales and Service previous-entry reopening.
+- Owner now: none unless regression is reported.
+- Status: deployed and Bloom-verified after deploy.
+- Periwinkle check: live now serves version `20260616023405` and asset `index-DZSk2R0D.js`; the live asset contains the saved-entry fix markers. Backend was rebuilt/restarted and API health is OK.
+- Bloom retest: passed on live mobile browser using only assigned Bloom QA credentials. Sales and Service previous entries reopened with saved details/status instead of blank pending forms.
+- Cleanup: Bloom-created retest Sales/Service/attendance rows and Bloom sessions were removed after backup/dry-run/write cleanup; post-clean check shows 0 Bloom Sales/Service rows and 0 Bloom sessions.
 
 ## Source files
 
@@ -104,6 +178,14 @@ Purpose: one simple dashboard so Rahul can see what Periwinkle, Bloom, and Iris 
 - Real-user issues: no confirmed high/critical real-user app error from the latest location-permission alert.
 - Testing/Bloom failures: the location-permission save errors came from HeadlessChrome/test automation, so they are separated as testing failures.
 - Rule: Periwinkle should report both categories in Telegram, but Iris should only fix after Amrutha/Rahul approval.
+
+## Live monitor page route guard — 2026-06-17
+
+- Amrutha clarified that the preferred monitor is the 2026-06-16 separated CrystalBio Live Monitor page, not the newer wide redesigned dashboard and not the inactive-link page.
+- Current approved behavior for `https://work.convogenie.ai/periwinkle-live-monitor-a93f27.html`: show the standalone `CrystalBio Live Monitor` page with separated sections for real-user issues, needs classification, Testing/Bloom failures, failed login attempts, and recent successful logins.
+- The monitor-named URL must not show the CrystalBio phone-app/admin interface and must not be redesigned again unless Amrutha/Rahul explicitly ask for that.
+- Verification after restoring the 2026-06-16 monitor style: source file restored from the live backup, build passed, live HTML returned HTTP 200 with `CrystalBio Live Monitor`, and browser verification showed the separated monitoring sections.
+- Amrutha later clarified that monitor email IDs should be shown completely, not masked. The static monitor page now reads the server-side monitor logs for full email IDs while keeping the same separated layout.
 
 ## QA test-submission cleanup rule
 

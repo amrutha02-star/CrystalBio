@@ -1,12 +1,12 @@
-import { type ReactNode, useEffect, useMemo, useState } from 'react';
-import { Activity, AlertTriangle, CalendarCheck, CheckCircle2, ChevronLeft, ClipboardList, Clock3, FileText, Home, MapPin, Plus, Search, UserRound, UsersRound, X } from 'lucide-react';
-import { crystalBioFrontendApi, type FrontendAdminReport, type FrontendAdminSeatInvite, type FrontendAttendance, type FrontendClientErrorEvent, type FrontendGps, type FrontendLeaveRequest, type FrontendLoginActivityEvent, type FrontendLoginInput, type FrontendRecentVisitEntry, type FrontendSalesSaveResult, type FrontendSalesNextAction, type FrontendServiceSaveResult, type FrontendServiceNextAction, type FrontendServiceType, type FrontendSession } from './crystalBioFrontendApi';
+import { type KeyboardEvent, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { Activity, AlertTriangle, CalendarCheck, CheckCircle2, ChevronLeft, ClipboardList, Clock3, FileText, Home, MapPin, Pencil, Plus, Search, UserRound, UsersRound, X } from 'lucide-react';
+import { crystalBioFrontendApi, type FrontendAdminReport, type FrontendAdminSeatInvite, type FrontendAttendance, type FrontendClientErrorEvent, type FrontendGps, type FrontendLeaveRequest, type FrontendLoginActivityEvent, type FrontendLoginInput, type FrontendRecentVisitEntry, type FrontendVisitDetailRow, type FrontendSalesSaveResult, type FrontendSalesNextAction, type FrontendServiceSaveResult, type FrontendServiceNextAction, type FrontendServiceType, type FrontendSession } from './crystalBioFrontendApi';
 
 type AppScreen = 'login' | 'home' | 'visits' | 'sales' | 'service' | 'checkin' | 'attendance' | 'leave' | 'reports' | 'profile' | 'admin';
 type ReportPeriod = 'today' | 'week' | 'month' | 'custom';
 type AgentReportKind = 'attendance' | 'visits' | 'combined';
 type AdminReportKind = 'attendance' | 'visits' | 'combined';
-type AdminAgentFilter = 'all' | 'sales' | 'service';
+type AdminAgentFilter = 'all' | 'sales' | 'service' | 'office' | 'checkedIn' | 'notCheckedIn' | 'checkedOut';
 type AdminVisitTypeFilter = 'all' | 'Sales' | 'Service';
 type AdminFieldEntryScope = 'mine' | 'all';
 type AdminReportScope = 'office' | 'sales' | 'service' | 'agent';
@@ -35,6 +35,11 @@ type AdminActivityRow = {
   role: string;
   roleKey: 'sales' | 'service' | 'both' | 'admin';
   attendance: string;
+  attendanceCheckInTime?: string;
+  attendanceCheckOutTime?: string;
+  attendanceSessionCount: number;
+  attendanceAutoCheckedOut?: boolean;
+  attendanceWorkTypes?: string[];
   visits: string;
   status: string;
   chipClass: string;
@@ -45,6 +50,7 @@ type AdminActivityRow = {
 type ToastNotice = { title: string; message: string; tone?: 'success' | 'info' | 'warning' | 'error' };
 type LaunchIssue = { area: string; message: string; when: string };
 type StoredPhoto = { source: 'camera' | 'upload'; fileName: string; contentType: string; sizeBytes: number; dataUrl: string };
+type PhotoPreview = { dataUrl: string; fileName: string; note?: string; label: string };
 
 const toneClass: Record<string, string> = {
   warning: 'chip chip-warning',
@@ -69,8 +75,9 @@ const sampleAttendanceLogs = [
 const screenOptions: AppScreen[] = ['login', 'home', 'visits', 'sales', 'service', 'checkin', 'attendance', 'leave', 'reports', 'profile', 'admin'];
 const sessionStorageKey = 'crystalbio.session.v1';
 const screenStorageKey = 'crystalbio.screen.v1';
-const appBuildVersion = '20260616023405';
+const appBuildVersion = '20260623020524';
 const appVersionReloadKey = 'crystalbio.version-reload.v1';
+const isPublicMonitorPath = () => typeof window !== 'undefined' && window.location.pathname.includes('periwinkle-live-monitor');
 
 const isFrontendSession = (value: unknown): value is FrontendSession => {
   const candidate = value as Partial<FrontendSession> | null;
@@ -129,6 +136,7 @@ const loginInputForScreen = (nextScreen: AppScreen): FrontendLoginInput => {
 
 const getInitialScreen = (storedSession: FrontendSession | null = readStoredSession()): AppScreen => {
   if (typeof window === 'undefined') return 'login';
+  if (isPublicMonitorPath()) return 'admin';
   const requestedScreen = new URLSearchParams(window.location.search).get('screen') as AppScreen | null;
   if (requestedScreen && screenOptions.includes(requestedScreen)) return requestedScreen;
   const storedScreen = window.localStorage.getItem(screenStorageKey) as AppScreen | null;
@@ -139,8 +147,9 @@ const getInitialScreen = (storedSession: FrontendSession | null = readStoredSess
 
 const getInitialAdminTab = (): AdminTab => {
   if (typeof window === 'undefined') return 'overview';
+  if (isPublicMonitorPath()) return 'monitoring';
   const requestedTab = new URLSearchParams(window.location.search).get('adminTab') as AdminTab | null;
-  return requestedTab && ['overview', 'fieldEntry', 'agents', 'approvals', 'adminReports', 'profiles'].includes(requestedTab) ? requestedTab : 'overview';
+  return requestedTab && ['overview', 'fieldEntry', 'agents', 'approvals', 'adminReports', 'monitoring', 'profiles'].includes(requestedTab) ? requestedTab : 'overview';
 };
 
 const getInitialAdminApproval = (): AdminApprovalId | null => {
@@ -149,17 +158,38 @@ const getInitialAdminApproval = (): AdminApprovalId | null => {
   return requestedApproval || null;
 };
 
+const istTimeZone = 'Asia/Kolkata';
+
 const formatShortDate = (value: string) => {
   const [year, month, day] = value.split('-').map(Number);
-  if (!year || !month || !day) return value;
-  return new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short' }).format(new Date(Date.UTC(year, month - 1, day)));
+  if (year && month && day) return `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: istTimeZone }).format(date);
+};
+
+const formatDateToken = (value: string) => formatShortDate(value).replace(/\//g, '');
+
+const normalizeDateInputValue = (value?: string) => {
+  if (!value) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  const slashDate = value.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (slashDate) return `${slashDate[3]}-${slashDate[2]}-${slashDate[1]}`;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? value : formatDateInput(parsed);
+};
+
+const isDateInRange = (value: string | undefined, fromDate: string, toDate: string) => {
+  const normalized = normalizeDateInputValue(value);
+  if (!normalized) return false;
+  return normalized >= normalizeDateInputValue(fromDate) && normalized <= normalizeDateInputValue(toDate);
 };
 
 const formatMonitorWhen = (value?: string) => {
   if (!value) return 'Time not recorded';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }).format(date);
+  return new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: istTimeZone }).format(date).replace(',', '');
 };
 
 const roleLabel = (role?: FrontendSession['role']) => {
@@ -168,6 +198,19 @@ const roleLabel = (role?: FrontendSession['role']) => {
   if (role === 'service') return 'Service';
   if (role === 'both') return 'Sales + service';
   return 'User';
+};
+
+const formatAttendanceTime = (value?: string) => {
+  if (!value) return 'Time not recorded';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: istTimeZone }).format(date);
+};
+
+const formatDateInput = (date: Date) => {
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: istTimeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(date);
+  const part = (type: string) => parts.find((item) => item.type === type)?.value ?? '';
+  return `${part('year')}-${part('month')}-${part('day')}`;
 };
 
 const formatVisitWhen = (entry: Pick<FrontendRecentVisitEntry, 'visitDate' | 'visitTime'>) => {
@@ -184,11 +227,10 @@ const displayCustomerName = (value: string) => {
   return cleaned || value;
 };
 
-const formatDateInput = (date: Date) => date.toISOString().slice(0, 10);
-
 const startOfCurrentMonthInput = () => {
-  const now = new Date();
-  return formatDateInput(new Date(Date.UTC(now.getFullYear(), now.getMonth(), 1)));
+  const today = formatDateInput(new Date());
+  const [year, month] = today.split('-');
+  return `${year}-${month}-01`;
 };
 
 const todayInput = () => formatDateInput(new Date());
@@ -222,18 +264,24 @@ const adminRoleLabel = (roleKey: AdminActivityRow['roleKey']) => {
   return 'Sales + service agent';
 };
 
-const matchesAdminAgentFilter = (row: Pick<AdminActivityRow, 'roleKey' | 'salesVisitCount' | 'serviceVisitCount'>, filter: AdminAgentFilter) => {
+const matchesAdminAgentFilter = (row: Pick<AdminActivityRow, 'roleKey' | 'salesVisitCount' | 'serviceVisitCount' | 'attendance' | 'attendanceWorkTypes'>, filter: AdminAgentFilter) => {
   if (filter === 'all') return true;
+  if (filter === 'checkedIn') return row.attendance === 'checked in';
+  if (filter === 'notCheckedIn') return row.attendance === 'not checked in';
+  if (filter === 'checkedOut') return row.attendance === 'checked out';
+  if (filter === 'office') return row.attendanceWorkTypes?.includes('In office') ?? false;
   if (filter === 'sales') return row.roleKey === 'sales' || row.roleKey === 'both';
-  return row.roleKey === 'service' || row.roleKey === 'both';
+  if (filter === 'service') return row.roleKey === 'service' || row.roleKey === 'both';
+  return true;
 };
-
 function App() {
+  const isPublicMonitorPage = isPublicMonitorPath();
   const initialStoredSession = readStoredSession();
   const initialScreen = getInitialScreen(initialStoredSession);
   const hasConfiguredBackend = crystalBioFrontendApi.isBackendConfigured();
-  const mustValidateStoredSession = Boolean(hasConfiguredBackend && initialStoredSession);
+  const mustValidateStoredSession = Boolean(hasConfiguredBackend && initialStoredSession && !isPublicMonitorPage);
   const [screen, setScreen] = useState<AppScreen>(() => {
+    if (isPublicMonitorPage) return 'admin';
     if (hasConfiguredBackend && !initialStoredSession) return 'login';
     if (mustValidateStoredSession) return 'login';
     return hasConfiguredBackend && initialScreen === 'admin' && initialStoredSession?.role !== 'admin' ? 'login' : initialScreen;
@@ -245,7 +293,7 @@ function App() {
   const [currentGps, setCurrentGps] = useState<FrontendGps | null>(null);
   const [currentGpsCapturedAt, setCurrentGpsCapturedAt] = useState<string | null>(null);
   const [isLocationCapturing, setIsLocationCapturing] = useState(false);
-  const [locationMessage, setLocationMessage] = useState('Tap Use current location before check-in or saving a visit.');
+  const [locationMessage, setLocationMessage] = useState('Add location before saving.');
   const [statusMessage, setStatusMessage] = useState('Loading logged-in agent…');
   const [screenNotice, setScreenNotice] = useState<ToastNotice | string | null>(null);
   const [loginEmail, setLoginEmail] = useState('');
@@ -269,13 +317,19 @@ function App() {
   const [expandedAgentActivityId, setExpandedAgentActivityId] = useState<string | null>(null);
   const [selectedAdminEntryId, setSelectedAdminEntryId] = useState<string | null>(null);
   const [selectedAdminEntryReturnTab, setSelectedAdminEntryReturnTab] = useState<AdminTab>('agents');
+  const [adminEntryDetailCache, setAdminEntryDetailCache] = useState<Record<string, FrontendRecentVisitEntry>>({});
+  const [loadingAdminEntryDetailId, setLoadingAdminEntryDetailId] = useState<string | null>(null);
   const [showAllAdminEntries, setShowAllAdminEntries] = useState(false);
   const [showAdminTeamStatus, setShowAdminTeamStatus] = useState(false);
   const [expandedAdminMetric, setExpandedAdminMetric] = useState<AdminOverviewMetric | null>(null);
   const [adminEntryAgentFilter, setAdminEntryAgentFilter] = useState('all');
   const [adminEntryTypeFilter, setAdminEntryTypeFilter] = useState<AdminVisitTypeFilter>('all');
   const [adminFieldEntryScope, setAdminFieldEntryScope] = useState<AdminFieldEntryScope>('mine');
+  const [adminFieldEntryTypeFilter, setAdminFieldEntryTypeFilter] = useState<AdminVisitTypeFilter>('all');
   const [adminFieldEntrySearch, setAdminFieldEntrySearch] = useState('');
+  const [showAllAdminFieldEntries, setShowAllAdminFieldEntries] = useState(false);
+  const [adminEntryReturnScrollY, setAdminEntryReturnScrollY] = useState(0);
+  const [photoPreview, setPhotoPreview] = useState<PhotoPreview | null>(null);
   const [adminAgentFilter, setAdminAgentFilter] = useState<AdminAgentFilter>('all');
   const [adminTab, setAdminTab] = useState<AdminTab>(getInitialAdminTab);
   const [selectedAdminApproval, setSelectedAdminApproval] = useState<AdminApprovalId | null>(getInitialAdminApproval);
@@ -332,6 +386,10 @@ function App() {
   const [isSalesStep2Open, setIsSalesStep2Open] = useState(false);
   const [isSalesStep3Open, setIsSalesStep3Open] = useState(false);
   const [salesSaveResult, setSalesSaveResult] = useState<FrontendSalesSaveResult | null>(null);
+  const [isSalesSavedDetailsEditing, setIsSalesSavedDetailsEditing] = useState(false);
+  const [showSalesFollowUpComposer, setShowSalesFollowUpComposer] = useState(false);
+  const [isSalesStep2Editing, setIsSalesStep2Editing] = useState(false);
+  const [isSalesStep3Editing, setIsSalesStep3Editing] = useState(false);
   const [isSalesSubmitting, setIsSalesSubmitting] = useState(false);
   const [isSalesStep2Submitting, setIsSalesStep2Submitting] = useState(false);
   const [isSalesStep3Submitting, setIsSalesStep3Submitting] = useState(false);
@@ -365,17 +423,98 @@ function App() {
   const [isServiceStep2Open, setIsServiceStep2Open] = useState(false);
   const [isServiceStep3Open, setIsServiceStep3Open] = useState(false);
   const [serviceSaveResult, setServiceSaveResult] = useState<FrontendServiceSaveResult | null>(null);
+  const [isServiceSavedDetailsEditing, setIsServiceSavedDetailsEditing] = useState(false);
+  const [showServiceFollowUpComposer, setShowServiceFollowUpComposer] = useState(false);
+  const [isServiceStep2Editing, setIsServiceStep2Editing] = useState(false);
+  const [isServiceStep3Editing, setIsServiceStep3Editing] = useState(false);
   const [backendRecentVisitEntries, setBackendRecentVisitEntries] = useState<FrontendRecentVisitEntry[]>([]);
   const [adminTeamRecentVisitEntries, setAdminTeamRecentVisitEntries] = useState<FrontendRecentVisitEntry[]>([]);
   const [isServiceSubmitting, setIsServiceSubmitting] = useState(false);
   const [isServiceStep2Submitting, setIsServiceStep2Submitting] = useState(false);
   const [isServiceStep3Submitting, setIsServiceStep3Submitting] = useState(false);
+  const salesSubmitInFlightRef = useRef(false);
+  const serviceSubmitInFlightRef = useRef(false);
   const [launchIssues, setLaunchIssues] = useState<LaunchIssue[]>([]);
   const isBackendConfigured = crystalBioFrontendApi.isBackendConfigured();
+
+  useEffect(() => {
+    const isDev = Boolean((import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV);
+    if (!isDev || typeof window === 'undefined') return;
+    const preview = new URLSearchParams(window.location.search).get('savedEntryPreview');
+    if (preview === 'sales' && !salesSaveResult) {
+      setSalesAccountName('Apollo Diagnostics');
+      setSalesContactPerson('Dr. Meera');
+      setSalesProductType('Laboratory equipment');
+      setSalesVisitNote('Interested in reagent requirement. Follow-up planned for quote discussion.');
+      setSalesNextAction('follow_up_needed');
+      setSalesFollowUpDate('2026-06-24');
+      setSalesStep2Saved(false);
+      setSalesStep3Saved(false);
+      setIsSalesStep2Open(false);
+      setIsSalesStep3Open(false);
+      setSalesSaveResult({
+        opportunity: {
+          id: 'preview-sales-entry',
+          ownerAgentId: 'agent_2',
+          accountName: 'Apollo Diagnostics',
+          contactPerson: 'Dr. Meera',
+          productType: 'Laboratory equipment',
+          status: 'open',
+          step2Saved: false,
+          step3Saved: false,
+          visits: [{
+            id: 'preview-sales-visit',
+            opportunityId: 'preview-sales-entry',
+            agentId: 'agent_2',
+            agentName: 'Raghavendra',
+            visitNumber: 1,
+            visitDate: '2026-06-22',
+            visitTime: '17:45',
+            gps: { latitude: 12.9716, longitude: 77.5946, accuracyMeters: 25 },
+            note: 'Interested in reagent requirement. Follow-up planned for quote discussion.',
+            nextAction: 'follow_up_needed',
+            followUpDate: '2026-06-24',
+            photos: [],
+          }],
+        },
+        visit: {
+          id: 'preview-sales-visit',
+          opportunityId: 'preview-sales-entry',
+          agentId: 'agent_2',
+          agentName: 'Raghavendra',
+          visitNumber: 1,
+          visitDate: '2026-06-22',
+          visitTime: '17:45',
+          gps: { latitude: 12.9716, longitude: 77.5946, accuracyMeters: 25 },
+          note: 'Interested in reagent requirement. Follow-up planned for quote discussion.',
+          nextAction: 'follow_up_needed',
+          followUpDate: '2026-06-24',
+          photos: [],
+        },
+      });
+    }
+  }, []);
 
   const rememberLaunchIssue = (area: string, error: unknown) => {
     const message = error instanceof Error ? error.message : String(error || 'Unknown issue');
     setLaunchIssues((current) => [{ area, message, when: 'Just now' }, ...current].slice(0, 5));
+  };
+
+  const restoreAgentAttendance = async (agentSession: FrontendSession) => {
+    if (agentSession.role === 'admin') return;
+    try {
+      const currentAttendance = await crystalBioFrontendApi.getCurrentAttendance(agentSession);
+      setAttendance(currentAttendance);
+      if (currentAttendance?.workTypes?.length) setWorkTypes(currentAttendance.workTypes);
+      setStatusMessage(
+        currentAttendance?.status === 'checked_in'
+          ? 'Checked in. Use Check out when field work is finished.'
+          : 'Logged in. Check in to start field work.',
+      );
+    } catch (error) {
+      rememberLaunchIssue('Attendance restore', error);
+      setStatusMessage('Logged in. Check attendance if the screen does not update.');
+    }
   };
 
   useEffect(() => {
@@ -389,7 +528,7 @@ function App() {
         rememberSession(validatedSession);
         if (validatedSession.role === 'admin') {
           setIsAdminSignedIn(true);
-          setAdminTab('overview');
+          setAdminTab(isPublicMonitorPage ? 'monitoring' : 'overview');
           setScreen('admin');
           rememberScreen('admin');
           setStatusMessage('Admin logged in.');
@@ -399,7 +538,8 @@ function App() {
         setIsAdminSignedIn(false);
         setScreen('home');
         rememberScreen('home');
-        setStatusMessage('Logged in. Check in to start field work.');
+        setStatusMessage('Loading attendance…');
+        void restoreAgentAttendance(validatedSession);
       })
       .catch((error) => {
         if (!isMounted) return;
@@ -504,6 +644,10 @@ function App() {
       setStatusMessage(session.role === 'admin' ? 'Admin logged in.' : 'Logged in. Check in to start field work.');
       return undefined;
     }
+    if (isPublicMonitorPage) {
+      setStatusMessage('Live monitor open. No CrystalBio company login needed.');
+      return undefined;
+    }
     if (isBackendConfigured) {
       setStatusMessage('Use the registered email and password from the admin invite.');
       return undefined;
@@ -515,7 +659,8 @@ function App() {
         if (!isMounted) return;
         setSession(nextSession);
         rememberSession(nextSession);
-        setStatusMessage('Logged in. Check in to start field work.');
+        setStatusMessage('Loading attendance…');
+        void restoreAgentAttendance(nextSession);
       })
       .catch((error: Error) => {
         if (!isMounted) return;
@@ -530,6 +675,30 @@ function App() {
     if (session?.role !== 'admin') return;
     void refreshAdminData(session);
   }, [session?.token, session?.role, adminReportFromDate, adminReportToDate]);
+
+  useEffect(() => {
+    if (!isPublicMonitorPage) return undefined;
+    let isMounted = true;
+    const refreshPublicMonitor = async () => {
+      setIsAdminMonitorRefreshing(true);
+      try {
+        const snapshot = await crystalBioFrontendApi.getPublicMonitorSnapshot();
+        if (!isMounted) return;
+        setAdminLoginActivity(snapshot.loginActivity);
+        setAdminClientErrors(snapshot.clientErrors);
+      } catch (error) {
+        if (isMounted) rememberLaunchIssue('Public monitor refresh', error);
+      } finally {
+        if (isMounted) setIsAdminMonitorRefreshing(false);
+      }
+    };
+    void refreshPublicMonitor();
+    const timer = window.setInterval(refreshPublicMonitor, 30000);
+    return () => {
+      isMounted = false;
+      window.clearInterval(timer);
+    };
+  }, [isPublicMonitorPage]);
 
   useEffect(() => {
     if (!session || !isBackendConfigured) return;
@@ -551,17 +720,22 @@ function App() {
   }, [screenNotice]);
 
   const isCheckedIn = attendance?.status === 'checked_in';
-  const attendanceAction = isCheckedIn ? 'Check out' : 'Check in';
-  const attendanceHint = isCheckedIn ? 'End day' : 'Start day';
+  const isCheckedOut = attendance?.status === 'checked_out';
+  const savedAttendanceWorkTypes = attendance?.workTypes?.length ? attendance.workTypes : workTypes;
+  const savedWorkTypeLabel = savedAttendanceWorkTypes.length ? savedAttendanceWorkTypes.join(' + ') : 'Mode not recorded';
+  const attendanceStartedLabel = attendance?.checkInTime ? formatAttendanceTime(attendance.checkInTime) : 'Time not recorded';
+  const attendanceEndedLabel = attendance?.checkOutTime ? formatAttendanceTime(attendance.checkOutTime) : 'Time not recorded';
+  const attendanceAction = isCheckedIn ? 'Check out' : isCheckedOut ? 'Check in again' : 'Check in';
+  const attendanceHint = isCheckedIn ? 'End session' : isCheckedOut ? 'Back from break' : 'Start day';
 
   const actionMeta = useMemo(
     () => [
-      { label: attendanceAction, hint: attendanceHint, className: 'action-mint', icon: MapPin, onClick: 'attendance-action' as const },
+      { label: attendanceAction, hint: attendanceHint, className: isCheckedIn ? 'action-checkout-live' : isCheckedOut ? 'action-checkin-again' : 'action-mint', icon: MapPin, onClick: 'attendance-action' as const },
       { label: 'Sales', hint: 'New visit update', className: 'action-peach', icon: Plus, onClick: 'sales' as const },
       { label: 'Service', hint: 'New service update', className: 'action-sky', icon: ClipboardList, onClick: 'service' as const },
       { label: 'Attendance', hint: 'Logs & leave', className: 'action-attendance', icon: CalendarCheck, onClick: 'attendance' as const },
     ],
-    [attendanceAction, attendanceHint],
+    [attendanceAction, attendanceHint, isCheckedIn, isCheckedOut],
   );
 
   const latestVisitEntries: FrontendRecentVisitEntry[] = [
@@ -614,7 +788,7 @@ function App() {
     try {
       const gps = await crystalBioFrontendApi.getCurrentLocation();
       setCurrentGps(gps);
-      const capturedAt = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const capturedAt = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: istTimeZone }).format(new Date());
       setCurrentGpsCapturedAt(capturedAt);
       const message = `Current location added for ${actionLabel}.`;
       setLocationMessage(message);
@@ -633,7 +807,7 @@ function App() {
   const LocationCaptureCard = ({ purpose }: { purpose: 'check-in' | 'sales' | 'service' }) => (
     <div className="form-card highlighted-card location-capture-card">
       <label>Current location</label>
-      <p>{currentLocationSummary}</p>
+      {(currentGps || purpose === 'check-in') && <p>{currentLocationSummary}</p>}
       <button type="button" className="secondary-action location-capture-action" disabled={isLocationCapturing} onClick={() => void captureCurrentLocation(purpose)}>
         {isLocationCapturing ? 'Getting location…' : currentGps ? 'Refresh current location' : 'Use current location'}
       </button>
@@ -650,7 +824,7 @@ function App() {
       const gps = await gpsForSave('attendance');
       const nextAttendance = isCheckedIn
         ? await crystalBioFrontendApi.checkOut(session, gps)
-        : await crystalBioFrontendApi.checkIn(session, gps);
+        : await crystalBioFrontendApi.checkIn(session, gps, workTypes, checkInNote.trim() || undefined);
       setAttendance(nextAttendance);
       setStatusMessage(
         nextAttendance.status === 'checked_in'
@@ -667,6 +841,11 @@ function App() {
 
   const handleCheckInSubmit = async () => {
     if (!session) return;
+    if (isCheckedIn) {
+      setScreenNotice({ title: 'Already checked in', message: `Your check-in is already registered${attendance?.checkInTime ? ` at ${formatAttendanceTime(attendance.checkInTime)}` : ''}. Use Check out when field work is finished.`, tone: 'info' });
+      setScreen('attendance');
+      return;
+    }
     if (!workTypes.length) {
       setScreenNotice({ title: 'Choose work type', message: 'Select Sales visit, Service visit, or In office before check-in.', tone: 'warning' });
       return;
@@ -676,7 +855,7 @@ function App() {
     setStatusMessage('Capturing check-in location…');
     try {
       const gps = await gpsForSave('check-in');
-      const nextAttendance = await crystalBioFrontendApi.checkIn(session, gps);
+      const nextAttendance = await crystalBioFrontendApi.checkIn(session, gps, workTypes, checkInNote.trim() || undefined);
       setAttendance(nextAttendance);
       setStatusMessage(`Checked in. ${workTypes.join(' + ')} saved with GPS.`);
       setScreenNotice({
@@ -727,6 +906,10 @@ function App() {
     setIsSalesStep2Open(false);
     setIsSalesStep3Open(false);
     setSalesSaveResult(null);
+    setIsSalesSavedDetailsEditing(false);
+    setShowSalesFollowUpComposer(false);
+    setIsSalesStep2Editing(false);
+    setIsSalesStep3Editing(false);
   };
 
   const resetServiceFormForNewVisit = () => {
@@ -760,6 +943,10 @@ function App() {
     setIsServiceStep2Open(false);
     setIsServiceStep3Open(false);
     setServiceSaveResult(null);
+    setIsServiceSavedDetailsEditing(false);
+    setShowServiceFollowUpComposer(false);
+    setIsServiceStep2Editing(false);
+    setIsServiceStep3Editing(false);
   };
 
   const goToScreen = (nextScreen: AppScreen, options?: { newSalesVisit?: boolean; newServiceVisit?: boolean }) => {
@@ -783,15 +970,130 @@ function App() {
     rememberScreen(nextScreen);
   };
 
+  const canUseBrowserHistory = () => (
+    typeof window !== 'undefined' && !window.navigator.userAgent.toLowerCase().includes('jsdom')
+  );
+
+  const pushAdminDetailHistory = (marker: Record<string, string>) => {
+    if (!canUseBrowserHistory()) return;
+    const markerKey = Object.keys(marker)[0];
+    if (markerKey && window.history.state?.[markerKey] === marker[markerKey]) return;
+    window.history.pushState({ ...(window.history.state ?? {}), ...marker }, '', window.location.href);
+  };
+
+  const clearAdminDetailHistoryMarkers = () => {
+    if (!canUseBrowserHistory()) return;
+    const currentState = window.history.state;
+    if (!currentState) return;
+    const {
+      crystalBioAdminEntryDetail: _entryDetail,
+      crystalBioAdminEntryReturnTab: _entryReturnTab,
+      crystalBioAdminApprovalDetail: _approvalDetail,
+      crystalBioAdminAgentDetail: _agentDetail,
+      crystalBioAdminProfileDetail: _profileDetail,
+      ...restState
+    } = currentState;
+    window.history.replaceState(restState, '', window.location.href);
+  };
+
   const openAdminTab = (nextTab: AdminTab) => {
+    clearAdminDetailHistoryMarkers();
     setAdminTab(nextTab);
     setSelectedAdminEntryId(null);
     setSelectedAdminEntryReturnTab(nextTab);
+    setExpandedAgentActivityId(null);
     if (nextTab !== 'agents') setShowAdminTeamStatus(false);
     if (nextTab !== 'approvals') setSelectedAdminApproval(null);
     if (nextTab !== 'agents' && nextTab !== 'profiles') setAdminAgentsView('list');
     setScreenNotice(null);
   };
+
+  const openAdminEntryDetail = (entry: FrontendRecentVisitEntry, returnTab: AdminTab) => {
+    if (typeof window !== 'undefined') {
+      setAdminEntryReturnScrollY(window.scrollY);
+      pushAdminDetailHistory({ crystalBioAdminEntryDetail: entry.id, crystalBioAdminEntryReturnTab: returnTab });
+    }
+    setSelectedAdminEntryId(entry.id);
+    setSelectedAdminEntryReturnTab(returnTab);
+    if (!session || adminEntryDetailCache[entry.id]?.photoPayload || entry.photoPayload) return;
+    setLoadingAdminEntryDetailId(entry.id);
+    crystalBioFrontendApi.getRecentVisitDetail(session, { id: entry.id, scope: 'team' })
+      .then((detailEntry) => {
+        if (detailEntry) setAdminEntryDetailCache((current) => ({ ...current, [entry.id]: detailEntry }));
+      })
+      .catch((error: Error) => {
+        rememberLaunchIssue('Field Entry detail load', error);
+        setScreenNotice({ title: 'Entry detail delayed', message: 'The entry opened, but photo/proof detail could not load yet.', tone: 'error' });
+      })
+      .finally(() => setLoadingAdminEntryDetailId((current) => (current === entry.id ? null : current)));
+  };
+
+  const closeAdminEntryDetail = (options?: { fromHistory?: boolean }) => {
+    if (!options?.fromHistory && canUseBrowserHistory() && window.history.state?.crystalBioAdminEntryDetail) {
+      window.history.back();
+      return;
+    }
+    setSelectedAdminEntryId(null);
+    if (typeof window !== 'undefined' && typeof window.scrollTo === 'function' && !window.navigator.userAgent.toLowerCase().includes('jsdom')) {
+      window.setTimeout(() => {
+        try {
+          window.scrollTo({ top: adminEntryReturnScrollY, behavior: 'auto' });
+        } catch {
+          // Some test/mobile webview environments do not expose scroll restoration.
+        }
+      }, 0);
+    }
+  };
+
+  const closeAdminApprovalDetail = (options?: { fromHistory?: boolean }) => {
+    if (!options?.fromHistory && canUseBrowserHistory() && window.history.state?.crystalBioAdminApprovalDetail) {
+      window.history.back();
+      return;
+    }
+    setSelectedAdminApproval(null);
+  };
+
+  const closeAdminAgentDetail = (options?: { fromHistory?: boolean }) => {
+    if (!options?.fromHistory && canUseBrowserHistory() && window.history.state?.crystalBioAdminAgentDetail) {
+      window.history.back();
+      return;
+    }
+    setExpandedAgentActivityId(null);
+  };
+
+  const closeAdminProfileDetail = (options?: { fromHistory?: boolean }) => {
+    if (!options?.fromHistory && canUseBrowserHistory() && window.history.state?.crystalBioAdminProfileDetail) {
+      window.history.back();
+      return;
+    }
+    setAdminAgentsView('list');
+  };
+
+  useEffect(() => {
+    if (!canUseBrowserHistory()) return undefined;
+    const handlePopState = () => {
+      setSelectedAdminEntryId((current) => {
+        if (current) window.setTimeout(() => closeAdminEntryDetail({ fromHistory: true }), 0);
+        return current;
+      });
+      setSelectedAdminApproval((current) => {
+        if (current) window.setTimeout(() => closeAdminApprovalDetail({ fromHistory: true }), 0);
+        return current;
+      });
+      setExpandedAgentActivityId((current) => {
+        if (current) window.setTimeout(() => closeAdminAgentDetail({ fromHistory: true }), 0);
+        return current;
+      });
+      setAdminAgentsView((current) => {
+        if (current === 'profile' || current === 'invite' || current === 'add') {
+          window.setTimeout(() => closeAdminProfileDetail({ fromHistory: true }), 0);
+        }
+        return current;
+      });
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [adminEntryReturnScrollY]);
 
   const returnToAdminFieldEntry = () => {
     setScreen('admin');
@@ -892,6 +1194,24 @@ function App() {
 
   const savedStatusToBoolean = (value: string) => value.toLowerCase() === 'saved';
 
+  const detailRowsWithoutAdminClutter = (entry: FrontendRecentVisitEntry) => {
+    const rows = entry.detailRows ?? [];
+    const preferredLabels = entry.type === 'Sales'
+      ? ['Contact person', 'Product type', 'Brand / model', 'Requirement', 'Visit note', 'Next action', 'Follow-up date', 'Quote status', 'Support required', 'Office notes']
+      : ['Contact person', 'Equipment', 'Serial number', 'Work done', 'Next action', 'Next visit date', 'Machine status', 'Support note', 'Office notes'];
+    const hiddenTopClutter = new Set(['Submitted by', 'Visit date', 'Customer', 'Step 2 status', 'Step 3 status']);
+    const preferredRows = preferredLabels
+      .map((label) => rows.find((row) => row.label === label))
+      .filter((row): row is FrontendVisitDetailRow => Boolean(row));
+    const remainingRows = rows.filter((row) => !hiddenTopClutter.has(row.label) && !preferredLabels.includes(row.label));
+    return [...preferredRows, ...remainingRows];
+  };
+
+  const displayDetailValue = (row: FrontendVisitDetailRow) => {
+    if (['Follow-up date', 'Next visit date', 'Closing date', 'Visit date'].includes(row.label) && /^\d{4}-\d{2}-\d{2}$/.test(row.value)) return formatShortDate(row.value);
+    return row.value;
+  };
+
   const salesNextActionFromStatus = (status: string): FrontendSalesNextAction => {
     const normalized = status.toLowerCase();
     if (normalized.includes('closed')) return 'closed';
@@ -938,8 +1258,11 @@ function App() {
       setSalesPhotoAttachment(salesPhoto.photo);
       setSalesStep2Saved(savedStatusToBoolean(entryDetailValue(entry, 'Step 2 status')));
       setSalesStep3Saved(savedStatusToBoolean(entryDetailValue(entry, 'Step 3 status')));
-      setIsSalesStep2Open(false);
-      setIsSalesStep3Open(false);
+      setIsSalesSavedDetailsEditing(false);
+      setIsSalesStep2Editing(false);
+      setIsSalesStep3Editing(false);
+      setIsSalesStep2Open(!savedStatusToBoolean(entryDetailValue(entry, 'Step 2 status')));
+      setIsSalesStep3Open(!savedStatusToBoolean(entryDetailValue(entry, 'Step 3 status')));
       setSalesSaveResult({
         opportunity: {
           id: entry.recordId ?? entry.id,
@@ -965,6 +1288,19 @@ function App() {
           step2Saved: savedStatusToBoolean(entryDetailValue(entry, 'Step 2 status')),
           step3Saved: savedStatusToBoolean(entryDetailValue(entry, 'Step 3 status')),
           status: nextAction === 'closed' ? 'closed' : 'open',
+          visits: [{
+            id: entry.id,
+            opportunityId: entry.recordId ?? entry.id,
+            agentId,
+            agentName,
+            visitNumber: 1,
+            visitDate: entry.visitDate ?? '',
+            visitTime: entry.visitTime ?? '',
+            gps: fallbackGps,
+            note: entryDetailValue(entry, 'Visit note'),
+            nextAction,
+            ...(entryDetailValue(entry, 'Follow-up date') ? { followUpDate: entryDetailValue(entry, 'Follow-up date') } : {}),
+          }],
         },
         visit: {
           id: entry.id,
@@ -1004,8 +1340,11 @@ function App() {
     setServicePhotoAttachment(servicePhoto.photo);
     setServiceStep2Saved(savedStatusToBoolean(entryDetailValue(entry, 'Step 2 status')));
     setServiceStep3Saved(savedStatusToBoolean(entryDetailValue(entry, 'Step 3 status')));
-    setIsServiceStep2Open(false);
-    setIsServiceStep3Open(false);
+    setIsServiceSavedDetailsEditing(false);
+    setIsServiceStep2Editing(false);
+    setIsServiceStep3Editing(false);
+    setIsServiceStep2Open(!savedStatusToBoolean(entryDetailValue(entry, 'Step 2 status')));
+    setIsServiceStep3Open(!savedStatusToBoolean(entryDetailValue(entry, 'Step 3 status')));
     setServiceSaveResult({
       serviceRecord: {
         id: entry.recordId ?? entry.id,
@@ -1024,6 +1363,22 @@ function App() {
         step2Saved: savedStatusToBoolean(entryDetailValue(entry, 'Step 2 status')),
         step3Saved: savedStatusToBoolean(entryDetailValue(entry, 'Step 3 status')),
         status: nextAction === 'closed' ? 'closed' : nextAction === 'parts_required' ? 'pending_parts' : 'open',
+        visits: [{
+          id: entry.id,
+          serviceRecordId: entry.recordId ?? entry.id,
+          agentId,
+          agentName,
+          visitNumber: 1,
+          visitDate: entry.visitDate ?? '',
+          visitTime: entry.visitTime ?? '',
+          gps: fallbackGps,
+          serviceType: 'breakdown',
+          workDone: entryDetailValue(entry, 'Work done'),
+          supportRequired: entry.status !== 'Closed',
+          nextAction,
+          ...(entryDetailValue(entry, 'Next visit date') ? { nextVisitDate: entryDetailValue(entry, 'Next visit date') } : {}),
+          ...(entryDetailValue(entry, 'Office notes') ? { officeNotes: entryDetailValue(entry, 'Office notes') } : {}),
+        }],
       },
       visit: {
         id: entry.id,
@@ -1053,13 +1408,13 @@ function App() {
     }
     return (
       <div className="saved-photo-viewer">
-        <button type="button" className="photo-preview-button" onClick={() => window.open(photo.dataUrl, '_blank')} aria-label={`View ${label} photo`}>
+        <button type="button" className="photo-preview-button" onClick={() => setPhotoPreview({ dataUrl: photo.dataUrl, fileName: photo.fileName, note, label })} aria-label={`Preview ${label} photo`}>
           <img src={photo.dataUrl} alt={`${label}: ${photo.fileName}`} />
         </button>
         <div>
           <strong>{photo.fileName}</strong>
           <span>{Math.ceil(photo.sizeBytes / 1024)} KB{note ? ` • ${note}` : ''}</span>
-          <a href={photo.dataUrl} target="_blank" rel="noreferrer" download={photo.fileName}>Open full photo</a>
+          <button type="button" className="photo-inline-preview-action" onClick={() => setPhotoPreview({ dataUrl: photo.dataUrl, fileName: photo.fileName, note, label })}>Preview photo</button>
         </div>
       </div>
     );
@@ -1075,7 +1430,7 @@ function App() {
   }: {
     area: 'sales' | 'service';
     title: string;
-    helpText: string;
+    helpText?: string;
     note: string;
     setNote: (value: string) => void;
     photo: StoredPhoto | null;
@@ -1083,7 +1438,7 @@ function App() {
     <div className="field-card photo-action-card">
       <div>
         <span>{title}</span>
-        <small>{helpText}</small>
+        {helpText && <small>{helpText}</small>}
       </div>
       <div className="photo-actions">
         <label className="secondary-action photo-button">Camera<input className="visually-hidden" aria-label={`${area === 'sales' ? 'Sales' : 'Service'} camera photo`} type="file" accept="image/*" capture="environment" onChange={(event) => void handlePhotoSelection(event, 'camera', area)} /></label>
@@ -1125,9 +1480,10 @@ function App() {
         void refreshAdminData(nextSession);
         return;
       }
-      setStatusMessage('Logged in. Check in to start field work.');
+      setStatusMessage('Loading attendance…');
       setScreen('home');
       rememberScreen('home');
+      void restoreAgentAttendance(nextSession);
     } catch (error) {
       rememberLaunchIssue('Login', error);
       const message = error instanceof Error ? error.message : 'Login failed';
@@ -1144,6 +1500,12 @@ function App() {
         : 'Enter your registered email, then ask admin/operator for the fresh password or reset link.',
       tone: 'info',
     });
+  };
+
+  const handleLoginPasswordKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key !== 'Enter') return;
+    event.preventDefault();
+    void handleAgentLogin();
   };
 
   const handleSetupPasswordSubmit = async () => {
@@ -1221,24 +1583,41 @@ function App() {
   const isSalesStep3Complete = salesStep3Saved || salesSaveResult?.opportunity.step3Saved === true;
   const isServiceStep2Complete = serviceStep2Saved || serviceSaveResult?.serviceRecord.step2Saved === true;
   const isServiceStep3Complete = serviceStep3Saved || serviceSaveResult?.serviceRecord.step3Saved === true;
+  const isSalesStep2Locked = Boolean(salesSaveResult && isSalesStep2Complete && !isSalesStep2Editing);
+  const isSalesStep3Locked = Boolean(salesSaveResult && isSalesStep3Complete && !isSalesStep3Editing);
+  const isServiceStep2Locked = Boolean(serviceSaveResult && isServiceStep2Complete && !isServiceStep2Editing);
+  const isServiceStep3Locked = Boolean(serviceSaveResult && isServiceStep3Complete && !isServiceStep3Editing);
+  const salesContinuationNeedsNote = Boolean(salesSaveResult && salesNextAction === 'follow_up_needed');
+  const serviceContinuationNeedsNote = Boolean(serviceSaveResult && (serviceNextAction === 'parts_required' || serviceNextAction === 'next_visit_needed'));
+  const salesVisitHistory = (salesSaveResult?.opportunity.visits?.length ? salesSaveResult.opportunity.visits : salesSaveResult ? [salesSaveResult.visit] : [])
+    .slice()
+    .sort((first, second) => first.visitNumber - second.visitNumber);
+  const serviceVisitHistory = (serviceSaveResult?.serviceRecord.visits?.length ? serviceSaveResult.serviceRecord.visits : serviceSaveResult ? [serviceSaveResult.visit] : [])
+    .slice()
+    .sort((first, second) => first.visitNumber - second.visitNumber);
+  const nextSalesFollowUpNumber = Math.max(1, ...salesVisitHistory.map((visit) => visit.visitNumber || 1)) + 1;
+  const nextServiceFollowUpNumber = Math.max(1, ...serviceVisitHistory.map((visit) => visit.visitNumber || 1)) + 1;
 
   const handleSalesSubmit = async () => {
+    if (salesSubmitInFlightRef.current) return;
     if (!session) {
       setScreenNotice('Please wait for login before saving the sales visit.');
       return;
     }
-    if (!salesAccountName.trim() || !salesVisitNote.trim()) {
-      setScreenNotice('Add customer name and today’s visit note before saving Step 1.');
+    if (!salesAccountName.trim() || (!salesSaveResult && !salesVisitNote.trim()) || (salesContinuationNeedsNote && !salesVisitNote.trim())) {
+      setScreenNotice(salesSaveResult ? 'Add follow-up note before saving follow-up needed.' : 'Add customer name and visit note before saving Step 1.');
       return;
     }
     if (salesNextAction === 'follow_up_needed' && !salesFollowUpDate) {
       setScreenNotice('Select follow-up date or choose no follow-up.');
       return;
     }
+    salesSubmitInFlightRef.current = true;
     setIsSalesSubmitting(true);
-    setScreenNotice(salesSaveResult ? 'Updating Sales Step 1 details…' : 'Saving Sales Step 1 with location…');
+    setScreenNotice(salesSaveResult ? (salesNextAction === 'follow_up_needed' ? 'Saving follow-up…' : 'Saving status…') : 'Saving Sales Step 1 with location…');
     try {
       if (salesSaveResult) {
+        const gps = await gpsForSave('sales');
         let opportunity = await crystalBioFrontendApi.submitSalesStep2(session, salesSaveResult.opportunity.id, {
           accountName: salesAccountName.trim(),
           ...(salesContactPerson.trim() ? { contactPerson: salesContactPerson.trim() } : {}),
@@ -1246,22 +1625,48 @@ function App() {
           ...(salesRequirement.trim() ? { requirement: salesRequirement.trim() } : {}),
         });
         const salesPhotoPayload = storedPhotoPayload(salesPhotoNote, salesPhotoAttachment);
+        const visit = await crystalBioFrontendApi.addSalesVisitUpdate(session, salesSaveResult.opportunity.id, {
+          gps,
+          note: salesVisitNote.trim() || (salesNextAction === 'no_follow_up' ? 'No follow-up' : 'Status updated'),
+          nextAction: salesNextAction,
+          ...(salesNextAction === 'follow_up_needed' ? { followUpDate: salesFollowUpDate } : {}),
+          photos: salesPhotoAttachment ? [salesPhotoAttachment] : [],
+        });
         if (salesPhotoPayload) {
           opportunity = await crystalBioFrontendApi.submitSalesStep3(session, salesSaveResult.opportunity.id, { sitePhoto: salesPhotoPayload });
           setSalesStep3Saved(true);
         }
+        const savedFollowUpVisit = visit.visitNumber <= Math.max(1, ...salesVisitHistory.map((historyVisit) => historyVisit.visitNumber || 1))
+          ? { ...visit, visitNumber: nextSalesFollowUpNumber }
+          : visit;
+        const updatedSalesVisits = [...salesVisitHistory.filter((historyVisit) => historyVisit.id !== savedFollowUpVisit.id), savedFollowUpVisit]
+          .sort((first, second) => first.visitNumber - second.visitNumber);
         setSalesSaveResult({
-          opportunity: { ...salesSaveResult.opportunity, ...opportunity },
-          visit: {
-            ...salesSaveResult.visit,
-            note: salesVisitNote.trim(),
-            nextAction: salesNextAction,
-            ...(salesNextAction === 'follow_up_needed' ? { followUpDate: salesFollowUpDate } : { followUpDate: undefined }),
-          },
+          opportunity: { ...salesSaveResult.opportunity, ...opportunity, visits: updatedSalesVisits },
+          visit: savedFollowUpVisit,
         });
+        setBackendRecentVisitEntries((current) => [
+          {
+            id: visit.id,
+            recordId: salesSaveResult.opportunity.id,
+            customer: salesAccountName.trim(),
+            type: 'Sales' as const,
+            status: visit.nextAction === 'closed' ? 'Closed' : visit.nextAction === 'no_follow_up' ? 'No follow-up' : 'Follow-up needed',
+            next: visit.followUpDate ? formatShortDate(visit.followUpDate) : 'No date set',
+            tone: visit.nextAction === 'follow_up_needed' ? 'warning' as const : 'soft' as const,
+            agentId: visit.agentId,
+            agentName: visit.agentName,
+            visitDate: visit.visitDate,
+            visitTime: visit.visitTime,
+            photoPayload: opportunity.sitePhoto ?? storedPhotoPayload(salesPhotoNote, salesPhotoAttachment),
+          },
+          ...current,
+        ].filter((entry, index, all) => all.findIndex((candidate) => candidate.id === entry.id) === index));
+        if (session.role === 'admin') void refreshAdminData(session);
+        setShowSalesFollowUpComposer(false);
         setScreenNotice({
-          title: 'Sales Step 1 updated',
-          message: 'Changes are saved. Open Step 2 or Step 3 when more details are ready.',
+          title: 'Follow-up saved',
+          message: 'This customer entry is updated.',
           tone: 'success',
         });
         return;
@@ -1279,7 +1684,11 @@ function App() {
         ...(salesNextAction === 'follow_up_needed' ? { followUpDate: salesFollowUpDate } : {}),
         photos: salesPhotoAttachment ? [salesPhotoAttachment] : [],
       });
-      setSalesSaveResult(savedSalesVisit);
+      setSalesSaveResult({
+        ...savedSalesVisit,
+        opportunity: { ...savedSalesVisit.opportunity, visits: savedSalesVisit.opportunity.visits?.length ? savedSalesVisit.opportunity.visits : [savedSalesVisit.visit] },
+      });
+      setShowSalesFollowUpComposer(false);
       setBackendRecentVisitEntries((current) => [
         {
           id: savedSalesVisit.visit.id,
@@ -1299,6 +1708,10 @@ function App() {
       if (session.role === 'admin') void refreshAdminData(session);
       setSalesStep2Saved(false);
       setSalesStep3Saved(false);
+      setIsSalesStep2Editing(false);
+      setIsSalesStep3Editing(false);
+      setIsSalesStep2Open(true);
+      setIsSalesStep3Open(false);
       setScreenNotice(
         isBackendConfigured
           ? 'Sales Step 1 saved. Open Step 2 or Step 3 when more details are ready.'
@@ -1307,6 +1720,7 @@ function App() {
     } catch (error) {
       setScreenNotice(error instanceof Error ? error.message : 'Sales Step 1 save failed');
     } finally {
+      salesSubmitInFlightRef.current = false;
       setIsSalesSubmitting(false);
     }
   };
@@ -1339,7 +1753,9 @@ function App() {
       });
       setSalesSaveResult({ ...salesSaveResult, opportunity: { ...salesSaveResult.opportunity, ...opportunity } });
       setSalesStep2Saved(true);
+      setIsSalesStep2Editing(false);
       setIsSalesStep2Open(false);
+      setIsSalesStep3Open(true);
       setScreenNotice({
         title: 'Sales Step 2 saved',
         message: 'Customer and requirement details can still be updated later.',
@@ -1358,7 +1774,7 @@ function App() {
       return;
     }
     setIsSalesStep3Submitting(true);
-    setScreenNotice('Saving Sales Step 3 quote, photos, and office details…');
+    setScreenNotice('Saving Sales Step 3 quote and office details…');
     try {
       const opportunity = await crystalBioFrontendApi.submitSalesStep3(session, salesSaveResult.opportunity.id, {
         quoteSubmitted: salesQuoteSubmitted,
@@ -1370,13 +1786,13 @@ function App() {
         ...(salesSupportRequired.trim() ? { supportRequired: salesSupportRequired.trim() } : {}),
         ...(salesRemarksTimeline.trim() ? { remarksTimeline: salesRemarksTimeline.trim() } : {}),
         ...(salesOfficeNotes.trim() ? { officeNotes: salesOfficeNotes.trim() } : {}),
-        ...(storedPhotoPayload(salesPhotoNote, salesPhotoAttachment) ? { sitePhoto: storedPhotoPayload(salesPhotoNote, salesPhotoAttachment) } : {}),
         step3Saved: true,
       });
       setSalesSaveResult({ ...salesSaveResult, opportunity: { ...salesSaveResult.opportunity, ...opportunity } });
       setSalesStep3Saved(true);
+      setIsSalesStep3Editing(false);
       setIsSalesStep3Open(false);
-      setScreenNotice('Sales Step 3 saved. Admin can see quote/proof completion later.');
+      setScreenNotice('Sales Step 3 saved. Admin can see quote and office details later.');
     } catch (error) {
       setScreenNotice(error instanceof Error ? error.message : 'Sales Step 3 save failed');
     } finally {
@@ -1385,25 +1801,28 @@ function App() {
   };
 
   const handleServiceSubmit = async () => {
+    if (serviceSubmitInFlightRef.current) return;
     if (!session) {
       setScreenNotice('Please wait for login before saving the service visit.');
       return;
     }
-    if (!serviceCustomerName.trim() || !serviceWorkDone.trim()) {
-      setScreenNotice('Add customer name and today’s work done before saving.');
+    if (!serviceCustomerName.trim() || (!serviceSaveResult && !serviceWorkDone.trim()) || (serviceContinuationNeedsNote && !serviceWorkDone.trim())) {
+      setScreenNotice(serviceSaveResult ? 'Add service note before saving this status.' : 'Add customer name and today’s work done before saving.');
       return;
     }
     if ((serviceNextAction === 'parts_required' || serviceNextAction === 'next_visit_needed') && !serviceNextVisitDate) {
       setScreenNotice('Select next visit date or choose no follow-up.');
       return;
     }
+    serviceSubmitInFlightRef.current = true;
     setIsServiceSubmitting(true);
-    setScreenNotice(serviceSaveResult ? 'Updating Service Step 1 details…' : 'Saving service visit with location…');
+    setScreenNotice(serviceSaveResult ? (serviceContinuationNeedsNote ? 'Saving follow-up…' : 'Saving status…') : 'Saving service visit with location…');
     try {
       const serviceSession = isBackendConfigured || session.agentId === 'agent_3' ? session : await crystalBioFrontendApi.login('agent_3');
       if (serviceSession !== session) setSession(serviceSession);
 
       if (serviceSaveResult) {
+        const gps = await gpsForSave('service');
         let serviceRecord = await crystalBioFrontendApi.submitServiceStep2(serviceSession, serviceSaveResult.serviceRecord.id, {
           customerName: serviceCustomerName.trim(),
           ...(servicePhone.trim() ? { phone: servicePhone.trim() } : {}),
@@ -1419,25 +1838,51 @@ function App() {
           ...(serviceWarrantyAmc.trim() ? { warrantyAmc: serviceWarrantyAmc.trim() } : {}),
         });
         const servicePhotoPayload = storedPhotoPayload(servicePhotoNote, servicePhotoAttachment);
+        const visit = await crystalBioFrontendApi.addServiceVisitUpdate(serviceSession, serviceSaveResult.serviceRecord.id, {
+          gps,
+          serviceType,
+          workDone: serviceWorkDone.trim() || (serviceNextAction === 'no_follow_up' ? 'No follow-up' : 'Status updated'),
+          supportRequired: serviceSupportRequired,
+          nextAction: serviceNextAction,
+          ...(serviceNextAction === 'parts_required' || serviceNextAction === 'next_visit_needed' ? { nextVisitDate: serviceNextVisitDate } : {}),
+          photos: servicePhotoAttachment ? [servicePhotoAttachment] : [],
+          ...(serviceOfficeNotes.trim() ? { officeNotes: serviceOfficeNotes.trim() } : {}),
+        });
         if (servicePhotoPayload) {
           serviceRecord = await crystalBioFrontendApi.submitServiceStep3(serviceSession, serviceSaveResult.serviceRecord.id, { photoNote: servicePhotoPayload });
           setServiceStep3Saved(true);
         }
+        const savedServiceFollowUpVisit = visit.visitNumber <= Math.max(1, ...serviceVisitHistory.map((historyVisit) => historyVisit.visitNumber || 1))
+          ? { ...visit, visitNumber: nextServiceFollowUpNumber }
+          : visit;
+        const updatedServiceVisits = [...serviceVisitHistory.filter((historyVisit) => historyVisit.id !== savedServiceFollowUpVisit.id), savedServiceFollowUpVisit]
+          .sort((first, second) => first.visitNumber - second.visitNumber);
         setServiceSaveResult({
-          serviceRecord: { ...serviceSaveResult.serviceRecord, ...serviceRecord },
-          visit: {
-            ...serviceSaveResult.visit,
-            serviceType,
-            workDone: serviceWorkDone.trim(),
-            supportRequired: serviceSupportRequired,
-            nextAction: serviceNextAction,
-            ...(serviceNextAction === 'parts_required' || serviceNextAction === 'next_visit_needed' ? { nextVisitDate: serviceNextVisitDate } : { nextVisitDate: undefined }),
-            ...(serviceOfficeNotes.trim() ? { officeNotes: serviceOfficeNotes.trim() } : { officeNotes: undefined }),
-          },
+          serviceRecord: { ...serviceSaveResult.serviceRecord, ...serviceRecord, visits: updatedServiceVisits },
+          visit: savedServiceFollowUpVisit,
         });
+        setBackendRecentVisitEntries((current) => [
+          {
+            id: visit.id,
+            recordId: serviceSaveResult.serviceRecord.id,
+            customer: serviceCustomerName.trim(),
+            type: 'Service' as const,
+            status: visit.nextAction === 'closed' ? 'Closed' : visit.nextAction === 'no_follow_up' ? 'No follow-up' : visit.nextAction === 'parts_required' ? 'Parts required' : 'Next visit needed',
+            next: visit.nextVisitDate ? formatShortDate(visit.nextVisitDate) : 'No date set',
+            tone: visit.nextAction === 'closed' ? 'soft' as const : 'info' as const,
+            agentId: visit.agentId,
+            agentName: visit.agentName,
+            visitDate: visit.visitDate,
+            visitTime: visit.visitTime,
+            photoPayload: serviceRecord.photoNote ?? storedPhotoPayload(servicePhotoNote, servicePhotoAttachment),
+          },
+          ...current,
+        ].filter((entry, index, all) => all.findIndex((candidate) => candidate.id === entry.id) === index));
+        if (serviceSession.role === 'admin') void refreshAdminData(serviceSession);
+        setShowServiceFollowUpComposer(false);
         setScreenNotice({
-          title: 'Service Step 1 updated',
-          message: 'Changes are saved. Open Step 2 or Step 3 when more details are ready.',
+          title: 'Follow-up saved',
+          message: 'This service entry is updated.',
           tone: 'success',
         });
         return;
@@ -1466,7 +1911,11 @@ function App() {
         photos: servicePhotoAttachment ? [servicePhotoAttachment] : [],
         ...(serviceOfficeNotes.trim() ? { officeNotes: serviceOfficeNotes.trim() } : {}),
       });
-      setServiceSaveResult(savedServiceVisit);
+      setServiceSaveResult({
+        ...savedServiceVisit,
+        serviceRecord: { ...savedServiceVisit.serviceRecord, visits: savedServiceVisit.serviceRecord.visits?.length ? savedServiceVisit.serviceRecord.visits : [savedServiceVisit.visit] },
+      });
+      setShowServiceFollowUpComposer(false);
       setBackendRecentVisitEntries((current) => [
         {
           id: savedServiceVisit.visit.id,
@@ -1486,6 +1935,10 @@ function App() {
       if (serviceSession.role === 'admin') void refreshAdminData(serviceSession);
       setServiceStep2Saved(false);
       setServiceStep3Saved(false);
+      setIsServiceStep2Editing(false);
+      setIsServiceStep3Editing(false);
+      setIsServiceStep2Open(true);
+      setIsServiceStep3Open(false);
       setScreenNotice(
         isBackendConfigured
           ? 'Service visit saved. Admin reports will include this update.'
@@ -1494,6 +1947,7 @@ function App() {
     } catch (error) {
       setScreenNotice(error instanceof Error ? error.message : 'Service visit save failed');
     } finally {
+      serviceSubmitInFlightRef.current = false;
       setIsServiceSubmitting(false);
     }
   };
@@ -1523,7 +1977,9 @@ function App() {
       });
       setServiceSaveResult({ ...serviceSaveResult, serviceRecord: { ...serviceSaveResult.serviceRecord, ...serviceRecord } });
       setServiceStep2Saved(true);
+      setIsServiceStep2Editing(false);
       setIsServiceStep2Open(false);
+      setIsServiceStep3Open(true);
       setScreenNotice({
         title: 'Service Step 2 saved',
         message: 'Equipment and issue details are updated.',
@@ -1542,7 +1998,7 @@ function App() {
       return;
     }
     setIsServiceStep3Submitting(true);
-    setScreenNotice('Saving Service Step 3 parts, photos, and office details…');
+    setScreenNotice('Saving Service Step 3 parts and office details…');
     try {
       const serviceRecord = await crystalBioFrontendApi.submitServiceStep3(session, serviceSaveResult.serviceRecord.id, {
         ...(servicePartsRequired.trim() ? { partsRequired: servicePartsRequired.trim() } : {}),
@@ -1550,12 +2006,12 @@ function App() {
         ...(serviceMachineStatus.trim() ? { machineStatus: serviceMachineStatus.trim() } : {}),
         ...(serviceSupportRequiredNote.trim() ? { supportRequiredNote: serviceSupportRequiredNote.trim() } : {}),
         ...(serviceFinalRemarks.trim() ? { finalRemarks: serviceFinalRemarks.trim() } : {}),
-        ...(storedPhotoPayload(servicePhotoNote, servicePhotoAttachment) ? { photoNote: storedPhotoPayload(servicePhotoNote, servicePhotoAttachment) } : {}),
         ...(serviceOfficeNotes.trim() ? { officeNotes: serviceOfficeNotes.trim() } : {}),
         step3Saved: true,
       });
       setServiceSaveResult({ ...serviceSaveResult, serviceRecord: { ...serviceSaveResult.serviceRecord, ...serviceRecord } });
       setServiceStep3Saved(true);
+      setIsServiceStep3Editing(false);
       setIsServiceStep3Open(false);
       setScreenNotice('Service Step 3 saved. Admin can see parts/proof completion later.');
     } catch (error) {
@@ -1620,7 +2076,7 @@ function App() {
           </label>
           <label className="field-card login-field-card">
             <span>Password</span>
-            <input aria-label="Password" value={password} type="password" autoComplete="current-password" placeholder="Enter password" onChange={(event) => setPassword(event.target.value)} />
+            <input aria-label="Password" value={password} type="password" autoComplete="current-password" placeholder="Enter password" onKeyDown={handleLoginPasswordKeyDown} onChange={(event) => setPassword(event.target.value)} />
           </label>
           <button type="submit" className="primary-action login-main-button">Login</button>
         </form>
@@ -1683,9 +2139,9 @@ function App() {
               <div className="agent-entry-main">
                 <strong>{displayCustomerName(entry.customer)}</strong>
                 <p>{entry.agentName}</p>
-                <small>{entry.type} • Next: {entry.next}</small>
+                <small>{entry.type}{entry.next !== 'No date set' ? ` • Next: ${entry.next}` : ''}</small>
               </div>
-              <span className={toneClass[entry.tone]}>{entry.status}</span>
+              <span className="agent-entry-status-text">{entry.status}</span>
             </button>
           )) : (
             <div className="empty-state">No saved visits yet. New Sales or Service updates will appear here.</div>
@@ -1726,16 +2182,16 @@ function App() {
         </div>
         <div className="section-title previous-entries-title">
           <h3>Previous entries</h3>
-          <span>Tap to continue</span>
+          <span>Open a row to continue</span>
         </div>
         {filteredEntries.length ? filteredEntries.map((entry) => (
           <button className="agent-entry-card agent-visit-entry-card" key={entry.id} type="button" onClick={() => openSavedVisitEntry(entry)}>
             <div className="agent-entry-main">
               <strong>{displayCustomerName(entry.customer)}</strong>
               <p>{entry.agentName}</p>
-              <small>{entry.type} • Next: {entry.next} • Tap to continue</small>
+              <small>{entry.type}{entry.next !== 'No date set' ? ` • Next: ${entry.next}` : ''}</small>
             </div>
-            <span className={toneClass[entry.tone]}>{entry.status}</span>
+            <span className="agent-entry-status-text">{entry.status}</span>
           </button>
         )) : (
           <div className="empty-state">No saved visits yet. Start a Sales or Service update to create the first real entry.</div>
@@ -1745,18 +2201,97 @@ function App() {
   };
 
   const renderSales = () => (
-    <ScreenPanel title="Sales visit" subtitle="Save quickly first. Add remaining details later when free.">
-      <div className="form-card highlighted-card">
-        <label>Sales progress</label>
-        <span>Step 1: {salesSaveResult ? 'Saved' : 'Pending'} • Step 2: {isSalesStep2Complete ? 'Saved' : 'Pending'} • Step 3: {isSalesStep3Complete ? 'Saved' : 'Pending'}</span>
-      </div>
+    <ScreenPanel title="Sales visit">
+      {salesSaveResult && (
+        <>
+          <section className="saved-entry-summary-card">
+            <div className="saved-entry-summary-top">
+              <div>
+                <span className="saved-entry-eyebrow">Saved Sales Entry</span>
+                <strong>{salesAccountName || salesSaveResult.opportunity.accountName}</strong>
+                <small>{[salesContactPerson, salesProductType || salesRequirement, salesSaveResult.visit.agentName].filter(Boolean).join(' • ')}</small>
+              </div>
+              <span className="saved-entry-status-pill">{salesSaveResult.visit.nextAction === 'follow_up_needed' ? 'Follow-up due' : salesSaveResult.visit.nextAction === 'closed' ? 'Closed' : 'No follow-up'}</span>
+            </div>
+            <div className="saved-entry-meta-grid">
+              <div><span>Last update</span><strong>{formatVisitWhen(salesSaveResult.visit)}</strong></div>
+              <div><span>Next follow-up</span><strong>{salesSaveResult.visit.followUpDate ? formatShortDate(salesSaveResult.visit.followUpDate) : 'Not needed'}</strong></div>
+            </div>
+            <div className="saved-entry-step-chips" aria-label="Sales saved step status">
+              <span>Step 1 saved</span>
+              <span className={isSalesStep2Complete ? '' : 'pending'}>Step 2 {isSalesStep2Complete ? 'saved' : 'pending'}</span>
+              <span className={isSalesStep3Complete ? '' : 'pending'}>Step 3 {isSalesStep3Complete ? 'saved' : 'pending'}</span>
+            </div>
+          </section>
 
+          <section className="saved-entry-action-card">
+            <h3>What do you want to do now?</h3>
+            <button type="button" className="primary-action" onClick={() => { setShowSalesFollowUpComposer((open) => !open); if (salesNextAction !== 'follow_up_needed') setSalesNextAction('follow_up_needed'); }}>Add follow-up {nextSalesFollowUpNumber}</button>
+            <div className="saved-entry-action-grid">
+              {(!isSalesStep2Complete || !isSalesStep3Complete) && (
+                <button type="button" className="secondary-action" onClick={() => { setIsSalesStep2Open(!isSalesStep2Complete); setIsSalesStep3Open(isSalesStep2Complete && !isSalesStep3Complete); }}>Complete pending details</button>
+              )}
+              <button type="button" className="secondary-action" onClick={() => setIsSalesSavedDetailsEditing(true)}>Edit original details</button>
+            </div>
+          </section>
 
-      <section className="step-card">
+          {showSalesFollowUpComposer && (
+            <section className="saved-followup-card simplified-followup-card">
+              <h3>Follow-up {nextSalesFollowUpNumber} details</h3>
+              <div className="inline-field-grid">
+                <label className="field-card">
+                  <span>Next status</span>
+                  <select aria-label="Sales follow-up status" value={salesNextAction} onChange={(event) => setSalesNextAction(event.target.value as FrontendSalesNextAction)}>
+                    <option value="follow_up_needed">Follow-up needed</option>
+                    <option value="no_follow_up">No follow-up</option>
+                    <option value="closed">Closed</option>
+                  </select>
+                </label>
+                {salesNextAction === 'follow_up_needed' && (
+                  <label className="field-card">
+                    <span>Next date</span>
+                    <input aria-label="Sales follow-up next date" type="date" value={salesFollowUpDate} onChange={(event) => setSalesFollowUpDate(event.target.value)} />
+                  </label>
+                )}
+              </div>
+              {salesContinuationNeedsNote && (
+                <label className="field-card">
+                  <span>Follow-up note</span>
+                  <textarea aria-label="Sales follow-up note" value={salesVisitNote} onChange={(event) => setSalesVisitNote(event.target.value)} placeholder="What happened now?" rows={2} />
+                </label>
+              )}
+              <button type="button" className="primary-action" disabled={salesAnySubmitting || !session} onClick={handleSalesSubmit}>{isSalesSubmitting ? 'Saving…' : salesNextAction === 'follow_up_needed' ? 'Save follow-up' : 'Save status'}</button>
+            </section>
+          )}
+
+          <section className="visit-updates-card" aria-label="Sales visit updates">
+            <div className="section-title compact-section-title">
+              <h3>Visit updates</h3>
+              <span>{salesVisitHistory.length} saved</span>
+            </div>
+            <div className="followup-history-card compact-followup-history">
+              {salesVisitHistory.map((visit) => (
+                <div key={visit.id} className="followup-history-row">
+                  <span>{visit.visitNumber === 1 ? 'Original visit' : `Follow-up ${visit.visitNumber}`}</span>
+                  <strong>{visit.note || 'Status updated'}</strong>
+                  <small>{formatVisitWhen(visit)}{visit.followUpDate ? ` • Next: ${formatShortDate(visit.followUpDate)}` : ''}</small>
+                </div>
+              ))}
+            </div>
+          </section>
+
+        </>
+      )}
+      <section className={salesSaveResult && !isSalesSavedDetailsEditing ? 'step-card saved-details-locked' : 'step-card'}>
         <div className="step-heading">
-          <div><span className="step-pill">Step 1</span><h3>Quick visit update</h3><p>For use at client place or immediately after coming out.</p></div>
-          <span className={salesSaveResult ? 'chip chip-soft' : 'chip chip-warning'}>{salesSaveResult ? 'Saved' : 'Required'}</span>
+          <div><span className="step-pill">Step 1</span><h3>Original visit details</h3>{salesSaveResult && <p>{isSalesSavedDetailsEditing ? 'Editing original saved details' : 'Saved details locked'}</p>}</div>
+          {salesSaveResult && (
+            <button type="button" className="inline-edit-action" onClick={() => setIsSalesSavedDetailsEditing((editing) => !editing)}>
+              {isSalesSavedDetailsEditing ? 'Lock details' : 'Edit saved details'}
+            </button>
+          )}
         </div>
+        <fieldset className="saved-details-fieldset" disabled={Boolean(salesSaveResult && !isSalesSavedDetailsEditing)}>
         <LocationCaptureCard purpose="sales" />
         <label className="field-card">
           <span>Customer / lab name</span>
@@ -1799,20 +2334,27 @@ function App() {
         <PhotoCaptureCard
           area="sales"
           title="Add photo"
-          helpText="Optional. Camera or upload can be saved with this visit before tapping Save Step 1."
           note={salesPhotoNote}
           setNote={setSalesPhotoNote}
           photo={salesPhotoAttachment}
         />
         <button type="button" className="primary-action" disabled={salesAnySubmitting || !session} onClick={handleSalesSubmit}>{isSalesSubmitting ? 'Saving…' : salesSaveResult ? 'Save Step 1 changes' : 'Save Step 1'}</button>
+        </fieldset>
       </section>
 
       <section className={isSalesStep2Open ? 'step-card step-card-open' : 'step-card step-card-collapsed'}>
-        <button type="button" className="step-heading step-toggle" aria-expanded={isSalesStep2Open} onClick={() => setIsSalesStep2Open((open) => !open)}>
-          <div><span className="step-pill">Step 2</span><h3>Customer & requirement details</h3><p>Add contact and product details when available.</p><span className="step-collapsed-hint">Contact, phone, address, product</span></div>
-          <span className={isSalesStep2Complete ? 'chip chip-soft' : 'chip chip-info'}>{isSalesStep2Complete ? 'Saved' : isSalesStep2Open ? 'Open' : 'Tap to open'}</span>
-        </button>
-        {isSalesStep2Open && <div className="step-body">
+        <div className="step-heading">
+          <button type="button" className="step-toggle step-title-toggle" aria-expanded={isSalesStep2Open} onClick={() => setIsSalesStep2Open((open) => !open)}>
+            <span className="step-pill">Step 2</span><h3>Customer & requirement details</h3><span className="step-collapsed-hint">Contact, phone, address, product</span>
+          </button>
+          {isSalesStep2Complete && (
+            <button type="button" className="step-header-icon-action" aria-label={isSalesStep2Editing ? 'Lock Step 2' : 'Edit Step 2'} onClick={() => setIsSalesStep2Editing((editing) => !editing)}>
+              <Pencil size={15} aria-hidden="true" />
+            </button>
+          )}
+        </div>
+        {isSalesStep2Open && <div className={isSalesStep2Locked ? 'step-body saved-details-locked' : 'step-body'}>
+        <fieldset className="saved-details-fieldset" disabled={isSalesStep2Locked}>
         <label className="field-card">
           <span>Contact person</span>
           <input aria-label="Sales contact person" value={salesContactPerson} onChange={(event) => setSalesContactPerson(event.target.value)} placeholder="Optional" />
@@ -1854,15 +2396,23 @@ function App() {
           <input aria-label="Sales equipment model" value={salesEquipmentModel} onChange={(event) => setSalesEquipmentModel(event.target.value)} placeholder="Optional" />
         </label>
         <button type="button" aria-label="Save Step 2" className={salesSaveResult ? 'secondary-action step-save-action' : 'secondary-action step-save-action locked-step-action'} disabled={salesAnySubmitting || !salesSaveResult} onClick={handleSalesStep2Submit}>{isSalesStep2Submitting ? 'Saving…' : salesSaveResult ? 'Save Step 2' : 'Complete Step 1 first'}</button>
+        </fieldset>
         </div>}
       </section>
 
       <section className={isSalesStep3Open ? 'step-card step-card-open' : 'step-card step-card-collapsed'}>
-        <button type="button" className="step-heading step-toggle" aria-expanded={isSalesStep3Open} onClick={() => setIsSalesStep3Open((open) => !open)}>
-          <div><span className="step-pill">Step 3</span><h3>Quote, proof & office details</h3><p>Useful for follow-up, admin reports, and office team work.</p><span className="step-collapsed-hint">Quote status, support, proof, office notes</span></div>
-          <span className={isSalesStep3Complete ? 'chip chip-soft' : 'chip chip-info'}>{isSalesStep3Complete ? 'Saved' : isSalesStep3Open ? 'Open' : 'Tap to open'}</span>
-        </button>
-        {isSalesStep3Open && <div className="step-body">
+        <div className="step-heading">
+          <button type="button" className="step-toggle step-title-toggle" aria-expanded={isSalesStep3Open} onClick={() => setIsSalesStep3Open((open) => !open)}>
+            <span className="step-pill">Step 3</span><h3>Quote & office details</h3><span className="step-collapsed-hint">Quote status, support, office notes</span>
+          </button>
+          {isSalesStep3Complete && (
+            <button type="button" className="step-header-icon-action" aria-label={isSalesStep3Editing ? 'Lock Step 3' : 'Edit Step 3'} onClick={() => setIsSalesStep3Editing((editing) => !editing)}>
+              <Pencil size={15} aria-hidden="true" />
+            </button>
+          )}
+        </div>
+        {isSalesStep3Open && <div className={isSalesStep3Locked ? 'step-body saved-details-locked' : 'step-body'}>
+        <fieldset className="saved-details-fieldset" disabled={isSalesStep3Locked}>
         <label className="field-card"><span>Quote submitted?</span><select aria-label="Sales quote submitted" value={salesQuoteSubmitted} onChange={(event) => setSalesQuoteSubmitted(event.target.value as 'yes' | 'no' | '')}><option value="">Not updated</option><option value="yes">Yes</option><option value="no">No</option></select></label>
         <label className="field-card"><span>Budgetary proposal</span><input aria-label="Sales budgetary proposal" value={salesBudgetaryProposal} onChange={(event) => setSalesBudgetaryProposal(event.target.value)} placeholder="Optional" /></label>
         <label className="field-card"><span>Quote / deal status</span><select aria-label="Sales quote status" value={salesQuoteStatus} onChange={(event) => setSalesQuoteStatus(event.target.value)}><option>New inquiry</option><option>Quote pending</option><option>Budgetary quote</option><option>Negotiation</option><option>Closed won</option><option>Closed lost</option><option>Follow up later</option></select></label>
@@ -1878,53 +2428,109 @@ function App() {
         </div>
         <label className="field-card"><span>Remarks and timeline</span><textarea aria-label="Sales remarks timeline" value={salesRemarksTimeline} onChange={(event) => setSalesRemarksTimeline(event.target.value)} placeholder="Timeline, discussion points, blockers" rows={2} /></label>
         <label className="field-card"><span>Notes for office team</span><textarea aria-label="Sales office notes" value={salesOfficeNotes} onChange={(event) => setSalesOfficeNotes(event.target.value)} placeholder="Internal notes" rows={2} /></label>
-        <div className="field-card photo-action-card">
-          <div>
-            <span>Photos if needed</span>
-            <small>Optional for Sales. Use only when a site, product, or visiting card photo is useful.</small>
-          </div>
-          <div className="photo-actions">
-            <label className="secondary-action photo-button">Camera<input className="visually-hidden" aria-label="Sales camera photo" type="file" accept="image/*" capture="environment" onChange={(event) => void handlePhotoSelection(event, 'camera', 'sales')} /></label>
-            <label className="secondary-action photo-button">Upload<input className="visually-hidden" aria-label="Sales upload photo" type="file" accept="image/*" onChange={(event) => void handlePhotoSelection(event, 'upload', 'sales')} /></label>
-          </div>
-          <textarea aria-label="Sales photo note" value={salesPhotoNote} onChange={(event) => setSalesPhotoNote(event.target.value)} placeholder="Optional note, e.g. visiting card photo added" rows={2} />
-          {salesPhotoAttachment && (
-            <div className="selected-photo-preview">
-              <small>Ready to save: {salesPhotoAttachment.fileName} • {Math.ceil(salesPhotoAttachment.sizeBytes / 1024)} KB</small>
-              <img src={salesPhotoAttachment.dataUrl} alt={`Selected sales photo ${salesPhotoAttachment.fileName}`} />
-            </div>
-          )}
-        </div>
         <button type="button" aria-label="Save Step 3" className={salesSaveResult ? 'secondary-action step-save-action' : 'secondary-action step-save-action locked-step-action'} disabled={salesAnySubmitting || !salesSaveResult} onClick={handleSalesStep3Submit}>{isSalesStep3Submitting ? 'Saving…' : salesSaveResult ? 'Save Step 3' : 'Complete Step 1 first'}</button>
+        </fieldset>
         </div>}
       </section>
 
-      {salesSaveResult && (
-        <div className="form-card highlighted-card">
-          <label>Latest saved sales entry</label>
-          <span>{salesSaveResult.opportunity.accountName} • Visit {salesSaveResult.visit.visitNumber} • {salesSaveResult.visit.nextAction.split('_').join(' ')}</span>
-          <span>Step 2: {isSalesStep2Complete ? 'saved' : 'pending'} • Step 3: {isSalesStep3Complete ? 'saved' : 'pending'}</span>
-          <PhotoViewer payload={salesSaveResult.opportunity.sitePhoto} label="saved sales" />
-        </div>
-      )}
     </ScreenPanel>
   );
 
   const renderService = () => {
     const serviceAnySubmitting = isServiceSubmitting || isServiceStep2Submitting || isServiceStep3Submitting;
     return (
-      <ScreenPanel title="Service visit" subtitle="Save quickly first. Add equipment, parts, and proof later.">
-        <div className="form-card highlighted-card">
-          <label>Service progress</label>
-          <span>Step 1: {serviceSaveResult ? 'Saved' : 'Pending'} • Step 2: {isServiceStep2Complete ? 'Saved' : 'Pending'} • Step 3: {isServiceStep3Complete ? 'Saved' : 'Pending'}</span>
-        </div>
+      <ScreenPanel title="Service visit">
+        {serviceSaveResult && (
+          <>
+            <section className="saved-entry-summary-card">
+              <div className="saved-entry-summary-top">
+                <div>
+                  <span className="saved-entry-eyebrow">Saved Service Entry</span>
+                  <strong>{serviceCustomerName || serviceSaveResult.serviceRecord.customerName}</strong>
+                  <small>{[serviceContactPerson, serviceEquipmentName, serviceSaveResult.visit.agentName].filter(Boolean).join(' • ')}</small>
+                </div>
+                <span className="saved-entry-status-pill">{serviceSaveResult.visit.nextAction === 'parts_required' ? 'Parts required' : serviceSaveResult.visit.nextAction === 'next_visit_needed' ? 'Next visit' : serviceSaveResult.visit.nextAction === 'closed' ? 'Closed' : 'No follow-up'}</span>
+              </div>
+              <div className="saved-entry-meta-grid">
+                <div><span>Last update</span><strong>{formatVisitWhen(serviceSaveResult.visit)}</strong></div>
+                <div><span>Next visit</span><strong>{serviceSaveResult.visit.nextVisitDate ? formatShortDate(serviceSaveResult.visit.nextVisitDate) : 'Not needed'}</strong></div>
+              </div>
+              <div className="saved-entry-step-chips" aria-label="Service saved step status">
+                <span>Step 1 saved</span>
+                <span className={isServiceStep2Complete ? '' : 'pending'}>Step 2 {isServiceStep2Complete ? 'saved' : 'pending'}</span>
+                <span className={isServiceStep3Complete ? '' : 'pending'}>Step 3 {isServiceStep3Complete ? 'saved' : 'pending'}</span>
+              </div>
+            </section>
 
+            <section className="saved-entry-action-card">
+              <h3>What do you want to do now?</h3>
+              <button type="button" className="primary-action" onClick={() => { setShowServiceFollowUpComposer((open) => !open); if (serviceNextAction === 'no_follow_up' || serviceNextAction === 'closed') setServiceNextAction('next_visit_needed'); }}>Add follow-up {nextServiceFollowUpNumber}</button>
+              <div className="saved-entry-action-grid">
+                {(!isServiceStep2Complete || !isServiceStep3Complete) && (
+                  <button type="button" className="secondary-action" onClick={() => { setIsServiceStep2Open(!isServiceStep2Complete); setIsServiceStep3Open(isServiceStep2Complete && !isServiceStep3Complete); }}>Complete pending details</button>
+                )}
+                <button type="button" className="secondary-action" onClick={() => setIsServiceSavedDetailsEditing(true)}>Edit original details</button>
+              </div>
+            </section>
 
-        <section className="step-card">
+            {showServiceFollowUpComposer && (
+              <section className="saved-followup-card simplified-followup-card">
+                <h3>Follow-up {nextServiceFollowUpNumber} details</h3>
+                <div className="inline-field-grid">
+                  <label className="field-card">
+                    <span>Next status</span>
+                    <select aria-label="Service follow-up status" value={serviceNextAction} onChange={(event) => setServiceNextAction(event.target.value as FrontendServiceNextAction)}>
+                      <option value="parts_required">Parts required</option>
+                      <option value="next_visit_needed">Next visit needed</option>
+                      <option value="no_follow_up">No follow-up</option>
+                      <option value="closed">Closed</option>
+                    </select>
+                  </label>
+                  {(serviceNextAction === 'parts_required' || serviceNextAction === 'next_visit_needed') && (
+                    <label className="field-card">
+                      <span>Next date</span>
+                      <input aria-label="Service follow-up next date" type="date" value={serviceNextVisitDate} onChange={(event) => setServiceNextVisitDate(event.target.value)} />
+                    </label>
+                  )}
+                </div>
+                {serviceContinuationNeedsNote && (
+                  <label className="field-card">
+                    <span>Follow-up note</span>
+                    <textarea aria-label="Service follow-up note" value={serviceWorkDone} onChange={(event) => setServiceWorkDone(event.target.value)} placeholder="What happened now?" rows={2} />
+                  </label>
+                )}
+                <button type="button" className="primary-action" disabled={serviceAnySubmitting || !session} onClick={handleServiceSubmit}>{isServiceSubmitting ? 'Saving…' : serviceContinuationNeedsNote ? 'Save follow-up' : 'Save status'}</button>
+              </section>
+            )}
+
+            <section className="visit-updates-card" aria-label="Service visit updates">
+              <div className="section-title compact-section-title">
+                <h3>Visit updates</h3>
+                <span>{serviceVisitHistory.length} saved</span>
+              </div>
+              <div className="followup-history-card compact-followup-history">
+                {serviceVisitHistory.map((visit) => (
+                  <div key={visit.id} className="followup-history-row">
+                    <span>{visit.visitNumber === 1 ? 'Original visit' : `Follow-up ${visit.visitNumber}`}</span>
+                    <strong>{visit.workDone || 'Status updated'}</strong>
+                    <small>{formatVisitWhen(visit)}{visit.nextVisitDate ? ` • Next: ${formatShortDate(visit.nextVisitDate)}` : ''}</small>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+          </>
+        )}
+        <section className={serviceSaveResult && !isServiceSavedDetailsEditing ? 'step-card saved-details-locked' : 'step-card'}>
           <div className="step-heading">
-            <div><span className="step-pill">Step 1</span><h3>Quick service update</h3><p>For the engineer to save at the site.</p></div>
-            <span className={serviceSaveResult ? 'chip chip-soft' : 'chip chip-warning'}>{serviceSaveResult ? 'Saved' : 'Required'}</span>
+            <div><span className="step-pill">Step 1</span><h3>Original service details</h3>{serviceSaveResult && <p>{isServiceSavedDetailsEditing ? 'Editing original saved details' : 'Saved details locked'}</p>}</div>
+            {serviceSaveResult && (
+              <button type="button" className="inline-edit-action" onClick={() => setIsServiceSavedDetailsEditing((editing) => !editing)}>
+                {isServiceSavedDetailsEditing ? 'Lock details' : 'Edit saved details'}
+              </button>
+            )}
           </div>
+          <fieldset className="saved-details-fieldset" disabled={Boolean(serviceSaveResult && !isServiceSavedDetailsEditing)}>
           <LocationCaptureCard purpose="service" />
           <label className="field-card"><span>Customer / lab name</span><input aria-label="Service customer name" value={serviceCustomerName} onChange={(event) => setServiceCustomerName(event.target.value)} /></label>
           <label className="field-card"><span>Work done / issue checked</span><textarea aria-label="Service work done" value={serviceWorkDone} onChange={(event) => setServiceWorkDone(event.target.value)} placeholder="Issue checked, work done, customer update" rows={3} /></label>
@@ -1940,20 +2546,27 @@ function App() {
           <PhotoCaptureCard
             area="service"
             title="Add service photo"
-            helpText="Optional. Take a machine, issue, part, or completed-work photo before saving Step 1."
             note={servicePhotoNote}
             setNote={setServicePhotoNote}
             photo={servicePhotoAttachment}
           />
           <button type="button" className="primary-action" disabled={serviceAnySubmitting || !session} onClick={handleServiceSubmit}>{isServiceSubmitting ? 'Saving…' : serviceSaveResult ? 'Save Step 1 changes' : 'Save Step 1'}</button>
+          </fieldset>
         </section>
 
         <section className={isServiceStep2Open ? 'step-card step-card-open' : 'step-card step-card-collapsed'}>
-          <button type="button" className="step-heading step-toggle" aria-expanded={isServiceStep2Open} onClick={() => setIsServiceStep2Open((open) => !open)}>
-            <div><span className="step-pill">Step 2</span><h3>Customer, equipment, issue</h3><p>Add instrument and issue details when available.</p><span className="step-collapsed-hint">Contact, equipment, serial, issue</span></div>
-            <span className={isServiceStep2Complete ? 'chip chip-soft' : 'chip chip-info'}>{isServiceStep2Complete ? 'Saved' : isServiceStep2Open ? 'Open' : 'Tap to open'}</span>
-          </button>
-          {isServiceStep2Open && <div className="step-body">
+          <div className="step-heading">
+            <button type="button" className="step-toggle step-title-toggle" aria-expanded={isServiceStep2Open} onClick={() => setIsServiceStep2Open((open) => !open)}>
+              <span className="step-pill">Step 2</span><h3>Customer, equipment, issue</h3><span className="step-collapsed-hint">Contact, equipment, serial, issue</span>
+            </button>
+            {isServiceStep2Complete && (
+              <button type="button" className="step-header-icon-action" aria-label={isServiceStep2Editing ? 'Lock Step 2' : 'Edit Step 2'} onClick={() => setIsServiceStep2Editing((editing) => !editing)}>
+                <Pencil size={15} aria-hidden="true" />
+              </button>
+            )}
+          </div>
+          {isServiceStep2Open && <div className={isServiceStep2Locked ? 'step-body saved-details-locked' : 'step-body'}>
+          <fieldset className="saved-details-fieldset" disabled={isServiceStep2Locked}>
           <label className="field-card"><span>Contact person</span><input aria-label="Service contact person" value={serviceContactPerson} onChange={(event) => setServiceContactPerson(event.target.value)} placeholder="Optional" /></label>
           <label className="field-card"><span>Phone</span><input aria-label="Service phone" value={servicePhone} onChange={(event) => setServicePhone(event.target.value)} placeholder="Optional" inputMode="tel" /></label>
           <label className="field-card"><span>Email</span><input aria-label="Service email" value={serviceEmail} onChange={(event) => setServiceEmail(event.target.value)} placeholder="Optional" inputMode="email" /></label>
@@ -1966,15 +2579,23 @@ function App() {
           <label className="field-card"><span>Detailed issue</span><textarea aria-label="Service issue description" value={serviceIssueDescription} onChange={(event) => setServiceIssueDescription(event.target.value)} placeholder="Optional detailed issue" rows={2} /></label>
           <label className="field-card"><span>Warranty / AMC</span><input aria-label="Service warranty AMC" value={serviceWarrantyAmc} onChange={(event) => setServiceWarrantyAmc(event.target.value)} placeholder="Optional" /></label>
           <button type="button" aria-label="Save Step 2" className={serviceSaveResult ? 'secondary-action step-save-action' : 'secondary-action step-save-action locked-step-action'} disabled={serviceAnySubmitting || !serviceSaveResult} onClick={handleServiceStep2Submit}>{isServiceStep2Submitting ? 'Saving…' : serviceSaveResult ? 'Save Step 2' : 'Complete Step 1 first'}</button>
+          </fieldset>
           </div>}
         </section>
 
         <section className={isServiceStep3Open ? 'step-card step-card-open' : 'step-card step-card-collapsed'}>
-          <button type="button" className="step-heading step-toggle" aria-expanded={isServiceStep3Open} onClick={() => setIsServiceStep3Open((open) => !open)}>
-            <div><span className="step-pill">Step 3</span><h3>Parts, proof, office details</h3><p>For service closure and admin reporting.</p><span className="step-collapsed-hint">Parts, photos, support, final notes</span></div>
-            <span className={isServiceStep3Complete ? 'chip chip-soft' : 'chip chip-info'}>{isServiceStep3Complete ? 'Saved' : isServiceStep3Open ? 'Open' : 'Tap to open'}</span>
-          </button>
-          {isServiceStep3Open && <div className="step-body">
+          <div className="step-heading">
+            <button type="button" className="step-toggle step-title-toggle" aria-expanded={isServiceStep3Open} onClick={() => setIsServiceStep3Open((open) => !open)}>
+              <span className="step-pill">Step 3</span><h3>Parts & office details</h3><p>For service closure and admin reporting.</p><span className="step-collapsed-hint">Parts, support, final notes</span>
+            </button>
+            {isServiceStep3Complete && (
+              <button type="button" className="step-header-icon-action" aria-label={isServiceStep3Editing ? 'Lock Step 3' : 'Edit Step 3'} onClick={() => setIsServiceStep3Editing((editing) => !editing)}>
+                <Pencil size={15} aria-hidden="true" />
+              </button>
+            )}
+          </div>
+          {isServiceStep3Open && <div className={isServiceStep3Locked ? 'step-body saved-details-locked' : 'step-body'}>
+          <fieldset className="saved-details-fieldset" disabled={isServiceStep3Locked}>
           <label className="field-card"><span>Parts required</span><input aria-label="Service parts required" value={servicePartsRequired} onChange={(event) => setServicePartsRequired(event.target.value)} placeholder="Optional" /></label>
           <label className="field-card"><span>Parts used</span><input aria-label="Service parts used" value={servicePartsUsed} onChange={(event) => setServicePartsUsed(event.target.value)} placeholder="Optional" /></label>
           <label className="field-card"><span>Machine status</span><input aria-label="Service machine status" value={serviceMachineStatus} onChange={(event) => setServiceMachineStatus(event.target.value)} placeholder="Working / pending / closed" /></label>
@@ -1986,34 +2607,55 @@ function App() {
             <button type="button" onClick={() => { setServiceSupportRequired(true); setServiceSupportRequiredNote('Schedule next site visit with customer'); }}>Revisit</button>
             <button type="button" onClick={() => { setServiceSupportRequired(true); setServiceSupportRequiredNote('Escalate case to office/service lead'); }}>Escalate</button>
           </div>
-          <div className="field-card photo-action-card">
-            <div><span>Service photos</span><small>Optional now. Use for machine, issue, part, or completed-work proof.</small></div>
-            <div className="photo-actions">
-              <label className="secondary-action photo-button">Camera<input className="visually-hidden" aria-label="Service camera photo" type="file" accept="image/*" capture="environment" onChange={(event) => void handlePhotoSelection(event, 'camera', 'service')} /></label>
-              <label className="secondary-action photo-button">Upload<input className="visually-hidden" aria-label="Service upload photo" type="file" accept="image/*" onChange={(event) => void handlePhotoSelection(event, 'upload', 'service')} /></label>
-            </div>
-            <input aria-label="Service photo note" value={servicePhotoNote} onChange={(event) => setServicePhotoNote(event.target.value)} placeholder="Optional photo note" />
-            {servicePhotoAttachment && (
-              <div className="selected-photo-preview">
-                <small>Ready to save: {servicePhotoAttachment.fileName} • {Math.ceil(servicePhotoAttachment.sizeBytes / 1024)} KB</small>
-                <img src={servicePhotoAttachment.dataUrl} alt={`Selected service photo ${servicePhotoAttachment.fileName}`} />
-              </div>
-            )}
-          </div>
           <label className="field-card"><span>Final remarks</span><textarea aria-label="Service final remarks" value={serviceFinalRemarks} onChange={(event) => setServiceFinalRemarks(event.target.value)} placeholder="Optional customer confirmation / remarks" rows={2} /></label>
           <label className="field-card"><span>Notes for office</span><textarea aria-label="Service office notes" value={serviceOfficeNotes} onChange={(event) => setServiceOfficeNotes(event.target.value)} placeholder="Optional office notes" rows={2} /></label>
           <button type="button" aria-label="Save Step 3" className={serviceSaveResult ? 'secondary-action step-save-action' : 'secondary-action step-save-action locked-step-action'} disabled={serviceAnySubmitting || !serviceSaveResult} onClick={handleServiceStep3Submit}>{isServiceStep3Submitting ? 'Saving…' : serviceSaveResult ? 'Save Step 3' : 'Complete Step 1 first'}</button>
+          </fieldset>
           </div>}
         </section>
 
-        {serviceSaveResult && <div className="form-card highlighted-card"><label>Latest saved service visit</label><span>{serviceSaveResult.serviceRecord.customerName} • Visit {serviceSaveResult.visit.visitNumber} • {serviceSaveResult.visit.nextAction.split('_').join(' ')}</span><span>Step 2: {isServiceStep2Complete ? 'saved' : 'pending'} • Step 3: {isServiceStep3Complete ? 'saved' : 'pending'}</span><PhotoViewer payload={serviceSaveResult.serviceRecord.photoNote} label="saved service" /></div>}
       </ScreenPanel>
     );
   };
 
-  const renderCheckIn = () => (
-    <ScreenPanel title="Check in" subtitle="Choose today’s work plan before starting field work.">
-      <div className="attendance-status-card">
+  const renderCheckIn = () => {
+    if (isCheckedIn) {
+      return (
+        <ScreenPanel title="Attendance" subtitle="You are already checked in for today.">
+          <div className="attendance-status-card attendance-live-card">
+            <div className="attendance-status-icon"><CheckCircle2 size={20} /></div>
+            <div>
+              <label>Already checked in</label>
+              <strong>Started at {attendanceStartedLabel}</strong>
+              <span>{savedWorkTypeLabel}</span>
+            </div>
+          </div>
+          <div className="attendance-action-stack">
+            <button type="button" className="primary-action attendance-checkout-action" disabled={!session || isAttendanceBusy} onClick={() => void handleAttendanceAction()}>{isAttendanceBusy ? 'Saving…' : 'Check out now'}</button>
+            <button type="button" className="secondary-action" onClick={() => goToScreen('home')}>Continue work</button>
+          </div>
+          <div className="form-card attendance-help-card">
+            <label>If you forgot yesterday</label>
+            <span>Start today normally. Yesterday will stay marked for office review.</span>
+          </div>
+        </ScreenPanel>
+      );
+    }
+
+
+    return (
+    <ScreenPanel title={isCheckedOut ? 'Check in again' : 'Check in'} subtitle={isCheckedOut ? 'Previous session is closed. Start a new session if you are back at work.' : 'Choose today’s work plan before starting field work.'}>
+      {isCheckedOut && (
+        <div className="attendance-status-card attendance-complete-card">
+          <div className="attendance-status-icon"><CheckCircle2 size={20} /></div>
+          <div>
+            <label>Last session checked out</label>
+            <strong>Finished at {attendanceEndedLabel}</strong>
+            <span>{savedWorkTypeLabel}</span>
+          </div>
+        </div>
+      )}
+      <div className="attendance-status-card attendance-ready-card">
         <div className="attendance-status-icon"><MapPin size={20} /></div>
         <div>
           <label>Current location</label>
@@ -2043,49 +2685,59 @@ function App() {
         <span>Opening note</span>
         <textarea aria-label="Check-in opening note" value={checkInNote} onChange={(event) => setCheckInNote(event.target.value)} placeholder="Optional: route plan, first client, or office note" rows={3} />
       </label>
-      <button type="button" className="primary-action" disabled={!session || isAttendanceBusy || !workTypes.length} onClick={handleCheckInSubmit}>{isAttendanceBusy ? 'Saving…' : 'Check in now'}</button>
+      <button type="button" className="primary-action attendance-checkin-action" disabled={!session || isAttendanceBusy || !workTypes.length} onClick={handleCheckInSubmit}>{isAttendanceBusy ? 'Saving…' : isCheckedOut ? 'Check in again' : 'Check in now'}</button>
       <button type="button" className="secondary-action" onClick={() => goToScreen('attendance')}>View attendance</button>
     </ScreenPanel>
-  );
+    );
+  };
 
   const renderAttendance = () => {
-    const todayStatus = attendance?.status === 'checked_in' ? 'Checked in' : attendance?.status === 'checked_out' ? 'Checked out' : 'Not checked in yet';
-    const todayDetail = attendance?.status === 'checked_in'
-      ? 'Start location saved. Check out after field work.'
-      : attendance?.status === 'checked_out'
-        ? 'Start and end locations saved for today.'
-        : 'Tap Check in before the first field visit.';
-    const todayLog = attendance?.status === 'checked_in'
-      ? { date: 'Today', status: 'Checked in', detail: `Started today • ${workTypes.join(' + ') || 'Work type not selected'}` }
-      : attendance?.status === 'checked_out'
-        ? { date: 'Today', status: 'Checked out', detail: `Completed today • ${workTypes.join(' + ') || 'Work type not selected'}` }
+    const todayStatus = isCheckedIn ? 'Checked in' : isCheckedOut ? 'Checked out' : 'Not checked in yet';
+    const todayDetail = isCheckedIn
+      ? `Started at ${attendanceStartedLabel} • ${savedWorkTypeLabel}`
+      : isCheckedOut
+        ? `Finished at ${attendanceEndedLabel} • ${savedWorkTypeLabel} • Check in again if you return`
+        : 'Choose work type, add location, then check in.';
+    const todayLog = isCheckedIn
+      ? { date: 'Today', status: 'Checked in', detail: todayDetail }
+      : isCheckedOut
+        ? { date: 'Today', status: 'Checked out', detail: todayDetail }
         : { date: 'Today', status: 'Ready to check in', detail: `Not started yet • ${workTypes.join(' + ') || 'Choose work type'}` };
     const attendanceLogs = [todayLog, ...sampleAttendanceLogs.filter((log) => log.date !== 'Today')];
     return (
       <ScreenPanel title="Attendance" subtitle="Track today, weekly attendance, and leave status in one place.">
-        <div className="attendance-status-card">
+        <div className={`attendance-status-card ${isCheckedIn ? 'attendance-live-card' : isCheckedOut ? 'attendance-complete-card' : 'attendance-ready-card'}`}>
           <div className="attendance-status-icon"><Clock3 size={20} /></div>
-          <div>
+          <div className="attendance-status-main">
             <label>Today’s status</label>
             <strong>{todayStatus}</strong>
             <span>{todayDetail}</span>
+            {(isCheckedIn || isCheckedOut) && (
+              <div className="attendance-status-badges" aria-label="Saved work mode">
+                {['Sales visit', 'Service visit', 'In office'].filter((type) => savedAttendanceWorkTypes.includes(type)).map((type) => (
+                  <span key={type} className="work-type-badge work-type-selected">✓ {type}</span>
+                ))}
+              </div>
+            )}
           </div>
         </div>
-        <div className="work-type-card">
-          <label>Today’s work type</label>
-          <p>Select one or more before check-in.</p>
-          <div className="work-type-badges">
-            {['Sales visit', 'Service visit', 'In office'].map((type) => {
-              const selected = workTypes.includes(type);
-              return (
-                <button key={type} type="button" className={selected ? 'work-type-badge work-type-selected' : 'work-type-badge'} onClick={() => toggleWorkType(type)}>
-                  {type}
-                </button>
-              );
-            })}
+        {!isCheckedIn && !isCheckedOut && (
+          <div className="work-type-card">
+            <label>Today’s work type</label>
+            <p>Select one or more before check-in.</p>
+            <div className="work-type-badges">
+              {['Sales visit', 'Service visit', 'In office'].map((type) => {
+                const selected = savedAttendanceWorkTypes.includes(type);
+                return (
+                  <button key={type} type="button" className={selected ? 'work-type-badge work-type-selected' : 'work-type-badge'} onClick={() => toggleWorkType(type)}>
+                    {selected ? '✓ ' : ''}{type}
+                  </button>
+                );
+              })}
+            </div>
+            <span>{workTypes.length ? `Marked as: ${workTypes.join(' + ')}` : 'Choose field work, office work, or both.'}</span>
           </div>
-          <span>{workTypes.length ? `Marked as: ${workTypes.join(' + ')}` : 'Choose field work, office work, or both.'}</span>
-        </div>
+        )}
         <div className="form-card highlighted-card location-capture-card">
           <label>GPS capture</label>
           <p>{currentLocationSummary}</p>
@@ -2093,7 +2745,7 @@ function App() {
             {isLocationCapturing ? 'Getting location…' : currentGps ? 'Refresh current location' : 'Use current location'}
           </button>
         </div>
-        <button type="button" className="primary-action attendance-main-action" disabled={!session || isAttendanceBusy} onClick={() => isCheckedIn ? void handleAttendanceAction() : goToScreen('checkin')}>{isAttendanceBusy ? 'Saving…' : attendanceAction}</button>
+        <button type="button" className={`primary-action attendance-main-action ${isCheckedIn ? 'attendance-checkout-action' : 'attendance-checkin-action'}`} disabled={!session || isAttendanceBusy} onClick={() => isCheckedIn ? void handleAttendanceAction() : goToScreen('checkin')}>{isAttendanceBusy ? 'Saving…' : attendanceAction}</button>
         <div className="section-label">Recent attendance</div>
         {attendanceLogs.map((log) => (
           <div className="entry-row" key={log.date}>
@@ -2105,7 +2757,7 @@ function App() {
         <div className="form-card leave-status-card">
           <label>Leave status</label>
           <strong>{leaveRequest ? leaveRequest.status : 'No active request'}</strong>
-          <span>{leaveRequest ? `${leaveRequest.fromDate} to ${leaveRequest.toDate} • ${leaveRequest.reason}` : 'No leave requests submitted.'}</span>
+          <span>{leaveRequest ? `${formatShortDate(leaveRequest.fromDate)} to ${formatShortDate(leaveRequest.toDate)} • ${leaveRequest.reason}` : 'No leave requests submitted.'}</span>
         </div>
         <button type="button" className="secondary-action" onClick={() => goToScreen('leave')}>Request leave</button>
       </ScreenPanel>
@@ -2116,7 +2768,7 @@ function App() {
     <ScreenPanel title="Leave request" subtitle="Send a simple request for admin approval.">
       <div className="form-card highlighted-card leave-summary-card">
         <label>Request summary</label>
-        <span>{leaveFromDate || 'From date'} to {leaveToDate || 'To date'}</span>
+        <span>{leaveFromDate ? formatShortDate(leaveFromDate) : 'From date'} to {leaveToDate ? formatShortDate(leaveToDate) : 'To date'}</span>
         <p>{leaveReason}{leaveNote ? ` • ${leaveNote}` : ''}</p>
       </div>
       <label className="field-card">
@@ -2146,13 +2798,13 @@ function App() {
         <div className="form-card leave-confirm-card">
           <label>Latest request</label>
           <strong>{leaveRequest.status}</strong>
-          <span>{leaveRequest.fromDate} to {leaveRequest.toDate} • {leaveRequest.reason}</span>
+          <span>{formatShortDate(leaveRequest.fromDate)} to {formatShortDate(leaveRequest.toDate)} • {leaveRequest.reason}</span>
           {leaveRequest.note && <span>Note: {leaveRequest.note}</span>}
         </div>
       )}
       <div className="section-label">Leave history</div>
       <div className="entry-row">
-        <div><strong>{leaveRequest ? `${leaveRequest.fromDate} to ${leaveRequest.toDate}` : 'No leave request yet'}</strong><p>{leaveRequest ? leaveRequest.reason : 'Submit a request to track approval status.'}</p></div>
+        <div><strong>{leaveRequest ? `${formatShortDate(leaveRequest.fromDate)} to ${formatShortDate(leaveRequest.toDate)}` : 'No leave request yet'}</strong><p>{leaveRequest ? leaveRequest.reason : 'Submit a request to track approval status.'}</p></div>
         <span className="chip chip-soft">{leaveRequest ? 'in review' : 'clear'}</span>
       </div>
 
@@ -2167,9 +2819,9 @@ function App() {
     const currentFollowUps = backendRecentVisitEntries.filter((entry) => entry.tone === 'warning').length;
     const reportCopy: Record<ReportPeriod, { title: string; range: string; sales: string; service: string; attendance: string; followUps: string; leave: string }> = {
       today: { title: 'Daily report', range: 'Today', sales: String(currentSalesCount), service: String(currentServiceCount), attendance: attendanceLabel, followUps: String(currentFollowUps), leave: leaveStatus },
-      week: { title: 'Weekly report', range: 'This week', sales: 'Generate from admin report', service: 'Generate from admin report', attendance: 'Generate from admin report', followUps: 'Generate from admin report', leave: leaveStatus },
-      month: { title: 'Monthly report', range: 'This month', sales: 'Generate from admin report', service: 'Generate from admin report', attendance: 'Generate from admin report', followUps: 'Generate from admin report', leave: leaveStatus },
-      custom: { title: 'Custom date report', range: `${reportFromDate} to ${reportToDate}`, sales: 'Generate from admin report', service: 'Generate from admin report', attendance: 'Generate from admin report', followUps: 'Generate from admin report', leave: leaveStatus },
+      week: { title: 'Weekly report', range: 'This week', sales: 'In downloaded report', service: 'In downloaded report', attendance: 'In downloaded report', followUps: 'In downloaded report', leave: leaveStatus },
+      month: { title: 'Monthly report', range: 'This month', sales: 'In downloaded report', service: 'In downloaded report', attendance: 'In downloaded report', followUps: 'In downloaded report', leave: leaveStatus },
+      custom: { title: 'Custom date report', range: `${formatShortDate(reportFromDate)} to ${formatShortDate(reportToDate)}`, sales: 'In downloaded report', service: 'In downloaded report', attendance: 'In downloaded report', followUps: 'In downloaded report', leave: leaveStatus },
     };
     const activeReport = reportCopy[reportPeriod];
     const kindLabels: Record<AgentReportKind, { title: string; helper: string }> = {
@@ -2177,16 +2829,35 @@ function App() {
       visits: { title: 'Visit report', helper: 'Sales visits, service visits, follow-ups' },
       combined: { title: 'Combined work report', helper: 'Attendance + visits + leave in one report' },
     };
-    const generateReport = () => {
+    const downloadAgentReport = () => {
+      const reportLines = [
+        'CrystalBio agent report',
+        `${kindLabels[reportKind].title}`,
+        `${activeReport.title} • ${activeReport.range}`,
+        '',
+        `Agent: ${session?.agentName ?? 'Agent'}`,
+        ...(reportKind === 'attendance' || reportKind === 'combined' ? [`Attendance: ${activeReport.attendance}`, `Leave: ${activeReport.leave}`] : []),
+        ...(reportKind === 'visits' || reportKind === 'combined' ? [`Sales visits: ${activeReport.sales}`, `Service visits: ${activeReport.service}`, `Follow-ups pending: ${activeReport.followUps}`] : []),
+      ];
+      const fileName = `crystalbio-my-${reportKind}-report-${formatDateToken(reportFromDate)}-to-${formatDateToken(reportToDate)}.txt`;
+      const blob = new Blob([reportLines.join('\n')], { type: 'text/plain;charset=utf-8' });
+      const downloadUrl = URL.createObjectURL(blob);
+      const downloadLink = document.createElement('a');
+      downloadLink.href = downloadUrl;
+      downloadLink.download = fileName;
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      downloadLink.remove();
+      window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 30000);
       setScreenNotice({
-        title: `${activeReport.title} ready`,
-        message: `${kindLabels[reportKind].title} for ${activeReport.range}.`,
+        title: 'Report downloaded',
+        message: `${kindLabels[reportKind].title} for ${activeReport.range} download started.`,
         tone: 'success',
       });
     };
 
     return (
-      <ScreenPanel title="My reports" subtitle="Choose one report type, choose dates, then generate.">
+      <ScreenPanel title="My reports" subtitle="Choose one report type and date range, then download.">
         <section className="report-setup-card" aria-label="Report setup">
           <label>Report type</label>
           <div className="report-kind-list">
@@ -2216,8 +2887,8 @@ function App() {
           )}
           </div>
 
-          <button type="button" className="primary-action single-report-generate" onClick={generateReport}>Generate report</button>
-          <p className="report-approval-note">Preview uses saved field entries. Full office PDF is available from Admin Reports.</p>
+          <button type="button" className="primary-action single-report-generate" onClick={downloadAgentReport}>Download report</button>
+          <p className="report-approval-note">Preview uses saved field entries. Office PDF is available from Admin Reports.</p>
         </section>
 
         <section className="report-preview-card simple-report-preview-card">
@@ -2385,7 +3056,25 @@ function App() {
   };
 
   const renderAdmin = () => {
+    const adminAttendanceRecords = (adminReport?.attendanceDetails ?? [])
+      .map((record) => ({
+        ...record,
+        checkInTime: record.checkInTime || record.checkInAt || '',
+        checkOutTime: record.checkOutTime || record.checkOutAt,
+      }))
+      .filter((record) => record.checkInTime);
+    const attendanceRecordsByAgent = new Map<string, typeof adminAttendanceRecords>();
+    adminAttendanceRecords.forEach((record) => {
+      const existing = attendanceRecordsByAgent.get(record.agentId) ?? [];
+      existing.push(record);
+      attendanceRecordsByAgent.set(record.agentId, existing);
+    });
+    attendanceRecordsByAgent.forEach((records) => {
+      records.sort((left, right) => new Date(right.checkInTime).getTime() - new Date(left.checkInTime).getTime());
+    });
     const backendRows: AdminActivityRow[] = (adminReport?.agentSummaries ?? []).map((summary) => {
+      const agentAttendanceRecords = attendanceRecordsByAgent.get(summary.agentId) ?? [];
+      const latestAttendance = agentAttendanceRecords.find((record) => record.status === summary.attendanceStatus) ?? agentAttendanceRecords[0];
       const totalVisits = summary.salesVisitCount + summary.serviceVisitCount;
       const needsReview = summary.attendanceStatus === 'not_checked_in' || summary.followUpsDue.length > 0;
       const roleKey = adminRoleKeyForSummary(summary);
@@ -2395,6 +3084,11 @@ function App() {
         role: adminRoleLabel(roleKey),
         roleKey,
         attendance: summary.attendanceStatus.replace(/_/g, ' '),
+        attendanceCheckInTime: latestAttendance?.checkInTime,
+        attendanceCheckOutTime: latestAttendance?.checkOutTime,
+        attendanceSessionCount: agentAttendanceRecords.length,
+        attendanceAutoCheckedOut: latestAttendance?.autoCheckedOut,
+        attendanceWorkTypes: latestAttendance?.workTypes,
         visits: totalVisits ? `${summary.salesVisitCount} sales • ${summary.serviceVisitCount} service` : 'No visit update yet',
         status: needsReview ? 'Needs check' : 'Ready',
         chipClass: needsReview ? 'chip chip-warning' : 'chip chip-soft',
@@ -2404,12 +3098,13 @@ function App() {
       };
     });
     const adminRows = backendRows;
-    const totalVisits = adminRows.reduce((sum, row) => sum + row.salesVisitCount + row.serviceVisitCount, 0);
+    const overviewTodayEntries = teamVisitEntries.filter((entry) => isDateInRange(entry.visitDate, todayInput(), todayInput()));
+    const totalVisits = teamVisitEntries.length ? overviewTodayEntries.length : adminRows.reduce((sum, row) => sum + row.salesVisitCount + row.serviceVisitCount, 0);
     const checkedInCount = adminRows.filter((row) => row.attendance === 'checked in').length;
     const needsReviewCount = adminRows.filter((row) => row.status !== 'Ready').length;
     const followUpCount = adminRows.reduce((sum, row) => sum + row.followUpsDue.length, 0);
     const period = {
-      label: adminPeriod === 'custom' ? `${adminReportFromDate} to ${adminReportToDate}` : adminPeriod === 'today' ? 'Today' : adminPeriod === 'week' ? 'This week' : 'This month',
+      label: adminPeriod === 'custom' ? `${formatShortDate(adminReportFromDate)} to ${formatShortDate(adminReportToDate)}` : adminPeriod === 'today' ? 'Today' : adminPeriod === 'week' ? 'This week' : 'This month',
       active: totalVisits ? `${totalVisits} field updates today` : 'No submitted work yet today',
       summary: adminRows.length ? `${checkedInCount} checked in • ${needsReviewCount} need check • ${followUpCount} follow-ups` : 'No field activity has been saved yet.',
       visits: String(totalVisits),
@@ -2450,25 +3145,44 @@ function App() {
       if (adminReportScope === 'service') return matchesAdminAgentFilter(row, 'service');
       return true;
     });
-    const reportSalesVisits = adminReportScopeRows.reduce((sum, row) => sum + row.salesVisitCount, 0);
-    const reportServiceVisits = adminReportScopeRows.reduce((sum, row) => sum + row.serviceVisitCount, 0);
-    const reportReadyAgents = adminReportScopeRows.filter((row) => row.status === 'Ready').length;
-    const reportReviewAgents = adminReportScopeRows.filter((row) => row.status !== 'Ready').length;
     const reportSubmittedEntries = teamVisitEntries.filter((entry) => {
+      if (!isDateInRange(entry.visitDate, adminReportFromDate, adminReportToDate)) return false;
       if (adminReportScope === 'office') return true;
       const agentRow = adminRows.find((row) => row.id === entry.agentId || row.name === entry.agentName);
       if (adminReportScope === 'sales') return entry.type === 'Sales' || agentRow?.roleKey === 'sales' || agentRow?.roleKey === 'both';
       if (adminReportScope === 'service') return entry.type === 'Service' || agentRow?.roleKey === 'service' || agentRow?.roleKey === 'both';
       return true;
     });
-    const overviewVisibleEntries = teamVisitEntries.slice(0, 4);
+    const reportSalesVisits = teamVisitEntries.length ? reportSubmittedEntries.filter((entry) => entry.type === 'Sales').length : adminReportScopeRows.reduce((sum, row) => sum + row.salesVisitCount, 0);
+    const reportServiceVisits = teamVisitEntries.length ? reportSubmittedEntries.filter((entry) => entry.type === 'Service').length : adminReportScopeRows.reduce((sum, row) => sum + row.serviceVisitCount, 0);
+    const reportReadyAgents = adminReportScopeRows.filter((row) => row.status === 'Ready').length;
+    const reportReviewAgents = adminReportScopeRows.filter((row) => row.status !== 'Ready').length;
+    const overviewVisibleEntries = overviewTodayEntries.slice(0, 4);
+    const adminAttendanceOverviewDetails = adminRows
+      .filter((row) => row.attendance !== 'not checked in')
+      .sort((left, right) => (left.attendance === right.attendance ? left.name.localeCompare(right.name) : left.attendance === 'checked in' ? -1 : 1))
+      .map((row) => {
+        const checkInLabel = `In ${formatAttendanceTime(row.attendanceCheckInTime)}`;
+        const checkOutLabel = row.attendance === 'checked out'
+          ? row.attendanceAutoCheckedOut
+            ? `Auto checked out ${formatAttendanceTime(row.attendanceCheckOutTime)}`
+            : `Out ${formatAttendanceTime(row.attendanceCheckOutTime)}`
+          : 'Still checked in';
+        const workModeLabel = row.attendanceWorkTypes?.length ? row.attendanceWorkTypes.join(' + ') : 'Mode not recorded';
+        const sessionNote = row.attendanceSessionCount > 1 ? ` • ${row.attendanceSessionCount} sessions today` : '';
+        return {
+          key: row.id,
+          detail: `${row.name} • ${row.role} • ${checkInLabel} • ${checkOutLabel}${sessionNote}`,
+          workModeLabel,
+        };
+      });
     const overviewMetricDetails: Record<AdminOverviewMetric, string[]> = {
       visits: overviewVisibleEntries.length
         ? overviewVisibleEntries.map((entry) => `${displayCustomerName(entry.customer)} • ${entry.agentName} • ${entry.type}`)
         : ['No submitted Sales or Service forms today.'],
-      checkedIn: adminRows.filter((row) => row.attendance === 'checked in').length
-        ? adminRows.filter((row) => row.attendance === 'checked in').map((row) => `${row.name} • ${row.role}`)
-        : ['No agent checked in yet.'],
+      checkedIn: adminAttendanceOverviewDetails.length
+        ? adminAttendanceOverviewDetails.map((row) => `${row.detail} • ${row.workModeLabel}`)
+        : ['No attendance check-in recorded today.'],
       leave: adminLeaveRequests.filter((request) => request.status === 'pending').length
         ? adminLeaveRequests.filter((request) => request.status === 'pending').map((request) => `${request.agentName} • ${formatShortDate(request.fromDate)} to ${formatShortDate(request.toDate)}`)
         : ['No leave requests waiting.'],
@@ -2490,6 +3204,15 @@ function App() {
       }
       setScreenNotice(null);
     };
+    const openOverviewEntryDetail = (entry: FrontendRecentVisitEntry) => {
+      setAdminFieldEntryScope('all');
+      setAdminFieldEntryTypeFilter('all');
+      setAdminFieldEntrySearch('');
+      setShowAllAdminFieldEntries(false);
+      setExpandedAdminMetric(null);
+      setAdminTab('fieldEntry');
+      openAdminEntryDetail(entry, 'fieldEntry');
+    };
     const successfulLoginEvents = adminLoginActivity.filter((event) => event.success);
     const failedLoginEvents = adminLoginActivity.filter((event) => !event.success);
     const seriousClientErrors = adminClientErrors.filter((event) => event.severity === 'critical' || event.severity === 'high');
@@ -2501,12 +3224,19 @@ function App() {
       { label: 'App errors', value: String(adminClientErrors.length), hint: seriousClientErrors.length ? `${seriousClientErrors.length} serious` : 'No serious issue', tone: seriousClientErrors.length ? 'warn' : 'good' },
     ];
     const refreshMonitoring = async () => {
-      if (!session || session.role !== 'admin') {
-        setScreenNotice({ title: 'Admin login needed', message: 'Login as admin before opening monitoring.', tone: 'warning' });
-        return;
-      }
       setIsAdminMonitorRefreshing(true);
       try {
+        if (isPublicMonitorPage) {
+          const snapshot = await crystalBioFrontendApi.getPublicMonitorSnapshot();
+          setAdminLoginActivity(snapshot.loginActivity);
+          setAdminClientErrors(snapshot.clientErrors);
+          setScreenNotice({ title: 'Monitoring refreshed', message: 'Latest public monitor records are showing.', tone: 'success' });
+          return;
+        }
+        if (!session || session.role !== 'admin') {
+          setScreenNotice({ title: 'Admin login needed', message: 'Login as admin before opening monitoring.', tone: 'warning' });
+          return;
+        }
         const [loginActivity, clientErrors] = await Promise.all([
           crystalBioFrontendApi.getAdminLoginActivity(session),
           crystalBioFrontendApi.getAdminClientErrors(session),
@@ -2521,7 +3251,7 @@ function App() {
         setIsAdminMonitorRefreshing(false);
       }
     };
-    const reportVisitCount = reportSubmittedEntries.length || reportSalesVisits + reportServiceVisits;
+    const reportVisitCount = reportSalesVisits + reportServiceVisits;
     const reportChartMax = Math.max(reportSalesVisits, reportServiceVisits, reportReadyAgents, reportReviewAgents, 1);
     const chartWidth = (value: number) => `${Math.max(value === 0 ? 0 : 8, Math.round((value / reportChartMax) * 100))}%`;
     const backendApprovalRequests = [...reviewedAdminLeaveRequests, ...adminLeaveRequests]
@@ -2546,8 +3276,20 @@ function App() {
       ]),
     );
     const openApproval = (approvalId: AdminApprovalId) => {
+      pushAdminDetailHistory({ crystalBioAdminApprovalDetail: approvalId });
       setSelectedAdminApproval(approvalId);
       setAdminTab('approvals');
+      setScreenNotice(null);
+    };
+    const openAdminAgentDetail = (agentId: string) => {
+      pushAdminDetailHistory({ crystalBioAdminAgentDetail: agentId });
+      setExpandedAgentActivityId(agentId);
+      setScreenNotice(null);
+    };
+    const openAdminSeatProfile = (seatId: string) => {
+      pushAdminDetailHistory({ crystalBioAdminProfileDetail: seatId });
+      setSelectedAdminSeatId(seatId);
+      setAdminAgentsView('profile');
       setScreenNotice(null);
     };
     const activeApproval = selectedAdminApproval ? adminApprovals[selectedAdminApproval] : null;
@@ -2573,10 +3315,13 @@ function App() {
     const adminFieldEntrySource = adminFieldEntryScope === 'all' ? teamVisitEntries : adminOwnFieldEntries;
     const normalizedAdminFieldSearch = adminFieldEntrySearch.trim().toLowerCase();
     const visibleAdminFieldEntries = adminFieldEntrySource.filter((entry) => {
+      if (adminFieldEntryTypeFilter !== 'all' && entry.type !== adminFieldEntryTypeFilter) return false;
       if (!normalizedAdminFieldSearch) return true;
       return [displayCustomerName(entry.customer), entry.customer, entry.agentName, entry.type, entry.status, entry.visitDate, entry.visitTime]
         .some((value) => String(value ?? '').toLowerCase().includes(normalizedAdminFieldSearch));
     });
+    const displayedAdminFieldEntries = showAllAdminFieldEntries ? visibleAdminFieldEntries : visibleAdminFieldEntries.slice(0, 10);
+    const hiddenAdminFieldEntryCount = Math.max(visibleAdminFieldEntries.length - displayedAdminFieldEntries.length, 0);
     const fieldEntriesForAgent = (row: AdminActivityRow) => teamVisitEntries.filter((entry) => entry.agentId === row.id || (!entry.agentId && entry.agentName === row.name));
     const visibleTeamEntries = teamVisitEntries.filter((entry) => {
       const matchesAgent = adminEntryAgentFilter === 'all' || entry.agentId === adminEntryAgentFilter || (!entry.agentId && entry.agentName === adminEntryAgentFilter);
@@ -2584,22 +3329,46 @@ function App() {
       return matchesAgent && matchesType;
     });
     const shownTeamEntries = showAllAdminEntries ? visibleTeamEntries : visibleTeamEntries.slice(0, 5);
-    const selectedAdminEntry = selectedAdminEntryId ? teamVisitEntries.find((entry) => entry.id === selectedAdminEntryId) : null;
+    const selectedAdminEntry = selectedAdminEntryId ? (adminEntryDetailCache[selectedAdminEntryId] ?? teamVisitEntries.find((entry) => entry.id === selectedAdminEntryId)) : null;
     const visibleCheckedInCount = visibleAgentActivityRows.filter((row) => row.attendance === 'checked in').length;
     const visibleMissingCount = visibleAgentActivityRows.filter((row) => row.status !== 'Ready').length;
     const visibleFollowUpCount = visibleAgentActivityRows.filter((row) => row.followUpsDue.length > 0).length;
+    const checkedOutCount = adminRows.filter((row) => row.attendance === 'checked out').length;
+    const notCheckedInCount = adminRows.filter((row) => row.attendance === 'not checked in').length;
+    const selectedAgentActivityRow = expandedAgentActivityId ? adminRows.find((row) => row.id === expandedAgentActivityId) : null;
+    const agentFilterOptions: Array<{ key: AdminAgentFilter; label: string }> = [
+      { key: 'all', label: 'All agents' },
+      { key: 'sales', label: 'Sales' },
+      { key: 'service', label: 'Service' },
+      { key: 'office', label: 'In office' },
+      { key: 'checkedIn', label: 'Checked in' },
+      { key: 'notCheckedIn', label: 'Not in' },
+      { key: 'checkedOut', label: 'Checked out' },
+    ];
+    const selectAdminAgentFilter = (filter: AdminAgentFilter) => {
+      setAdminAgentFilter(filter);
+      setExpandedAgentActivityId(null);
+      setScreenNotice(null);
+    };
+    const workModeForAgent = (row: AdminActivityRow) => row.attendanceWorkTypes?.length ? row.attendanceWorkTypes.join(' + ') : 'Mode not recorded';
+    const lastActivityForAgent = (row: AdminActivityRow) => {
+      const [latestEntry] = fieldEntriesForAgent(row);
+      if (latestEntry) return formatVisitWhen(latestEntry);
+      if (row.attendanceCheckInTime) return formatAttendanceTime(row.attendanceCheckInTime);
+      return 'No activity today';
+    };
+    const openAgentEntriesInFieldEntry = (row: AdminActivityRow) => {
+      setAdminFieldEntryScope('all');
+      setAdminFieldEntrySearch(row.name);
+      setSelectedAdminEntryId(null);
+      setSelectedAdminEntryReturnTab('fieldEntry');
+      setAdminTab('fieldEntry');
+      setScreenNotice(null);
+    };
     const selectedSeat = adminSeats.find((seat) => seat.id === selectedAdminSeatId) ?? adminSeats[0];
     const activeSeatCount = adminSeats.filter((seat) => seat.status === 'active').length;
     const invitedSeatCount = adminSeats.filter((seat) => seat.status === 'invited' || seat.status === 'expired').length;
     const inactiveSeatCount = adminSeats.filter((seat) => seat.status === 'inactive').length;
-    const generateAdminReport = () => {
-      const rangeLabel = adminPeriod === 'custom' ? `${adminReportFromDate} to ${adminReportToDate}` : period.label.toLowerCase();
-      setScreenNotice({
-        title: `${adminReportKindLabels[adminReportKind]} ready`,
-        message: `${adminReportScopeLabels[adminReportScope]} generated for ${rangeLabel}. Download PDF will use this report type.`,
-        tone: 'success',
-      });
-    };
     const downloadAdminPdf = async () => {
       if (!session) {
         setScreenNotice({ title: 'Admin login needed', message: 'Login as admin before downloading the PDF.', tone: 'warning' });
@@ -2610,7 +3379,7 @@ function App() {
         const reportName = adminReportKind === 'attendance' ? 'attendance-report' : adminReportKind === 'visits' ? 'visit-report' : 'field-report';
         const downloadLink = document.createElement('a');
         downloadLink.href = pdfUrl;
-        downloadLink.download = `crystalbio-${reportName}-${adminReportFromDate}-to-${adminReportToDate}.pdf`;
+        downloadLink.download = `crystalbio-${reportName}-${formatDateToken(adminReportFromDate)}-to-${formatDateToken(adminReportToDate)}.pdf`;
         document.body.appendChild(downloadLink);
         downloadLink.click();
         downloadLink.remove();
@@ -2658,22 +3427,29 @@ function App() {
     );
     const renderAdminEntryDetail = (backLabel: string, onBack: () => void) => selectedAdminEntry ? (
       <section className="admin-entry-detail-card" aria-label="Submitted form details">
-        <button type="button" className="admin-detail-back" onClick={onBack}><ChevronLeft size={16} /> {backLabel}</button>
-        <div className="admin-entry-detail-head">
-          <span className={toneClass[selectedAdminEntry.tone]}>{selectedAdminEntry.type}</span>
-          <strong>{displayCustomerName(selectedAdminEntry.customer)}</strong>
-          <p>{selectedAdminEntry.agentName} • {formatVisitWhen(selectedAdminEntry)}</p>
-          <small>Read-only view. Edit from the original field form only if correction is needed.</small>
+        <div className="admin-detail-back-wrap">
+          <button type="button" className="admin-detail-back" onClick={onBack}><ChevronLeft size={17} /> {backLabel}</button>
         </div>
+        <div className="admin-entry-detail-head">
+          <span className="admin-entry-type-label">{selectedAdminEntry.type}</span>
+          <strong>{displayCustomerName(selectedAdminEntry.customer)}</strong>
+          <p>{entryDetailValue(selectedAdminEntry, 'Contact person') || 'Contact not added'} • {selectedAdminEntry.type === 'Sales' ? (entryDetailValue(selectedAdminEntry, 'Brand / model') || entryDetailValue(selectedAdminEntry, 'Product type') || 'Product not added') : (entryDetailValue(selectedAdminEntry, 'Equipment') || 'Equipment not added')}</p>
+          <small>{selectedAdminEntry.type} agent: {selectedAdminEntry.agentName}</small>
+        </div>
+        {selectedAdminEntry.agentId === session?.agentId && (
+          <button type="button" className="primary-action admin-entry-edit-action" onClick={() => openSavedVisitEntry(selectedAdminEntry)}>
+            Edit this entry
+          </button>
+        )}
         <div className="admin-entry-detail-grid">
-          {(selectedAdminEntry.detailRows?.length ? selectedAdminEntry.detailRows : [
-            { label: 'Submitted by', value: selectedAdminEntry.agentName },
+          {(detailRowsWithoutAdminClutter(selectedAdminEntry).length ? detailRowsWithoutAdminClutter(selectedAdminEntry) : [
             { label: 'Status', value: selectedAdminEntry.status },
             { label: 'Next', value: selectedAdminEntry.next },
           ]).map((row) => (
-            <div key={`${row.label}-${row.value}`}><span>{row.label}</span><strong>{row.value}</strong></div>
+            <div key={`${row.label}-${row.value}`}><span>{row.label}</span><strong>{displayDetailValue(row)}</strong></div>
           ))}
         </div>
+        {loadingAdminEntryDetailId === selectedAdminEntry.id && <div className="empty-state">Loading photo/proof details…</div>}
         <PhotoViewer payload={selectedAdminEntry.photoPayload} label={`${selectedAdminEntry.customer} ${selectedAdminEntry.type}`} />
       </section>
     ) : null;
@@ -2707,31 +3483,33 @@ function App() {
                     </button>
                   ))}
                 </div>
-                {expandedAdminMetric && (
-                  <section className="admin-metric-expanded-card" aria-label={`${adminOverviewMetrics.find((metric) => metric.key === expandedAdminMetric)?.label ?? 'Overview'} details`}>
-                    <div className="admin-report-heading"><label>{adminOverviewMetrics.find((metric) => metric.key === expandedAdminMetric)?.label}</label><span>{overviewMetricDetails[expandedAdminMetric].length}</span></div>
+                {expandedAdminMetric && (() => {
+                  const metric = adminOverviewMetrics.find((item) => item.key === expandedAdminMetric);
+                  const detailRows = overviewMetricDetails[expandedAdminMetric];
+                  const shownDetailRows = expandedAdminMetric === 'checkedIn' ? detailRows : detailRows.slice(0, 4);
+                  return (
+                  <section className="admin-metric-expanded-card" aria-label={`${metric?.label ?? 'Overview'} details`}>
+                    <div className="admin-report-heading"><label>{expandedAdminMetric === 'checkedIn' ? 'Attendance today' : metric?.label}</label><span>{expandedAdminMetric === 'checkedIn' ? `${checkedInCount} active` : detailRows.length}</span></div>
                     <div className="admin-metric-expanded-list">
-                      {overviewMetricDetails[expandedAdminMetric].slice(0, 4).map((detail) => <span key={detail}>{detail}</span>)}
+                      {expandedAdminMetric === 'visits' && overviewVisibleEntries.length
+                        ? overviewVisibleEntries.map((entry) => (
+                          <button key={entry.id} type="button" className="admin-overview-entry-button" onClick={() => openOverviewEntryDetail(entry)}>
+                            <strong>{displayCustomerName(entry.customer)}</strong>
+                            <small>{entry.agentName} • {entry.type}</small>
+                            <em>Open</em>
+                          </button>
+                        ))
+                        : expandedAdminMetric === 'checkedIn' && adminAttendanceOverviewDetails.length
+                        ? adminAttendanceOverviewDetails.map((detail) => (
+                          <span key={detail.key}>{detail.detail} <span className={detail.workModeLabel === 'Mode not recorded' ? 'chip chip-info' : 'chip chip-soft'}>{detail.workModeLabel}</span></span>
+                        ))
+                        : shownDetailRows.map((detail) => <span key={detail}>{detail}</span>)}
                     </div>
-                    {expandedAdminMetric === 'visits' && overviewVisibleEntries.length > 0 && <button type="button" className="secondary-action admin-view-all-entries" onClick={() => openAdminTab('agents')}>Open submitted work</button>}
                     {expandedAdminMetric === 'leave' && adminLeaveRequests.some((request) => request.status === 'pending') && <button type="button" className="secondary-action admin-view-all-entries" onClick={() => openAdminTab('approvals')}>Open approvals</button>}
                     {expandedAdminMetric === 'followUps' && followUpCount > 0 && <button type="button" className="secondary-action admin-view-all-entries" onClick={() => openAdminTab('agents')}>Open agents</button>}
                   </section>
-                )}
-                <section className="admin-office-actions-card admin-today-priority-card">
-                  <div className="admin-report-heading"><label>Latest submitted work</label><span>{teamVisitEntries.length} forms</span></div>
-                  <div className="admin-priority-list">
-                    {overviewVisibleEntries.length ? overviewVisibleEntries.map((entry) => (
-                      <button key={`overview-entry-${entry.id}`} type="button" className="admin-priority-row admin-click-row" onClick={() => { setSelectedAdminEntryId(entry.id); setSelectedAdminEntryReturnTab('agents'); setAdminTab('agents'); }}>
-                        <span className={toneClass[entry.tone]}>{entry.type}</span>
-                        <div className="admin-priority-main"><strong>{displayCustomerName(entry.customer)}</strong><small>{entry.agentName} • {formatVisitWhen(entry)} • {entry.status}</small></div>
-                        <em>Open</em>
-                      </button>
-                    )) : (
-                      <div className="empty-state">Submitted Sales and Service forms will appear here.</div>
-                    )}
-                  </div>
-                </section>
+                  );
+                })()}
                 {adminTodayPriorities.length > 0 && (
                   <section className="admin-office-actions-card admin-today-priority-card">
                     <div className="admin-report-heading"><label>Needs office action</label><span>{adminTodayPriorities.length}</span></div>
@@ -2757,7 +3535,7 @@ function App() {
           <>
             <section className="admin-monitor-hero-card">
               <div>
-                <p>Bloom live view</p>
+                <p>{isPublicMonitorPage ? 'Periwinkle public monitor • no company login needed' : 'Bloom live view'}</p>
                 <strong>{seriousClientErrors.length ? 'Needs attention' : 'All clear now'}</strong>
                 <span>{lastMonitorEvent ? `Last activity: ${formatMonitorWhen(lastMonitorEvent.createdAt)}` : 'No login or error activity recorded yet.'}</span>
               </div>
@@ -2814,47 +3592,64 @@ function App() {
         )}
 
         {showFieldEntry && (
-          <>
-            <section className="admin-action-card admin-field-entry-card">
-              <label>Field entry</label>
-              <strong>Submit your own field update</strong>
-              <p>Sales and Service entries saved here stay under this admin login.</p>
-              <div className="visit-action-grid admin-field-entry-grid">
-                <button type="button" className="visit-action-card" onClick={() => goToScreen('sales', { newSalesVisit: true })}><span className="visit-action-icon"><Plus size={19} /></span><strong>Sales entry</strong><small>Customer visit, quote, follow-up</small></button>
-                <button type="button" className="visit-action-card" onClick={() => goToScreen('service', { newServiceVisit: true })}><span className="visit-action-icon service-icon"><ClipboardList size={18} /></span><strong>Service entry</strong><small>Machine issue, parts, closure</small></button>
-              </div>
-            </section>
-            <section className="admin-report-list-card admin-field-entry-recent" aria-label="Saved field entries">
-              <div className="admin-report-heading"><label>Field entries</label><span>{visibleAdminFieldEntries.length} shown</span></div>
-              <div className="admin-field-entry-filter" role="group" aria-label="Field entry list filter">
-                <button type="button" className={adminFieldEntryScope === 'mine' ? 'admin-field-entry-filter-active' : ''} onClick={() => setAdminFieldEntryScope('mine')}>My entries</button>
-                <button type="button" className={adminFieldEntryScope === 'all' ? 'admin-field-entry-filter-active' : ''} onClick={() => setAdminFieldEntryScope('all')}>All entries</button>
-              </div>
-              <label className="search-card visit-search-card admin-field-entry-search">
-                <Search size={16} />
-                <input aria-label="Search field entries" value={adminFieldEntrySearch} onChange={(event) => setAdminFieldEntrySearch(event.target.value)} placeholder="Search customer or agent" />
-              </label>
-              {visibleAdminFieldEntries.length ? visibleAdminFieldEntries.slice(0, 10).map((entry) => (
-                <article key={`admin-field-entry-${entry.id}`} className="admin-field-entry-item-card">
-                  <div className="admin-field-entry-item-main">
-                    <strong>{displayCustomerName(entry.customer)}</strong>
-                    <p>{entry.agentName}</p>
-                    <small>{entry.type} • {formatVisitWhen(entry)} • {entry.status}</small>
-                  </div>
-                  <span className={toneClass[entry.tone]}>{entry.type}</span>
-                  <PhotoViewer payload={entry.photoPayload} label={`${displayCustomerName(entry.customer)} ${entry.type}`} />
-                </article>
-              )) : (
-                <div className="empty-state">No matching entries found.</div>
-              )}
-            </section>
-          </>
+          selectedAdminEntry && selectedAdminEntryReturnTab === 'fieldEntry' ? (
+            renderAdminEntryDetail('Back to field entries', closeAdminEntryDetail)
+          ) : (
+            <>
+              <section className="admin-action-card admin-field-entry-card">
+                <label>Field entry</label>
+                <strong>Submit your own field update</strong>
+                <p>Sales and Service entries saved here stay under this admin login.</p>
+                <div className="visit-action-grid admin-field-entry-grid">
+                  <button type="button" className="visit-action-card" onClick={() => goToScreen('sales', { newSalesVisit: true })}><span className="visit-action-icon"><Plus size={19} /></span><strong>Sales entry</strong><small>Customer visit, quote, follow-up</small></button>
+                  <button type="button" className="visit-action-card" onClick={() => goToScreen('service', { newServiceVisit: true })}><span className="visit-action-icon service-icon"><ClipboardList size={18} /></span><strong>Service entry</strong><small>Machine issue, parts, closure</small></button>
+                </div>
+              </section>
+              <section className="admin-report-list-card admin-field-entry-recent" aria-label="Saved field entries">
+                <div className="admin-report-heading"><label>Field entries</label><span>{displayedAdminFieldEntries.length} of {visibleAdminFieldEntries.length} shown</span></div>
+                <div className="admin-field-entry-filter" role="group" aria-label="Field entry list filter">
+                  <button type="button" className={adminFieldEntryScope === 'mine' ? 'admin-field-entry-filter-active' : ''} onClick={() => { setAdminFieldEntryScope('mine'); setShowAllAdminFieldEntries(false); }}>My entries</button>
+                  <button type="button" className={adminFieldEntryScope === 'all' ? 'admin-field-entry-filter-active' : ''} onClick={() => { setAdminFieldEntryScope('all'); setShowAllAdminFieldEntries(false); }}>All entries</button>
+                </div>
+                <div className="admin-field-entry-filter admin-field-entry-type-filter" role="group" aria-label="Field entry type filter">
+                  <button type="button" className={adminFieldEntryTypeFilter === 'all' ? 'admin-field-entry-filter-active' : ''} onClick={() => { setAdminFieldEntryTypeFilter('all'); setShowAllAdminFieldEntries(false); }}>All types</button>
+                  <button type="button" className={adminFieldEntryTypeFilter === 'Sales' ? 'admin-field-entry-filter-active' : ''} onClick={() => { setAdminFieldEntryTypeFilter('Sales'); setShowAllAdminFieldEntries(false); }}>Sales</button>
+                  <button type="button" className={adminFieldEntryTypeFilter === 'Service' ? 'admin-field-entry-filter-active' : ''} onClick={() => { setAdminFieldEntryTypeFilter('Service'); setShowAllAdminFieldEntries(false); }}>Service</button>
+                </div>
+                <label className="search-card visit-search-card admin-field-entry-search">
+                  <Search size={16} />
+                  <input aria-label="Search field entries" value={adminFieldEntrySearch} onChange={(event) => { setAdminFieldEntrySearch(event.target.value); setShowAllAdminFieldEntries(false); }} placeholder="Search customer or agent" />
+                </label>
+                {visibleAdminFieldEntries.length ? (
+                  <>
+                    {displayedAdminFieldEntries.map((entry) => (
+                      <button key={`admin-field-entry-${entry.id}`} type="button" className="admin-field-entry-item-card admin-click-row" onClick={() => openAdminEntryDetail(entry, 'fieldEntry')}>
+                        <div className="admin-field-entry-item-main">
+                          <strong>{displayCustomerName(entry.customer)}</strong>
+                          <p>{entry.agentName}</p>
+                          <small>{entry.type} • {formatVisitWhen(entry)} • {entry.status}</small>
+                        </div>
+                        <span className="admin-neutral-detail-action">View details</span>
+                      </button>
+                    ))}
+                    {hiddenAdminFieldEntryCount > 0 && (
+                      <button type="button" className="secondary-action admin-field-entry-show-all" onClick={() => setShowAllAdminFieldEntries(true)}>
+                        Show all {visibleAdminFieldEntries.length} entries
+                      </button>
+                    )}
+                  </>
+                ) : (
+                  <div className="empty-state">No matching entries found.</div>
+                )}
+              </section>
+            </>
+          )
         )}
 
         {showApprovals && (
           activeApproval ? (
             <section className="admin-approval-detail-card">
-              <button type="button" className="admin-detail-back" onClick={() => setSelectedAdminApproval(null)}>
+              <button type="button" className="admin-detail-back" onClick={() => closeAdminApprovalDetail()}>
                 <ChevronLeft size={16} /> Back to approvals
               </button>
               <span className={activeApproval.chipClass}>{activeApproval.label}</span>
@@ -2898,53 +3693,86 @@ function App() {
           <>
             {adminAgentsView === 'list' && (
               <>
-                {selectedAdminEntry && selectedAdminEntryReturnTab === 'agents' ? (
-                  renderAdminEntryDetail('Back to entries', () => setSelectedAdminEntryId(null))
+                {selectedAgentActivityRow ? (
+                  <section className="admin-agent-detail-card" aria-label="Agent details">
+                    <button type="button" className="admin-detail-back" onClick={() => closeAdminAgentDetail()}><ChevronLeft size={16} /> Back to agents</button>
+                    <div className="admin-seat-profile-head admin-agent-detail-head">
+                      <span className="profile-avatar"><UserRound size={22} /></span>
+                      <div>
+                        <p>{selectedAgentActivityRow.role}</p>
+                        <strong>{selectedAgentActivityRow.name}</strong>
+                        <span>{selectedAgentActivityRow.status === 'Ready' ? 'No immediate check needed' : 'Needs admin check'}</span>
+                      </div>
+                    </div>
+                    <section className="admin-agent-detail-section">
+                      <div className="admin-report-heading"><label>Today attendance</label><span className={selectedAgentActivityRow.attendance === 'checked in' ? 'chip chip-soft' : selectedAgentActivityRow.attendance === 'not checked in' ? 'chip chip-warning' : 'chip chip-info'}>{selectedAgentActivityRow.attendance}</span></div>
+                      <div className="profile-info-card admin-seat-info-grid admin-agent-detail-grid">
+                        <div><span>Check-in</span><strong>{formatAttendanceTime(selectedAgentActivityRow.attendanceCheckInTime)}</strong></div>
+                        <div><span>Check-out</span><strong>{selectedAgentActivityRow.attendance === 'checked in' ? 'Still checked in' : selectedAgentActivityRow.attendanceAutoCheckedOut ? `Auto checked out ${formatAttendanceTime(selectedAgentActivityRow.attendanceCheckOutTime)}` : formatAttendanceTime(selectedAgentActivityRow.attendanceCheckOutTime)}</strong></div>
+                        <div><span>Work mode</span><strong>{workModeForAgent(selectedAgentActivityRow)}</strong></div>
+                        <div><span>Sessions</span><strong>{selectedAgentActivityRow.attendanceSessionCount || 0} today</strong></div>
+                      </div>
+                    </section>
+                    <section className="admin-agent-detail-section">
+                      <div className="admin-report-heading"><label>Activity summary</label><span>Today</span></div>
+                      <div className="profile-info-card admin-seat-info-grid admin-agent-detail-grid">
+                        <div><span>Sales visits</span><strong>{selectedAgentActivityRow.salesVisitCount}</strong></div>
+                        <div><span>Service visits</span><strong>{selectedAgentActivityRow.serviceVisitCount}</strong></div>
+                        <div><span>Follow-ups</span><strong>{selectedAgentActivityRow.followUpsDue.length ? `${selectedAgentActivityRow.followUpsDue.length} pending` : 'None'}</strong></div>
+                        <div><span>Last active</span><strong>{lastActivityForAgent(selectedAgentActivityRow)}</strong></div>
+                      </div>
+                      {selectedAgentActivityRow.followUpsDue.length > 0 && (
+                        <div className="admin-agent-followup-list">
+                          {selectedAgentActivityRow.followUpsDue.slice(0, 3).map((detail) => <span key={detail}>{detail}</span>)}
+                        </div>
+                      )}
+                      <button type="button" className="primary-action admin-agent-field-entry-link" onClick={() => openAgentEntriesInFieldEntry(selectedAgentActivityRow)}>View this agent’s entries</button>
+                    </section>
+                  </section>
                 ) : (
                   <>
-                    <section className="admin-agent-snapshot-card admin-agent-snapshot-top" aria-label="Team summary">
-                      <div><strong>{checkedInCount}</strong><span>Checked in</span></div>
-                      <div><strong>{needsReviewCount}</strong><span>Need check</span></div>
-                      <div><strong>{followUpCount}</strong><span>Follow-ups</span></div>
-                    </section>
                     <section className="admin-agents-compact-head">
                       <div>
-                        <p>Submitted entries</p>
-                        <span>Review submitted Sales and Service forms. Use filters only when needed.</span>
+                        <p>Team today</p>
+                        <span>Agent status, attendance, work mode, and follow-ups. Submitted forms stay under Field Entry.</span>
                       </div>
                     </section>
-                    <section className="admin-entry-filter-card" aria-label="Submitted entry filters">
-                      <label><span>Agent</span><select aria-label="Entry agent filter" value={adminEntryAgentFilter} onChange={(event) => { setAdminEntryAgentFilter(event.target.value); setShowAllAdminEntries(false); }}>
-                        <option value="all">All entries</option>
-                        {adminRows.map((row) => <option key={row.id} value={row.id}>{row.name}</option>)}
-                      </select></label>
-                      <label><span>Type</span><select aria-label="Entry type filter" value={adminEntryTypeFilter} onChange={(event) => { setAdminEntryTypeFilter(event.target.value as AdminVisitTypeFilter); setShowAllAdminEntries(false); }}>
-                        <option value="all">All</option>
-                        <option value="Sales">Sales</option>
-                        <option value="Service">Service</option>
-                      </select></label>
+                    <section className="admin-agent-snapshot-card admin-agent-snapshot-top" aria-label="Team summary">
+                      <button type="button" className={adminAgentFilter === 'checkedIn' ? 'admin-agent-snapshot-button admin-agent-snapshot-button-active' : 'admin-agent-snapshot-button'} aria-pressed={adminAgentFilter === 'checkedIn'} onClick={() => selectAdminAgentFilter('checkedIn')}><strong>{checkedInCount}</strong><span>Checked in</span></button>
+                      <button type="button" className={adminAgentFilter === 'notCheckedIn' ? 'admin-agent-snapshot-button admin-agent-snapshot-button-active' : 'admin-agent-snapshot-button'} aria-pressed={adminAgentFilter === 'notCheckedIn'} onClick={() => selectAdminAgentFilter('notCheckedIn')}><strong>{notCheckedInCount}</strong><span>Not in</span></button>
+                      <button type="button" className={adminAgentFilter === 'checkedOut' ? 'admin-agent-snapshot-button admin-agent-snapshot-button-active' : 'admin-agent-snapshot-button'} aria-pressed={adminAgentFilter === 'checkedOut'} onClick={() => selectAdminAgentFilter('checkedOut')}><strong>{checkedOutCount}</strong><span>Checked out</span></button>
                     </section>
-                    <section className="admin-report-list-card admin-agent-activity-list admin-entry-list-card">
+                    <section className="admin-agent-filter-card" aria-label="Agent filters">
+                      <div className="admin-report-heading"><label>Filters</label><span>{visibleAgentActivityRows.length} shown</span></div>
+                      <div className="admin-agent-filter-pills" role="group" aria-label="Agent status filters">
+                        {agentFilterOptions.map((option) => (
+                          <button key={option.key} type="button" className={adminAgentFilter === option.key ? 'admin-agent-filter-pill admin-agent-filter-pill-active' : 'admin-agent-filter-pill'} aria-pressed={adminAgentFilter === option.key} onClick={() => selectAdminAgentFilter(option.key)}>{option.label}</button>
+                        ))}
+                      </div>
+                    </section>
+                    <section className="admin-report-list-card admin-agent-activity-list admin-people-list-card" aria-label="Agent list">
                       <div className="admin-report-heading">
-                        <label>{showAllAdminEntries ? 'All submitted entries' : 'Recent 5 entries'}</label>
-                        <span>{visibleTeamEntries.length} total</span>
+                        <label>Agents</label>
+                        <span>{visibleAgentActivityRows.length} shown</span>
                       </div>
-                      {shownTeamEntries.length ? shownTeamEntries.map((entry) => (
-                        <button key={entry.id} type="button" className="admin-field-entry-item-card admin-agent-entry-item-card admin-click-row" onClick={() => { setSelectedAdminEntryId(entry.id); setSelectedAdminEntryReturnTab('agents'); }}>
-                          <div className="admin-field-entry-item-main">
-                            <strong>{displayCustomerName(entry.customer)}</strong>
-                            <p>{entry.agentName}</p>
-                            <small>{entry.type} • {formatVisitWhen(entry)} • {entry.status}</small>
-                          </div>
-                          <span className={toneClass[entry.tone]}>View details</span>
-                        </button>
-                      )) : (
-                        <div className="empty-state">No submitted entries match this filter yet.</div>
-                      )}
-                      {visibleTeamEntries.length > 5 && (
-                        <button type="button" className="secondary-action admin-view-all-entries" onClick={() => setShowAllAdminEntries((current) => !current)}>
-                          {showAllAdminEntries ? 'Show recent 5' : 'View all entries'}
-                        </button>
+                      {visibleAgentActivityRows.length ? visibleAgentActivityRows.map((row) => {
+                        const workModeLabel = workModeForAgent(row);
+                        return (
+                          <button key={row.id} type="button" className="admin-agent-person-card admin-click-row" onClick={() => openAdminAgentDetail(row.id)}>
+                            <div className="admin-agent-person-main">
+                              <strong>{row.name}</strong>
+                              <p>{row.role}</p>
+                              <small>{row.attendance === 'checked in' ? `In ${formatAttendanceTime(row.attendanceCheckInTime)}` : row.attendance === 'checked out' ? row.attendanceAutoCheckedOut ? `Auto checked out ${formatAttendanceTime(row.attendanceCheckOutTime)}` : `Out ${formatAttendanceTime(row.attendanceCheckOutTime)}` : 'No check-in today'}</small>
+                            </div>
+                            <div className="admin-agent-person-meta">
+                              <span className={row.attendance === 'checked in' ? 'chip chip-soft' : row.attendance === 'not checked in' ? 'chip chip-warning' : 'chip chip-info'}>{row.attendance}</span>
+                              <span className={workModeLabel === 'Mode not recorded' ? 'chip chip-info' : 'chip chip-soft'}>{workModeLabel}</span>
+                              <small>{row.salesVisitCount + row.serviceVisitCount} visits today • {row.followUpsDue.length} follow-ups</small>
+                            </div>
+                          </button>
+                        );
+                      }) : (
+                        <div className="empty-state">No agents match this filter.</div>
                       )}
                     </section>
                   </>
@@ -2955,7 +3783,7 @@ function App() {
 
             {adminAgentsView === 'profile' && selectedSeat && (
               <section className="admin-seat-profile-card">
-                <button type="button" className="admin-detail-back" onClick={() => setAdminAgentsView('list')}><ChevronLeft size={16} /> Back to profiles</button>
+                <button type="button" className="admin-detail-back" onClick={() => closeAdminProfileDetail()}><ChevronLeft size={16} /> Back to profiles</button>
                 <div className="admin-seat-profile-head">
                   <span className="profile-avatar"><UserRound size={22} /></span>
                   <div><p>{roleTextForAdminSeat(selectedSeat.role)}</p><strong>{selectedSeat.name}</strong><span>{selectedSeat.employeeId} • {selectedSeat.territory}</span></div>
@@ -2976,7 +3804,7 @@ function App() {
 
             {adminAgentsView === 'invite' && selectedSeat && (
               <section className="admin-invite-preview-card">
-                <button type="button" className="admin-detail-back" onClick={() => setAdminAgentsView('list')}><ChevronLeft size={16} /> Back to profiles</button>
+                <button type="button" className="admin-detail-back" onClick={() => closeAdminProfileDetail()}><ChevronLeft size={16} /> Back to profiles</button>
                 <span className="chip chip-soft">Setup link ready</span>
                 <div className="admin-invite-mail">
                   <p>For: {selectedSeat.email}</p>
@@ -2995,7 +3823,7 @@ function App() {
           <>
             {adminAgentsView === 'add' ? (
               <section className="admin-seat-form-card">
-                <button type="button" className="admin-detail-back" onClick={() => setAdminAgentsView('list')}><ChevronLeft size={16} /> Back to profiles</button>
+                <button type="button" className="admin-detail-back" onClick={() => closeAdminProfileDetail()}><ChevronLeft size={16} /> Back to profiles</button>
                 <div className="admin-seat-form-heading"><label>New profile</label><strong>Add pilot profile</strong><span>Pilot users should normally be pre-created with unique passwords. Use this only if another employee must be added.</span></div>
                 <label className="field-card"><span>Agent name</span><input aria-label="New agent name" value={newSeatName} onChange={(event) => setNewSeatName(event.target.value)} /></label>
                 <label className="field-card"><span>Employee ID</span><input aria-label="New employee ID" value={newSeatEmployeeId} onChange={(event) => setNewSeatEmployeeId(event.target.value)} /></label>
@@ -3027,7 +3855,7 @@ function App() {
                 <section className="admin-report-list-card admin-agent-activity-list">
                   <div className="admin-report-heading profile-list-heading"><label>Team profiles</label><button type="button" className="profile-add-button" disabled onClick={() => setScreenNotice({ title: 'Pilot users pre-loaded', message: 'New pilot users are created outside the frontend with unique passwords for each registered email.', tone: 'info' })}><Plus size={16} /> Pilot users pre-loaded</button></div>
                   {adminSeats.map((seat) => (
-                    <button key={seat.id} type="button" className="admin-report-row admin-click-row" onClick={() => { setSelectedAdminSeatId(seat.id); setAdminAgentsView('profile'); }}>
+                    <button key={seat.id} type="button" className="admin-report-row admin-click-row" onClick={() => openAdminSeatProfile(seat.id)}>
                       <div className="admin-report-row-main"><strong>{seat.name}</strong><p>{roleTextForAdminSeat(seat.role)} • {seat.employeeId}</p><small>{seat.email}</small></div>
                       <span className={seat.status === 'active' ? 'chip chip-soft' : seat.status === 'invited' ? 'chip chip-info' : 'chip chip-warning'}>{statusTextForSeat(seat.status)}</span>
                     </button>
@@ -3041,7 +3869,7 @@ function App() {
         {showReports && (
           <>
             {adminTab === 'adminReports' && selectedAdminEntry && selectedAdminEntryReturnTab === 'adminReports' ? (
-              renderAdminEntryDetail('Back to reports', () => setSelectedAdminEntryId(null))
+              renderAdminEntryDetail('Back to reports', closeAdminEntryDetail)
             ) : adminTab === 'adminReports' && (
               <section className="admin-report-list-card admin-report-setup-card">
                 <div className="admin-report-scope-row">
@@ -3061,8 +3889,7 @@ function App() {
 
                   </select>
                 </div>
-                <button type="button" className="primary-action single-report-generate" onClick={generateAdminReport}>Generate report</button>
-                <button type="button" className="secondary-action single-report-generate" onClick={downloadAdminPdf}>Download PDF</button>
+                <button type="button" className="primary-action single-report-generate" onClick={downloadAdminPdf}>Download PDF</button>
 
                 <section className="admin-report-summary-card admin-owner-report-summary">
                   <div className="admin-report-heading"><label>Today’s report</label><span>{period.label}</span></div>
@@ -3136,7 +3963,7 @@ function App() {
 
           <header className="phone-header">
             <div>
-              {screen === 'admin' && adminTab !== 'overview' && <button type="button" className="back-button" onClick={() => openAdminTab('overview')}><ChevronLeft size={17} /> Overview</button>}
+              {screen === 'admin' && adminTab !== 'overview' && !selectedAdminEntryId && !isPublicMonitorPage && <button type="button" className="back-button" onClick={() => openAdminTab('overview')}><ChevronLeft size={17} /> Overview</button>}
               {screen !== 'home' && screen !== 'login' && screen !== 'admin' && (
                 <button
                   type="button"
@@ -3147,14 +3974,16 @@ function App() {
                 </button>
               )}
               <p className="muted">{screen === 'login' ? 'Welcome' : timeGreeting()}</p>
-              <h2>{screen === 'login' ? 'CrystalBio' : screen === 'admin' ? (session?.role === 'admin' ? session.agentName : 'Admin') : session?.agentName ?? 'Field agent'}</h2>
+              <h2>{screen === 'login' ? 'CrystalBio' : screen === 'admin' ? (isPublicMonitorPage ? 'Live monitor' : session?.role === 'admin' ? session.agentName : 'Admin') : session?.agentName ?? 'Field agent'}</h2>
             </div>
-            {screen === 'admin' ? (
+            {screen === 'admin' && !isPublicMonitorPage ? (
               <div className="header-action-cluster">
                 <button type="button" className="avatar avatar-button" aria-label={adminTab === 'profiles' ? 'Admin profile selected' : 'Open admin profile'} onClick={() => openAdminTab('profiles')}><UsersRound size={21} /></button>
               </div>
             ) : (
-              <button type="button" className="avatar avatar-button" aria-label={screen === 'profile' ? 'Profile selected' : 'Open profile'} disabled={screen === 'login'} onClick={() => goToScreen('profile')}><UserRound size={21} /></button>
+              screen !== 'admin' ? (
+                <button type="button" className="avatar avatar-button" aria-label={screen === 'profile' ? 'Profile selected' : 'Open profile'} disabled={screen === 'login'} onClick={() => goToScreen('profile')}><UserRound size={21} /></button>
+              ) : null
             )}
           </header>
 
@@ -3169,7 +3998,20 @@ function App() {
             </div>
           )}
 
-          {screen !== 'login' && <nav className={screen === 'admin' ? 'bottom-nav admin-bottom-nav' : 'bottom-nav'} aria-label={screen === 'admin' ? 'Admin navigation' : 'Agent navigation'}>
+          {photoPreview && (
+            <div className="photo-preview-modal" role="dialog" aria-modal="true" aria-label="Photo preview">
+              <div className="photo-preview-modal-card">
+                <button type="button" className="photo-preview-close" onClick={() => setPhotoPreview(null)} aria-label="Close photo preview"><X size={17} /> Close</button>
+                <img src={photoPreview.dataUrl} alt={`${photoPreview.label}: ${photoPreview.fileName}`} />
+                <div className="photo-preview-caption">
+                  <strong>{photoPreview.fileName}</strong>
+                  {photoPreview.note && <span>{photoPreview.note}</span>}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {screen !== 'login' && !isPublicMonitorPage && <nav className={screen === 'admin' ? 'bottom-nav admin-bottom-nav' : 'bottom-nav'} aria-label={screen === 'admin' ? 'Admin navigation' : 'Agent navigation'}>
             {screen === 'admin' ? (
               [
                 { label: 'Overview', tab: 'overview' as AdminTab, icon: Home },
