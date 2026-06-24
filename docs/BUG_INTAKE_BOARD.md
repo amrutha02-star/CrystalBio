@@ -54,10 +54,11 @@ For live-user problems, Bloom should include:
 - Actual behavior: Agent-side report download is not downloading a PDF. Source check shows the agent report area still has frontend-only report summary text and a `Download report` button, while the existing real PDF endpoint is currently admin report PDF focused.
 - Expected behavior: Agent `Download report` should produce a real PDF for the selected report type/period using saved backend data for that logged-in agent, or the button should not promise a download. Since Amrutha confirmed it needs fixing, implement the real PDF path.
 - Severity: High for field-agent reporting usability
-- Status: Fixed in source by Periwinkle; ready for Bloom retest after deploy.
+- Status: Deployed live by Periwinkle on 2026-06-24 as version `20260624031243`; ready for Bloom retest.
 - Iris restrictions: Smallest safe fix only; do not redesign Agent Reports; preserve the existing one-flow report setup; do not change admin PDF behavior; use the logged-in agent session and saved backend data; add/update focused tests; verify actual PDF response/download, not only button text; deploy only in the approved night/safe window unless Amrutha says urgent.
 - Bloom retest required: Agent login → Reports → choose Attendance / Visit / Combined and period → Download report; verify a PDF downloads/opens, data belongs to the logged-in Bloom agent, refresh/session still works, and no console/API errors.
 - Source verification: `npm test -- --run src/backend/crystalBioHttpServer.test.ts` passed 7/7; full `npm test -- --run` passed 105/105; `npm run build` passed; `npm run backend:build` passed. Agent PDF endpoint now uses the logged-in agent report data and keeps admin PDF separate.
+- Live verification: API health OK; live `version.json` returned `20260624031243`; live bundle contains `/agent/reports.pdf`, `Download report`, and `Downloads a real PDF from saved field entries`; Bloom agent `/agent/reports.pdf` returned `200 application/pdf` with `%PDF` content and file size > 1000 bytes. Backend restarted successfully. Backups: `/var/lib/crystalbio/backups/crystalbio-db-before-refresh-pdf-20260624031243.json` and `/var/www/crystalbio.backup-20260624031243-pre-refresh-pdf`.
 
 ### BUG-20260624-018 — Users are asked to log in again too often
 
@@ -68,9 +69,10 @@ For live-user problems, Bloom should include:
 - Actual behavior: Amrutha reports being logged out every day. Live monitor shows repeated `/auth/session` 401 entries, meaning the app opened with a missing/invalid saved session and returned to Login. Current backend code does not intentionally expire sessions daily, and the live DB currently still contains real user sessions, so this needs a focused root-cause check around deploy/restart/cleanup/browser storage behavior.
 - Expected behavior: A valid saved login should survive normal reopen, refresh, nightly backend restart, and frontend deployment. Only explicit logout, inactive account, or approved full reset should force login.
 - Severity: High for daily usability and trust
-- Status: Source hardening added; still needs live/Bloom overnight verification before acceptance.
+- Status: Deployed live by Periwinkle on 2026-06-24 as version `20260624031243`; needs overnight/Bloom verification before acceptance.
 - Recommended next step: Test saved login across live deploy/reopen/backend restart using Bloom accounts; inspect whether session cleanup or frontend validation is clearing valid real sessions; then fix the root cause without changing access rules.
 - Source update: Saved local session is now restored immediately while backend validation runs, instead of showing Login first during validation. Invalid/inactive sessions still clear safely. Verification: App tests/build/backend build passed.
+- Live verification: API health OK; live app version `20260624031243`; Bloom admin login and admin data endpoints returned 200 after backend restart.
 
 ### BUG-20260623-017 — Admin dashboard entry Back goes to wrong place and form inputs zoom on phone
 
@@ -97,10 +99,11 @@ For live-user problems, Bloom should include:
 - Actual behavior: Live API has current data, but an already-open admin screen can stay stale because admin data refresh happens mainly on login, date/filter changes, or same-admin saves. Field Entry/Admin overview do not continuously poll for other agents' new submissions.
 - Expected behavior: Admin operational screens should safely refresh recent team data while open and show clear freshness, without changing the approved mobile design.
 - Severity: High for daily live review confidence
-- Status: Fixed in source; ready for Bloom retest after deploy.
+- Status: Deployed live by Periwinkle on 2026-06-24 as version `20260624031243`; ready for Bloom retest.
 - Verification so far: Live API health OK; live app version `20260623020524` at first report, later `20260623170035` after unrelated Back/zoom deploy. Live backend data is present and API response is fast: on 2026-06-24, Bloom admin API checks returned admin report in ~29 ms, Field Entry team list in ~44 ms, agents in ~31 ms, and leave requests in ~30 ms. This points to frontend initial-load/refresh behavior, not backend slowness or data loss.
 - Recommended next step: Fix admin screens so data appears immediately after saved-login validation, shows a clear loading/freshness state while fetching, and safely refreshes Overview / Field Entry / Reports while open; test with Bloom accounts and do not touch unrelated screens.
 - Source update: Admin data now refreshes after saved-login validation and safely refreshes while Admin is open, on visibility/focus, and every 30 seconds while visible. Verification: App tests/build/backend build passed.
+- Live verification: API health OK; live app version `20260624031243`; live bundle contains the visibility-refresh logic and agent PDF markers; Bloom admin `/admin/reports`, `/field-visits?scope=team`, and `/admin/agents` checks returned 200.
 
 ### BUG-20260622-015 — Admin overview Total visits shows older submitted forms and rows do not open
 
