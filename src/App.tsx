@@ -75,7 +75,7 @@ const sampleAttendanceLogs = [
 const screenOptions: AppScreen[] = ['login', 'home', 'visits', 'sales', 'service', 'checkin', 'attendance', 'leave', 'reports', 'profile', 'admin'];
 const sessionStorageKey = 'crystalbio.session.v1';
 const screenStorageKey = 'crystalbio.screen.v1';
-const appBuildVersion = '20260623170035';
+const appBuildVersion = '20260624031243';
 const appVersionReloadKey = 'crystalbio.version-reload.v1';
 const isPublicMonitorPath = () => typeof window !== 'undefined' && window.location.pathname.includes('periwinkle-live-monitor');
 
