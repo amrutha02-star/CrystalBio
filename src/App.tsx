@@ -283,11 +283,10 @@ function App() {
   const [screen, setScreen] = useState<AppScreen>(() => {
     if (isPublicMonitorPage) return 'admin';
     if (hasConfiguredBackend && !initialStoredSession) return 'login';
-    if (mustValidateStoredSession) return 'login';
     return hasConfiguredBackend && initialScreen === 'admin' && initialStoredSession?.role !== 'admin' ? 'login' : initialScreen;
   });
-  const [isAdminSignedIn, setIsAdminSignedIn] = useState(() => !mustValidateStoredSession && (initialStoredSession?.role === 'admin' || (!hasConfiguredBackend && initialScreen === 'admin')));
-  const [session, setSession] = useState<FrontendSession | null>(() => mustValidateStoredSession ? null : initialStoredSession);
+  const [isAdminSignedIn, setIsAdminSignedIn] = useState(() => initialStoredSession?.role === 'admin' || (!hasConfiguredBackend && initialScreen === 'admin'));
+  const [session, setSession] = useState<FrontendSession | null>(() => initialStoredSession);
   const [attendance, setAttendance] = useState<FrontendAttendance | null>(null);
   const [isAttendanceBusy, setIsAttendanceBusy] = useState(false);
   const [currentGps, setCurrentGps] = useState<FrontendGps | null>(null);
@@ -675,6 +674,27 @@ function App() {
     if (session?.role !== 'admin') return;
     void refreshAdminData(session);
   }, [session?.token, session?.role, adminReportFromDate, adminReportToDate]);
+
+  useEffect(() => {
+    if (session?.role !== 'admin' || screen !== 'admin') return undefined;
+    let stopped = false;
+    const refreshVisibleAdminData = () => {
+      if (stopped || (typeof document !== 'undefined' && document.visibilityState === 'hidden')) return;
+      void refreshAdminData(session);
+    };
+    const refreshWhenVisible = () => {
+      if (typeof document === 'undefined' || document.visibilityState === 'visible') refreshVisibleAdminData();
+    };
+    const interval = window.setInterval(refreshVisibleAdminData, 30000);
+    window.addEventListener('focus', refreshVisibleAdminData);
+    document.addEventListener('visibilitychange', refreshWhenVisible);
+    return () => {
+      stopped = true;
+      window.clearInterval(interval);
+      window.removeEventListener('focus', refreshVisibleAdminData);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
+    };
+  }, [session?.token, session?.role, screen, adminReportFromDate, adminReportToDate]);
 
   useEffect(() => {
     if (!isPublicMonitorPage) return undefined;
@@ -2829,31 +2849,29 @@ function App() {
       visits: { title: 'Visit report', helper: 'Sales visits, service visits, follow-ups' },
       combined: { title: 'Combined work report', helper: 'Attendance + visits + leave in one report' },
     };
-    const downloadAgentReport = () => {
-      const reportLines = [
-        'CrystalBio agent report',
-        `${kindLabels[reportKind].title}`,
-        `${activeReport.title} • ${activeReport.range}`,
-        '',
-        `Agent: ${session?.agentName ?? 'Agent'}`,
-        ...(reportKind === 'attendance' || reportKind === 'combined' ? [`Attendance: ${activeReport.attendance}`, `Leave: ${activeReport.leave}`] : []),
-        ...(reportKind === 'visits' || reportKind === 'combined' ? [`Sales visits: ${activeReport.sales}`, `Service visits: ${activeReport.service}`, `Follow-ups pending: ${activeReport.followUps}`] : []),
-      ];
-      const fileName = `crystalbio-my-${reportKind}-report-${formatDateToken(reportFromDate)}-to-${formatDateToken(reportToDate)}.txt`;
-      const blob = new Blob([reportLines.join('\n')], { type: 'text/plain;charset=utf-8' });
-      const downloadUrl = URL.createObjectURL(blob);
-      const downloadLink = document.createElement('a');
-      downloadLink.href = downloadUrl;
-      downloadLink.download = fileName;
-      document.body.appendChild(downloadLink);
-      downloadLink.click();
-      downloadLink.remove();
-      window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 30000);
-      setScreenNotice({
-        title: 'Report downloaded',
-        message: `${kindLabels[reportKind].title} for ${activeReport.range} download started.`,
-        tone: 'success',
-      });
+    const downloadAgentReport = async () => {
+      if (!session) {
+        setScreenNotice({ title: 'Login needed', message: 'Please log in again before downloading the report.', tone: 'warning' });
+        return;
+      }
+      try {
+        const pdfUrl = await crystalBioFrontendApi.downloadAgentReportPdf(session, { fromDate: reportFromDate, toDate: reportToDate, kind: reportKind });
+        const downloadLink = document.createElement('a');
+        downloadLink.href = pdfUrl;
+        downloadLink.download = `crystalbio-my-${reportKind}-report-${formatDateToken(reportFromDate)}-to-${formatDateToken(reportToDate)}.pdf`;
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        downloadLink.remove();
+        if (pdfUrl.startsWith('blob:')) window.setTimeout(() => URL.revokeObjectURL(pdfUrl), 30000);
+        setScreenNotice({
+          title: 'Report downloaded',
+          message: `${kindLabels[reportKind].title} for ${activeReport.range} download started.`,
+          tone: 'success',
+        });
+      } catch (error) {
+        rememberLaunchIssue('Agent report PDF', error);
+        setScreenNotice({ title: 'Report download failed', message: error instanceof Error ? error.message : 'Could not download the report PDF.', tone: 'error' });
+      }
     };
 
     return (
@@ -2887,8 +2905,8 @@ function App() {
           )}
           </div>
 
-          <button type="button" className="primary-action single-report-generate" onClick={downloadAgentReport}>Download report</button>
-          <p className="report-approval-note">Preview uses saved field entries. Office PDF is available from Admin Reports.</p>
+          <button type="button" className="primary-action single-report-generate" onClick={() => void downloadAgentReport()}>Download report</button>
+          <p className="report-approval-note">Downloads a real PDF from saved field entries.</p>
         </section>
 
         <section className="report-preview-card simple-report-preview-card">

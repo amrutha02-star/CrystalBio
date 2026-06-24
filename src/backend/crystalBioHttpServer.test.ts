@@ -156,26 +156,50 @@ describe('CrystalBio HTTP server adapter', () => {
     expect(bytes.length).toBeGreaterThan(1000);
   });
 
-  it('downloads an attendance-only PDF when attendance report type is selected', async () => {
+  it('downloads an agent PDF report scoped to the logged-in field agent', async () => {
     const backend = createCrystalBioBackend();
-    const admin = backend.createAgent({ name: 'Admin User', role: 'admin' });
     const agent = backend.createAgent({ name: 'Rahul', role: 'sales' });
+    const otherAgent = backend.createAgent({ name: 'Other Agent', role: 'sales' });
     backend.checkIn(agent.id, { timestamp: '2026-06-07T09:00:00.000Z', gps });
+    const agentOpportunity = backend.createSalesOpportunity(agent.id, {
+      accountName: 'Agent PDF Lab',
+      requirement: 'Agent PDF check',
+    });
+    backend.addSalesVisitUpdate(agent.id, agentOpportunity.id, {
+      visitDate: '2026-06-07',
+      visitTime: '10:00',
+      note: 'Agent PDF check',
+      nextAction: 'no_follow_up',
+      gps,
+      photos: [],
+    });
+    const otherOpportunity = backend.createSalesOpportunity(otherAgent.id, {
+      accountName: 'Other Agent Lab',
+      requirement: 'Should not be in agent PDF data',
+    });
+    backend.addSalesVisitUpdate(otherAgent.id, otherOpportunity.id, {
+      visitDate: '2026-06-07',
+      visitTime: '11:00',
+      note: 'Should not be in agent PDF data',
+      nextAction: 'no_follow_up',
+      gps,
+      photos: [],
+    });
     const server = createCrystalBioHttpServer(createCrystalBioApi(backend));
     servers.push(server);
     await server.listen(0);
     const address = server.address() as AddressInfo;
     const baseUrl = `http://127.0.0.1:${address.port}`;
-    const login = backend.login(admin.id);
+    const login = backend.login(agent.id);
 
-    const response = await fetch(`${baseUrl}/admin/reports.pdf?fromDate=2026-06-07&toDate=2026-06-08&kind=attendance`, {
+    const response = await fetch(`${baseUrl}/agent/reports.pdf?fromDate=2026-06-07&toDate=2026-06-07&kind=visits`, {
       headers: { authorization: `Bearer ${login.token}` },
     });
     const bytes = Buffer.from(await response.arrayBuffer());
 
     expect(response.status).toBe(200);
     expect(response.headers.get('content-type')).toContain('application/pdf');
-    expect(response.headers.get('content-disposition')).toContain('crystalbio-attendance-report-07062026-to-08062026.pdf');
+    expect(response.headers.get('content-disposition')).toContain('crystalbio-my-visit-report-07062026-to-07062026.pdf');
     expect(bytes.subarray(0, 4).toString('utf8')).toBe('%PDF');
     expect(bytes.length).toBeGreaterThan(1000);
   });

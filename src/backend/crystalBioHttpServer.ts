@@ -84,6 +84,27 @@ export function createCrystalBioHttpServer(api: CrystalBioApiHandler, options: C
         writeJson(response, 200, { status: 'ok' }, allowedOrigin);
         return;
       }
+      if (request.method === 'GET' && (request.url ?? '').startsWith('/agent/reports.pdf')) {
+        const reportUrl = new URL(request.url ?? '/agent/reports.pdf', 'http://127.0.0.1');
+        const requestedKind = reportUrl.searchParams.get('kind');
+        const pdfKind = requestedKind === 'attendance' ? 'attendance' : requestedKind === 'visits' ? 'visits' : 'combined';
+        const apiResponse = api.handle({
+          method: 'GET',
+          path: (request.url ?? '').replace('/agent/reports.pdf', '/agent/reports'),
+          headers: {
+            authorization: request.headers.authorization ?? '',
+          },
+        });
+        if (apiResponse.status !== 200) {
+          writeJson(response, apiResponse.status, apiResponse.body, allowedOrigin);
+          return;
+        }
+        const report = apiResponse.body.report;
+        const pdf = await renderAdminReportPdf(report, { kind: pdfKind });
+        const reportName = pdfKind === 'attendance' ? 'my-attendance-report' : pdfKind === 'visits' ? 'my-visit-report' : 'my-field-report';
+        writePdf(response, `crystalbio-${reportName}-${dateFileToken(report.fromDate)}-to-${dateFileToken(report.toDate)}.pdf`, pdf, allowedOrigin);
+        return;
+      }
       if (request.method === 'GET' && (request.url ?? '').startsWith('/admin/reports.pdf')) {
         const reportUrl = new URL(request.url ?? '/admin/reports.pdf', 'http://127.0.0.1');
         const requestedKind = reportUrl.searchParams.get('kind');

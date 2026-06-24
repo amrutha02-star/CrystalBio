@@ -831,6 +831,96 @@ export function createCrystalBioBackend(initialState?: CrystalBioBackendState) {
       };
     },
 
+    getAgentReport(agentId: string, input: { fromDate: string; toDate: string }): AdminReport {
+      const agent = getAgent(agentId);
+      requireText(input.fromDate, 'Report from date is required');
+      requireText(input.toDate, 'Report to date is required');
+      if (input.fromDate > input.toDate) throw new ValidationError('Report from date must be before to date');
+
+      const reportAgents = [agent];
+      const attendanceInRange = [...attendance.values()].filter((record) =>
+        record.agentId === agent.id && isInRange(record.date, input.fromDate, input.toDate),
+      );
+      const salesVisits = [...sales.values()]
+        .filter((opportunity) => opportunity.ownerAgentId === agent.id || opportunity.visits.some((visit) => visit.agentId === agent.id))
+        .flatMap((opportunity) => opportunity.visits.map((visit) => ({ opportunity, visit })))
+        .filter(({ visit }) => visit.agentId === agent.id && isInRange(visit.visitDate, input.fromDate, input.toDate));
+      const serviceVisits = [...service.values()]
+        .filter((record) => record.ownerAgentId === agent.id || record.visits.some((visit) => visit.agentId === agent.id))
+        .flatMap((record) => record.visits.map((visit) => ({ record, visit })))
+        .filter(({ visit }) => visit.agentId === agent.id && isInRange(visit.visitDate, input.fromDate, input.toDate));
+      const salesVisitUpdates = salesVisits.map(({ visit }) => visit);
+      const serviceVisitUpdates = serviceVisits.map(({ visit }) => visit);
+      const leaveRequestDetails = [...leaveRequests.values()].filter((leave) => leave.agentId === agent.id && leave.fromDate <= input.toDate && leave.toDate >= input.fromDate);
+      const pendingLeaveRequestCount = leaveRequestDetails.filter((leave) => leave.status === 'pending').length;
+      const totalDays = daysInclusive(input.fromDate, input.toDate);
+
+      const attendancePeriodSummaries = reportAgents.map((reportAgent) => {
+        const agentAttendance = attendanceInRange.filter((record) => record.agentId === reportAgent.id);
+        const workedDays = new Set(agentAttendance.map((record) => record.date)).size;
+        const checkedOutDays = new Set(agentAttendance.filter((record) => record.status === 'checked_out').map((record) => record.date)).size;
+        const agentLeave = leaveRequestDetails.filter((leave) => leave.agentId === reportAgent.id);
+        const leaveDaysByStatus = (status: LeaveRequest['status']) => agentLeave
+          .filter((leave) => leave.status === status)
+          .reduce((sum, leave) => sum + overlappingDays(leave.fromDate, leave.toDate, input.fromDate, input.toDate), 0);
+        const leaveAppliedDays = agentLeave.reduce((sum, leave) => sum + overlappingDays(leave.fromDate, leave.toDate, input.fromDate, input.toDate), 0);
+        return {
+          agentId: reportAgent.id,
+          agentName: reportAgent.name,
+          role: reportAgent.role,
+          totalDays,
+          workedDays,
+          checkedOutDays,
+          leaveAppliedDays,
+          approvedLeaveDays: leaveDaysByStatus('approved'),
+          pendingLeaveDays: leaveDaysByStatus('pending'),
+          rejectedLeaveDays: leaveDaysByStatus('rejected'),
+          noUpdateDays: Math.max(0, totalDays - workedDays - leaveAppliedDays),
+        };
+      });
+
+      const agentSummaries = reportAgents.map((reportAgent) => {
+        const agentAttendance = attendanceInRange.filter((record) => record.agentId === reportAgent.id);
+        const agentSalesVisits = salesVisitUpdates.filter((visit) => visit.agentId === reportAgent.id);
+        const agentServiceVisits = serviceVisitUpdates.filter((visit) => visit.agentId === reportAgent.id);
+        return {
+          agentId: reportAgent.id,
+          agentName: reportAgent.name,
+          role: reportAgent.role,
+          date: `${input.fromDate} to ${input.toDate}`,
+          attendanceStatus: (agentAttendance[agentAttendance.length - 1]?.status ?? 'not_checked_in') as DailyAgentReport['attendanceStatus'],
+          salesVisitCount: agentSalesVisits.length,
+          serviceVisitCount: agentServiceVisits.length,
+          followUpsDue: [],
+        };
+      });
+
+      const followUpsDue = salesVisits
+        .filter(({ visit }) => visit.nextAction === 'follow_up_needed' && visit.followUpDate && isInRange(visit.followUpDate, input.fromDate, input.toDate))
+        .map(({ opportunity, visit }) => `Sales follow-up: ${opportunity.accountName} on ${visit.followUpDate}`);
+
+      return {
+        fromDate: input.fromDate,
+        toDate: input.toDate,
+        totals: {
+          checkedInAgents: new Set(attendanceInRange.map((record) => record.agentId)).size,
+          checkedOutAgents: new Set(
+            attendanceInRange.filter((record) => record.status === 'checked_out').map((record) => record.agentId),
+          ).size,
+          salesVisits: salesVisitUpdates.length,
+          serviceVisits: serviceVisitUpdates.length,
+          pendingLeaveRequests: pendingLeaveRequestCount,
+        },
+        agentSummaries,
+        attendancePeriodSummaries,
+        followUpsDue,
+        attendanceDetails: attendanceInRange,
+        salesVisitDetails: salesVisits,
+        serviceVisitDetails: serviceVisits,
+        leaveRequestDetails,
+      };
+    },
+
     getAdminReport(adminAgentId: string, input: { fromDate: string; toDate: string }): AdminReport {
       requireAdmin(adminAgentId);
       requireText(input.fromDate, 'Report from date is required');

@@ -544,6 +544,26 @@ export function createCrystalBioFrontendApi(options: ApiClientOptions = {}) {
       return result.agent;
     },
 
+    async downloadAgentReportPdf(session: FrontendSession, input: { fromDate: string; toDate: string; kind?: 'attendance' | 'visits' | 'combined' }): Promise<string> {
+      if (!baseUrl) return '#demo-pdf-preview';
+      const query = new URLSearchParams({ fromDate: input.fromDate, toDate: input.toDate, kind: input.kind ?? 'combined' }).toString();
+      const response = await fetcher(`${baseUrl}/agent/reports.pdf?${query}`, {
+        method: 'GET',
+        headers: { authorization: `Bearer ${session.token}` },
+      });
+      if (!response.ok) {
+        const contentType = response.headers.get('content-type') ?? '';
+        if (contentType.includes('application/json')) {
+          const body = await response.json() as { error?: string };
+          throw new Error(body.error || 'PDF download failed');
+        }
+        const text = await response.text();
+        throw new Error(text || 'PDF download failed');
+      }
+      const blob = await response.blob();
+      return URL.createObjectURL(blob);
+    },
+
     async downloadAdminReportPdf(session: FrontendSession, input: { fromDate: string; toDate: string; kind?: 'attendance' | 'visits' | 'combined' }): Promise<string> {
       if (!baseUrl) return '#demo-pdf-preview';
       const query = new URLSearchParams({ fromDate: input.fromDate, toDate: input.toDate, kind: input.kind ?? 'combined' }).toString();

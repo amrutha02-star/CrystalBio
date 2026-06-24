@@ -436,6 +436,15 @@ export function createCrystalBioApi(backend: Backend, options: { mailer?: Crysta
           return ok({ leaveRequests: backend.exportState().leaveRequests });
         }
 
+        if (request.method === 'GET' && pathname === '/agent/reports') {
+          const session = sessionFor(request);
+          const report = backend.getAgentReport(session.agentId, {
+            fromDate: query.fromDate ?? '',
+            toDate: query.toDate ?? '',
+          });
+          return ok({ report });
+        }
+
         if (request.method === 'GET' && pathname === '/admin/reports') {
           const session = sessionFor(request);
           const report = backend.getAdminReport(session.agentId, {

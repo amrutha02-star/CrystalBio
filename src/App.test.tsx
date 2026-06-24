@@ -228,7 +228,7 @@ describe('Crystal Bio agent view shell', () => {
     expect(screen.getByText('My reports')).toBeInTheDocument();
     expect(screen.getByText(/Weekly report/)).toBeInTheDocument();
     expect(screen.getAllByText('Preview').length).toBeGreaterThan(0);
-    expect(screen.getByText(/Preview uses saved field entries/i)).toBeInTheDocument();
+    expect(screen.getByText(/Downloads a real PDF from saved field entries/i)).toBeInTheDocument();
     expect(screen.getByText('Attendance report')).toBeInTheDocument();
     expect(screen.getAllByText('Custom dates').length).toBeGreaterThan(0);
     fireEvent.change(screen.getByLabelText('My report preset'), { target: { value: 'custom' } });
