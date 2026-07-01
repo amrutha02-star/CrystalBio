@@ -45,15 +45,44 @@ const readJsonBody = async (request: IncomingMessage, limitBytes: number) => {
 
 const writeCorsHeaders = (response: ServerResponse, allowedOrigin: string) => {
   response.setHeader('access-control-allow-origin', allowedOrigin);
+  response.setHeader('access-control-allow-credentials', 'true');
   response.setHeader('access-control-allow-methods', 'GET,POST,PATCH,OPTIONS');
   response.setHeader('access-control-allow-headers', 'content-type,authorization');
 };
 
-const writeJson = (response: ServerResponse, status: number, body: Record<string, unknown>, allowedOrigin: string) => {
+const writeJson = (
+  response: ServerResponse,
+  status: number,
+  body: Record<string, unknown>,
+  allowedOrigin: string,
+  headers: Record<string, string | string[]> = {},
+) => {
   response.statusCode = status;
   writeCorsHeaders(response, allowedOrigin);
   response.setHeader('content-type', 'application/json');
+  Object.entries(headers).forEach(([key, value]) => response.setHeader(key, value));
   response.end(JSON.stringify(body));
+};
+
+const buildSessionCookie = (token: string, maxAgeSeconds = 60 * 60 * 24 * 90) => [
+  `crystalbio_session=${encodeURIComponent(token)}`,
+  'Path=/',
+  `Max-Age=${maxAgeSeconds}`,
+  'HttpOnly',
+  'Secure',
+  'SameSite=None',
+].join('; ');
+
+const clearSessionCookie = () => buildSessionCookie('', 0);
+
+const readCookieSession = (request: IncomingMessage) => {
+  const cookieHeader = request.headers.cookie;
+  if (!cookieHeader) return '';
+  const cookie = cookieHeader
+    .split(';')
+    .map((part) => part.trim())
+    .find((part) => part.startsWith('crystalbio_session='));
+  return cookie ? decodeURIComponent(cookie.slice('crystalbio_session='.length)) : '';
 };
 
 const writePdf = (response: ServerResponse, fileName: string, body: Buffer, allowedOrigin: string) => {
@@ -92,7 +121,8 @@ export function createCrystalBioHttpServer(api: CrystalBioApiHandler, options: C
           method: 'GET',
           path: (request.url ?? '').replace('/agent/reports.pdf', '/agent/reports'),
           headers: {
-            authorization: request.headers.authorization ?? '',
+            authorization: request.headers.authorization ?? (readCookieSession(request) ? `Bearer ${readCookieSession(request)}` : ''),
+            cookie: request.headers.cookie ?? '',
           },
         });
         if (apiResponse.status !== 200) {
@@ -113,7 +143,8 @@ export function createCrystalBioHttpServer(api: CrystalBioApiHandler, options: C
           method: 'GET',
           path: (request.url ?? '').replace('/admin/reports.pdf', '/admin/reports'),
           headers: {
-            authorization: request.headers.authorization ?? '',
+            authorization: request.headers.authorization ?? (readCookieSession(request) ? `Bearer ${readCookieSession(request)}` : ''),
+            cookie: request.headers.cookie ?? '',
           },
         });
         if (apiResponse.status !== 200) {
@@ -127,15 +158,24 @@ export function createCrystalBioHttpServer(api: CrystalBioApiHandler, options: C
         return;
       }
       const body = await readJsonBody(request, requestLimitBytes);
+      const cookieToken = readCookieSession(request);
       const apiResponse = api.handle({
         method: (request.method ?? 'GET') as ApiRequest['method'],
         path: request.url ?? '/',
         headers: {
-          authorization: request.headers.authorization ?? '',
+          authorization: request.headers.authorization ?? (cookieToken ? `Bearer ${cookieToken}` : ''),
+          cookie: request.headers.cookie ?? '',
         },
         body,
       });
-      writeJson(response, apiResponse.status, apiResponse.body, allowedOrigin);
+      const responseHeaders: Record<string, string | string[]> = {};
+      if (request.method === 'POST' && request.url === '/auth/login' && apiResponse.status === 200 && apiResponse.body.session?.token) {
+        responseHeaders['set-cookie'] = buildSessionCookie(apiResponse.body.session.token);
+      }
+      if (request.method === 'GET' && request.url === '/auth/session' && apiResponse.status === 401 && cookieToken) {
+        responseHeaders['set-cookie'] = clearSessionCookie();
+      }
+      writeJson(response, apiResponse.status, apiResponse.body, allowedOrigin, responseHeaders);
     } catch (error) {
       if (error instanceof RequestBodyError) {
         writeJson(response, error.status, { error: error.message }, allowedOrigin);

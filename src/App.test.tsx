@@ -3,10 +3,12 @@ import { act } from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
+import { crystalBioFrontendApi } from './crystalBioFrontendApi';
 
 describe('Crystal Bio agent view shell', () => {
   beforeEach(() => {
     window.localStorage.clear();
+    document.cookie = 'crystalbio_frontend_session=; Path=/; Max-Age=0; SameSite=Lax';
     window.history.pushState({}, '', '/?screen=home');
     Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: vi.fn(() => 'blob:crystalbio-report') });
     Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: vi.fn() });
@@ -76,6 +78,61 @@ describe('Crystal Bio agent view shell', () => {
     expect(screen.queryByText('Login screen')).not.toBeInTheDocument();
     expect(screen.getByText('QA Test Agent')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /check in/i })).toBeInTheDocument();
+  });
+
+  it('restores a saved login from the first-party app cookie when mobile storage is missing', async () => {
+    window.history.pushState({}, '', '/');
+    document.cookie = `crystalbio_frontend_session=${encodeURIComponent(JSON.stringify({
+      token: 'cookie-token',
+      agentId: 'agent_cookie',
+      agentName: 'Cookie Session Agent',
+      role: 'sales',
+      phone: 'Registered mobile',
+      email: 'cookie.agent@crystalbio.in',
+    }))}; Path=/; Max-Age=7776000; SameSite=Lax`;
+
+    render(<App />);
+
+    expect(screen.getByText('Agent home screen')).toBeInTheDocument();
+    expect(screen.queryByText('Login screen')).not.toBeInTheDocument();
+    expect(screen.getByText('Cookie Session Agent')).toBeInTheDocument();
+    expect(window.localStorage.getItem('crystalbio.session.v1')).toContain('cookie-token');
+  });
+
+  it('writes a first-party app cookie when login is saved so daily reopen has a fallback', async () => {
+    window.history.pushState({}, '', '/?screen=login');
+
+    render(<App />);
+    fireEvent.keyDown(screen.getByLabelText('Password'), { key: 'Enter', code: 'Enter' });
+
+    await waitFor(() => expect(screen.getByText('Agent home screen')).toBeInTheDocument());
+    expect(document.cookie).toContain('crystalbio_frontend_session=');
+  });
+
+  it('clears the first-party app cookie when the user logs out', async () => {
+    window.history.pushState({}, '', '/?screen=profile');
+    window.localStorage.setItem('crystalbio.session.v1', JSON.stringify({
+      token: 'saved-token',
+      agentId: 'agent_qa',
+      agentName: 'QA Test Agent',
+      role: 'both',
+      phone: 'Registered mobile',
+      email: 'qa.agent@crystalbio.in',
+    }));
+    document.cookie = `crystalbio_frontend_session=${encodeURIComponent(JSON.stringify({
+      token: 'saved-token',
+      agentId: 'agent_qa',
+      agentName: 'QA Test Agent',
+      role: 'both',
+      phone: 'Registered mobile',
+      email: 'qa.agent@crystalbio.in',
+    }))}; Path=/; Max-Age=7776000; SameSite=Lax`;
+
+    render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: /logout/i }));
+
+    expect(screen.getByText('Login screen')).toBeInTheDocument();
+    expect(document.cookie).not.toContain('crystalbio_frontend_session=');
   });
 
   it('renders the connected agent home with compact quick actions', async () => {
@@ -403,6 +460,10 @@ describe('Crystal Bio agent view shell', () => {
     fireEvent.click(screen.getByRole('button', { name: /total visits today show forms/i }));
     expect(screen.getByRole('button', { name: /total visits today hide/i })).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByText('No submitted Sales or Service forms today.')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /checked in agents active show active/i }));
+    expect(screen.getByText('No agents currently checked in.')).toBeInTheDocument();
+    expect(screen.queryByText(/Auto checked out/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Out /i)).not.toBeInTheDocument();
     expect(screen.getByText('Today field status')).toBeInTheDocument();
     expect(screen.getByText(/No submitted work yet today|field updates today/i)).toBeInTheDocument();
     expect(screen.getByText('Leave approvals')).toBeInTheDocument();
@@ -501,6 +562,17 @@ describe('Crystal Bio agent view shell', () => {
       phone: 'Registered mobile',
       email: 'sales@crystalbio.in',
     }));
+    vi.spyOn(crystalBioFrontendApi, 'getAdminLeaveRequests').mockResolvedValue([
+      {
+        id: 'leave_overlap_test',
+        agentId: 'agent_2',
+        agentName: 'QA Test Agent',
+        fromDate: '2026-06-12',
+        toDate: '2026-06-13',
+        reason: 'Personal work',
+        status: 'pending',
+      },
+    ]);
     render(<App />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Field entry' }));
@@ -515,12 +587,16 @@ describe('Crystal Bio agent view shell', () => {
     fireEvent.click(screen.getByRole('button', { name: /field entry/i }));
     const overviewButtons = screen.getAllByRole('button', { name: 'Overview' });
     fireEvent.click(overviewButtons[overviewButtons.length - 1]);
+    await waitFor(() => expect(screen.getByRole('button', { name: /1\s+Leave\s+Needs review\s+Review/i })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /1\s+Leave\s+Needs review\s+Review/i }));
+    expect(screen.getByText('Leave request')).toBeInTheDocument();
     expect(screen.queryByText('Latest submitted work')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /total visits today show forms/i }));
     expect(screen.queryByRole('button', { name: /open submitted work/i })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Report Back Test Lab.*Raghavendra.*Sales.*Open/i }));
     expect(screen.getByLabelText('Submitted form details')).toBeInTheDocument();
     expect(screen.getByText('Back to dashboard')).toBeInTheDocument();
+    expect(screen.queryByText('Leave request')).not.toBeInTheDocument();
     expect(screen.getByText('Sales agent: Raghavendra')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Back to dashboard/i }));
     expect(screen.getByRole('heading', { name: 'Admin overview' })).toBeInTheDocument();

@@ -84,6 +84,20 @@ const parseBearerToken = (headers?: Record<string, string>) => {
   return header.slice('Bearer '.length);
 };
 
+const parseSessionCookieToken = (headers?: Record<string, string>) => {
+  const cookieHeader = headers?.cookie ?? headers?.Cookie;
+  if (!cookieHeader) return undefined;
+  const cookie = cookieHeader
+    .split(';')
+    .map((part) => part.trim())
+    .find((part) => part.startsWith('crystalbio_session='));
+  if (!cookie) return undefined;
+  const token = cookie.slice('crystalbio_session='.length);
+  return token ? decodeURIComponent(token) : undefined;
+};
+
+const parseSessionToken = (headers?: Record<string, string>) => parseBearerToken(headers) ?? parseSessionCookieToken(headers);
+
 const splitPath = (pathWithQuery: string) => {
   const [pathname, queryString = ''] = pathWithQuery.split('?');
   return {
@@ -228,7 +242,7 @@ export function createCrystalBioApi(backend: Backend, options: { mailer?: Crysta
     return 'queued';
   };
   const sessionFor = (request: ApiRequest) => {
-    const token = parseBearerToken(request.headers);
+    const token = parseSessionToken(request.headers);
     if (!token) throw new ValidationError('Login session is required');
     return backend.getSession(token);
   };
@@ -277,7 +291,7 @@ export function createCrystalBioApi(backend: Backend, options: { mailer?: Crysta
           const body = requireBody(request.body);
           let session;
           try {
-            const token = parseBearerToken(request.headers);
+            const token = parseSessionToken(request.headers);
             if (token) session = backend.getSession(token);
           } catch {
             session = undefined;

@@ -415,6 +415,7 @@ export function createCrystalBioFrontendApi(options: ApiClientOptions = {}) {
       const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : undefined;
       await fetcher(`${baseUrl}/client-error-logs`, {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'content-type': 'application/json',
           ...(input.token ? { authorization: `Bearer ${input.token}` } : {}),
@@ -451,6 +452,7 @@ export function createCrystalBioFrontendApi(options: ApiClientOptions = {}) {
     if (!baseUrl) throw new Error('Backend URL is not configured');
     const response = await fetcher(`${baseUrl}${path}`, {
       method: 'POST',
+      credentials: 'include',
       headers: {
         'content-type': 'application/json',
         ...(token ? { authorization: `Bearer ${token}` } : {}),
@@ -464,6 +466,7 @@ export function createCrystalBioFrontendApi(options: ApiClientOptions = {}) {
     if (!baseUrl) throw new Error('Backend URL is not configured');
     const response = await fetcher(`${baseUrl}${path}`, {
       method: 'PATCH',
+      credentials: 'include',
       headers: {
         'content-type': 'application/json',
         ...(token ? { authorization: `Bearer ${token}` } : {}),
@@ -477,6 +480,7 @@ export function createCrystalBioFrontendApi(options: ApiClientOptions = {}) {
     if (!baseUrl) throw new Error('Backend URL is not configured');
     const response = await fetcher(`${baseUrl}${path}`, {
       method: 'GET',
+      credentials: 'include',
       headers: {
         ...(token ? { authorization: `Bearer ${token}` } : {}),
       },
@@ -492,6 +496,7 @@ export function createCrystalBioFrontendApi(options: ApiClientOptions = {}) {
         const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : undefined;
         await fetcher(`${baseUrl}/client-error-logs`, {
           method: 'POST',
+          credentials: 'include',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({
             type: input.type ?? 'client_error',
@@ -525,9 +530,12 @@ export function createCrystalBioFrontendApi(options: ApiClientOptions = {}) {
       return result.session;
     },
 
-    async validateSession(session: FrontendSession): Promise<FrontendSession> {
-      if (!baseUrl) return session;
-      const result = await get<{ session: FrontendSession }>('/auth/session', session.token);
+    async validateSession(session?: FrontendSession): Promise<FrontendSession> {
+      if (!baseUrl) {
+        if (!session) throw new Error('Saved login is not available');
+        return session;
+      }
+      const result = await get<{ session: FrontendSession }>('/auth/session', session?.token);
       return result.session;
     },
 
@@ -549,6 +557,7 @@ export function createCrystalBioFrontendApi(options: ApiClientOptions = {}) {
       const query = new URLSearchParams({ fromDate: input.fromDate, toDate: input.toDate, kind: input.kind ?? 'combined' }).toString();
       const response = await fetcher(`${baseUrl}/agent/reports.pdf?${query}`, {
         method: 'GET',
+        credentials: 'include',
         headers: { authorization: `Bearer ${session.token}` },
       });
       if (!response.ok) {
@@ -569,6 +578,7 @@ export function createCrystalBioFrontendApi(options: ApiClientOptions = {}) {
       const query = new URLSearchParams({ fromDate: input.fromDate, toDate: input.toDate, kind: input.kind ?? 'combined' }).toString();
       const response = await fetcher(`${baseUrl}/admin/reports.pdf?${query}`, {
         method: 'GET',
+        credentials: 'include',
         headers: { authorization: `Bearer ${session.token}` },
       });
       if (!response.ok) {

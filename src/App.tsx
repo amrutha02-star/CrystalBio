@@ -74,8 +74,10 @@ const sampleAttendanceLogs = [
 
 const screenOptions: AppScreen[] = ['login', 'home', 'visits', 'sales', 'service', 'checkin', 'attendance', 'leave', 'reports', 'profile', 'admin'];
 const sessionStorageKey = 'crystalbio.session.v1';
+const sessionCookieKey = 'crystalbio_frontend_session';
+const sessionMaxAgeSeconds = 60 * 60 * 24 * 90;
 const screenStorageKey = 'crystalbio.screen.v1';
-const appBuildVersion = '20260624031243';
+const appBuildVersion = '20260701023648';
 const appVersionReloadKey = 'crystalbio.version-reload.v1';
 const isPublicMonitorPath = () => typeof window !== 'undefined' && window.location.pathname.includes('periwinkle-live-monitor');
 
@@ -90,34 +92,73 @@ const isFrontendSession = (value: unknown): value is FrontendSession => {
   );
 };
 
-const readStoredSession = (): FrontendSession | null => {
-  if (typeof window === 'undefined') return null;
+const parseStoredSession = (rawSession: string | null): FrontendSession | null => {
+  if (!rawSession) return null;
   try {
-    const rawSession = window.localStorage.getItem(sessionStorageKey);
-    if (!rawSession) return null;
     const parsed = JSON.parse(rawSession) as unknown;
-    if (!isFrontendSession(parsed)) return null;
-    const liveBackendUrl = (import.meta as unknown as { env?: { VITE_CRYSTALBIO_API_URL?: string } }).env?.VITE_CRYSTALBIO_API_URL;
-    const isLiveCrystalBioHost = window.location.hostname === 'work.convogenie.ai';
-    if ((liveBackendUrl || isLiveCrystalBioHost) && (parsed.email === 'qa.agent@crystalbio.in' || parsed.agentName === 'QA Test Agent')) {
-      forgetSession();
-      return null;
-    }
-    return parsed;
+    return isFrontendSession(parsed) ? parsed : null;
   } catch {
     return null;
   }
 };
 
+const readSessionCookie = (): FrontendSession | null => {
+  if (typeof document === 'undefined') return null;
+  const rawCookie = document.cookie
+    .split(';')
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(`${sessionCookieKey}=`));
+  if (!rawCookie) return null;
+  try {
+    return parseStoredSession(decodeURIComponent(rawCookie.slice(sessionCookieKey.length + 1)));
+  } catch {
+    return null;
+  }
+};
+
+const sessionCookieSecurityAttribute = () => (typeof window !== 'undefined' && window.location.protocol === 'https:' ? '; Secure' : '');
+
+const writeSessionCookie = (nextSession: FrontendSession) => {
+  if (typeof document === 'undefined') return;
+  document.cookie = `${sessionCookieKey}=${encodeURIComponent(JSON.stringify(nextSession))}; Path=/; Max-Age=${sessionMaxAgeSeconds}; SameSite=Lax${sessionCookieSecurityAttribute()}`;
+};
+
+const clearSessionCookie = () => {
+  if (typeof document === 'undefined') return;
+  document.cookie = `${sessionCookieKey}=; Path=/; Max-Age=0; SameSite=Lax${sessionCookieSecurityAttribute()}`;
+};
+
+const isDisallowedLiveSavedSession = (sessionToCheck: FrontendSession) => {
+  if (typeof window === 'undefined') return false;
+  const liveBackendUrl = (import.meta as unknown as { env?: { VITE_CRYSTALBIO_API_URL?: string } }).env?.VITE_CRYSTALBIO_API_URL;
+  const isLiveCrystalBioHost = window.location.hostname === 'work.convogenie.ai';
+  return Boolean((liveBackendUrl || isLiveCrystalBioHost) && (sessionToCheck.email === 'qa.agent@crystalbio.in' || sessionToCheck.agentName === 'QA Test Agent'));
+};
+
+const readStoredSession = (): FrontendSession | null => {
+  if (typeof window === 'undefined') return null;
+  const localSession = parseStoredSession(window.localStorage.getItem(sessionStorageKey));
+  const parsed = localSession ?? readSessionCookie();
+  if (!parsed) return null;
+  if (isDisallowedLiveSavedSession(parsed)) {
+    forgetSession();
+    return null;
+  }
+  if (!localSession) window.localStorage.setItem(sessionStorageKey, JSON.stringify(parsed));
+  return parsed;
+};
+
 const rememberSession = (nextSession: FrontendSession) => {
   if (typeof window === 'undefined') return;
   window.localStorage.setItem(sessionStorageKey, JSON.stringify(nextSession));
+  writeSessionCookie(nextSession);
 };
 
 const forgetSession = () => {
   if (typeof window === 'undefined') return;
   window.localStorage.removeItem(sessionStorageKey);
   window.localStorage.removeItem(screenStorageKey);
+  clearSessionCookie();
 };
 
 const isExpiredSessionError = (error: unknown) => error instanceof Error && /login session|required|valid login session/i.test(error.message);
@@ -287,6 +328,7 @@ function App() {
   });
   const [isAdminSignedIn, setIsAdminSignedIn] = useState(() => initialStoredSession?.role === 'admin' || (!hasConfiguredBackend && initialScreen === 'admin'));
   const [session, setSession] = useState<FrontendSession | null>(() => initialStoredSession);
+  const [isValidatingStoredSession, setIsValidatingStoredSession] = useState(mustValidateStoredSession);
   const [attendance, setAttendance] = useState<FrontendAttendance | null>(null);
   const [isAttendanceBusy, setIsAttendanceBusy] = useState(false);
   const [currentGps, setCurrentGps] = useState<FrontendGps | null>(null);
@@ -516,42 +558,59 @@ function App() {
     }
   };
 
+  const applyValidatedSession = (validatedSession: FrontendSession) => {
+    setSession(validatedSession);
+    rememberSession(validatedSession);
+    if (validatedSession.role === 'admin') {
+      setIsAdminSignedIn(true);
+      setAdminTab(isPublicMonitorPage ? 'monitoring' : 'overview');
+      setScreen('admin');
+      rememberScreen('admin');
+      setStatusMessage('Admin logged in.');
+      void refreshAdminData(validatedSession);
+      return;
+    }
+    setIsAdminSignedIn(false);
+    setScreen('home');
+    rememberScreen('home');
+    setStatusMessage('Loading attendance…');
+    void restoreAgentAttendance(validatedSession);
+  };
+
   useEffect(() => {
     if (!mustValidateStoredSession || !initialStoredSession) return undefined;
     let isMounted = true;
+    setIsValidatingStoredSession(true);
     setStatusMessage('Checking saved login…');
     crystalBioFrontendApi.validateSession(initialStoredSession)
       .then((validatedSession) => {
         if (!isMounted) return;
-        setSession(validatedSession);
-        rememberSession(validatedSession);
-        if (validatedSession.role === 'admin') {
-          setIsAdminSignedIn(true);
-          setAdminTab(isPublicMonitorPage ? 'monitoring' : 'overview');
-          setScreen('admin');
-          rememberScreen('admin');
-          setStatusMessage('Admin logged in.');
-          void refreshAdminData(validatedSession);
-          return;
-        }
-        setIsAdminSignedIn(false);
-        setScreen('home');
-        rememberScreen('home');
-        setStatusMessage('Loading attendance…');
-        void restoreAgentAttendance(validatedSession);
+        setIsValidatingStoredSession(false);
+        applyValidatedSession(validatedSession);
       })
-      .catch((error) => {
+      .catch(async (error) => {
         if (!isMounted) return;
         rememberLaunchIssue('Saved login validation', error);
         if (isExpiredSessionError(error)) {
+          try {
+            const cookieSession = await crystalBioFrontendApi.validateSession();
+            if (!isMounted) return;
+            setIsValidatingStoredSession(false);
+            applyValidatedSession(cookieSession);
+            return;
+          } catch {
+            // Only ask for login after both saved-token and secure-cookie restore fail.
+          }
           forgetSession();
           setSession(null);
           setIsAdminSignedIn(false);
           setScreen('login');
           setStatusMessage('Please log in again.');
+          setIsValidatingStoredSession(false);
           return;
         }
         setStatusMessage('Saved login kept. Check connection if the screen does not update.');
+        setIsValidatingStoredSession(false);
       });
     return () => {
       isMounted = false;
@@ -648,8 +707,19 @@ function App() {
       return undefined;
     }
     if (isBackendConfigured) {
-      setStatusMessage('Use the registered email and password from the admin invite.');
-      return undefined;
+      let isMounted = true;
+      setStatusMessage('Checking saved login…');
+      crystalBioFrontendApi.validateSession()
+        .then((cookieSession) => {
+          if (!isMounted) return;
+          applyValidatedSession(cookieSession);
+        })
+        .catch(() => {
+          if (isMounted) setStatusMessage('Use the registered email and password from the admin invite.');
+        });
+      return () => {
+        isMounted = false;
+      };
     }
     let isMounted = true;
     crystalBioFrontendApi
@@ -671,12 +741,12 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (session?.role !== 'admin') return;
+    if (isValidatingStoredSession || session?.role !== 'admin') return;
     void refreshAdminData(session);
-  }, [session?.token, session?.role, adminReportFromDate, adminReportToDate]);
+  }, [isValidatingStoredSession, session?.token, session?.role, adminReportFromDate, adminReportToDate]);
 
   useEffect(() => {
-    if (session?.role !== 'admin' || screen !== 'admin') return undefined;
+    if (isValidatingStoredSession || session?.role !== 'admin' || screen !== 'admin') return undefined;
     let stopped = false;
     const refreshVisibleAdminData = () => {
       if (stopped || (typeof document !== 'undefined' && document.visibilityState === 'hidden')) return;
@@ -694,7 +764,7 @@ function App() {
       window.removeEventListener('focus', refreshVisibleAdminData);
       document.removeEventListener('visibilitychange', refreshWhenVisible);
     };
-  }, [session?.token, session?.role, screen, adminReportFromDate, adminReportToDate]);
+  }, [isValidatingStoredSession, session?.token, session?.role, screen, adminReportFromDate, adminReportToDate]);
 
   useEffect(() => {
     if (!isPublicMonitorPage) return undefined;
@@ -1033,9 +1103,11 @@ function App() {
       setAdminEntryReturnScrollY(window.scrollY);
       pushAdminDetailHistory({ crystalBioAdminEntryDetail: entry.id, crystalBioAdminEntryReturnTab: returnTab });
     }
+    setSelectedAdminApproval(null);
     setSelectedAdminEntryId(entry.id);
     setSelectedAdminEntryReturnTab(returnTab);
     if (!session || adminEntryDetailCache[entry.id]?.photoPayload || entry.photoPayload) return;
+
     setLoadingAdminEntryDetailId(entry.id);
     crystalBioFrontendApi.getRecentVisitDetail(session, { id: entry.id, scope: 'team' })
       .then((detailEntry) => {
@@ -3176,21 +3248,16 @@ function App() {
     const reportReadyAgents = adminReportScopeRows.filter((row) => row.status === 'Ready').length;
     const reportReviewAgents = adminReportScopeRows.filter((row) => row.status !== 'Ready').length;
     const overviewVisibleEntries = overviewTodayEntries.slice(0, 4);
-    const adminAttendanceOverviewDetails = adminRows
-      .filter((row) => row.attendance !== 'not checked in')
-      .sort((left, right) => (left.attendance === right.attendance ? left.name.localeCompare(right.name) : left.attendance === 'checked in' ? -1 : 1))
+    const activeAttendanceOverviewDetails = adminRows
+      .filter((row) => row.attendance === 'checked in')
+      .sort((left, right) => left.name.localeCompare(right.name))
       .map((row) => {
         const checkInLabel = `In ${formatAttendanceTime(row.attendanceCheckInTime)}`;
-        const checkOutLabel = row.attendance === 'checked out'
-          ? row.attendanceAutoCheckedOut
-            ? `Auto checked out ${formatAttendanceTime(row.attendanceCheckOutTime)}`
-            : `Out ${formatAttendanceTime(row.attendanceCheckOutTime)}`
-          : 'Still checked in';
         const workModeLabel = row.attendanceWorkTypes?.length ? row.attendanceWorkTypes.join(' + ') : 'Mode not recorded';
         const sessionNote = row.attendanceSessionCount > 1 ? ` • ${row.attendanceSessionCount} sessions today` : '';
         return {
           key: row.id,
-          detail: `${row.name} • ${row.role} • ${checkInLabel} • ${checkOutLabel}${sessionNote}`,
+          detail: `${row.name} • ${row.role} • ${checkInLabel} • Still checked in${sessionNote}`,
           workModeLabel,
         };
       });
@@ -3198,9 +3265,9 @@ function App() {
       visits: overviewVisibleEntries.length
         ? overviewVisibleEntries.map((entry) => `${displayCustomerName(entry.customer)} • ${entry.agentName} • ${entry.type}`)
         : ['No submitted Sales or Service forms today.'],
-      checkedIn: adminAttendanceOverviewDetails.length
-        ? adminAttendanceOverviewDetails.map((row) => `${row.detail} • ${row.workModeLabel}`)
-        : ['No attendance check-in recorded today.'],
+      checkedIn: activeAttendanceOverviewDetails.length
+        ? activeAttendanceOverviewDetails.map((row) => `${row.detail} • ${row.workModeLabel}`)
+        : ['No agents currently checked in.'],
       leave: adminLeaveRequests.filter((request) => request.status === 'pending').length
         ? adminLeaveRequests.filter((request) => request.status === 'pending').map((request) => `${request.agentName} • ${formatShortDate(request.fromDate)} to ${formatShortDate(request.toDate)}`)
         : ['No leave requests waiting.'],
@@ -3470,7 +3537,7 @@ function App() {
     const showOverview = adminTab === 'overview';
     const showFieldEntry = adminTab === 'fieldEntry';
     const showAgents = adminTab === 'agents';
-    const showApprovals = adminTab === 'overview' || adminTab === 'approvals';
+    const showApprovals = (adminTab === 'overview' && !(selectedAdminEntry && selectedAdminEntryReturnTab === 'overview')) || adminTab === 'approvals';
     const showReports = adminTab === 'adminReports';
     const showMonitoring = adminTab === 'monitoring';
     const showProfiles = adminTab === 'profiles';
@@ -3504,7 +3571,7 @@ function App() {
                   const shownDetailRows = expandedAdminMetric === 'checkedIn' ? detailRows : detailRows.slice(0, 4);
                   return (
                   <section className="admin-metric-expanded-card" aria-label={`${metric?.label ?? 'Overview'} details`}>
-                    <div className="admin-report-heading"><label>{expandedAdminMetric === 'checkedIn' ? 'Attendance today' : metric?.label}</label><span>{expandedAdminMetric === 'checkedIn' ? `${checkedInCount} active` : detailRows.length}</span></div>
+                    <div className="admin-report-heading"><label>{expandedAdminMetric === 'checkedIn' ? 'Checked in now' : metric?.label}</label><span>{expandedAdminMetric === 'checkedIn' ? `${checkedInCount} active` : detailRows.length}</span></div>
                     <div className="admin-metric-expanded-list">
                       {expandedAdminMetric === 'visits' && overviewVisibleEntries.length
                         ? overviewVisibleEntries.map((entry) => (
@@ -3514,8 +3581,8 @@ function App() {
                             <em>Open</em>
                           </button>
                         ))
-                        : expandedAdminMetric === 'checkedIn' && adminAttendanceOverviewDetails.length
-                        ? adminAttendanceOverviewDetails.map((detail) => (
+                        : expandedAdminMetric === 'checkedIn' && activeAttendanceOverviewDetails.length
+                        ? activeAttendanceOverviewDetails.map((detail) => (
                           <span key={detail.key}>{detail.detail} <span className={detail.workModeLabel === 'Mode not recorded' ? 'chip chip-info' : 'chip chip-soft'}>{detail.workModeLabel}</span></span>
                         ))
                         : shownDetailRows.map((detail) => <span key={detail}>{detail}</span>)}
