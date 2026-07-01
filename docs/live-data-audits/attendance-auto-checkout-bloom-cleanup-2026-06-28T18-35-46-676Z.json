@@ -1,0 +1,60 @@
+{
+  "mode": "written",
+  "checkedAt": "2026-06-28T18:35:46.913Z",
+  "dbPath": "/var/lib/crystalbio/crystalbio-db.json",
+  "clientErrorLogPath": "/var/lib/crystalbio/crystalbio-client-errors.jsonl",
+  "today": "2026-06-29",
+  "bloomAgentIds": [
+    "agent_130",
+    "agent_132"
+  ],
+  "beforeCounts": {
+    "agents": 17,
+    "sessions": 75,
+    "attendance": 60,
+    "sales": 54,
+    "service": 19,
+    "leaveRequests": 0
+  },
+  "afterCounts": {
+    "agents": 17,
+    "sessions": 61,
+    "attendance": 60,
+    "sales": 54,
+    "service": 19,
+    "leaveRequests": 0
+  },
+  "removedBloom": {
+    "sessions": 14,
+    "attendance": 0,
+    "sales": 0,
+    "service": 0,
+    "leaveRequests": 0,
+    "salesVisits": 0,
+    "serviceVisits": 0
+  },
+  "restoredFailedCheckIns": [],
+  "autoClosedMissedCheckouts": [],
+  "openAttendanceAfter": [],
+  "bloomLeftAfter": {
+    "sessions": 0,
+    "attendance": 0,
+    "sales": 0,
+    "service": 0,
+    "leaveRequests": 0
+  },
+  "clientDataAudit": {
+    "scope": "Non-Bloom client business data is audited separately from the approved attendance repair. Sales, Service, leave, and user profiles must stay hash-identical after Bloom cleanup filtering. Attendance may differ only by restored failed check-ins and auto-checkout fields on stale open sessions.",
+    "businessDataBeforeHash": "e160d12eaab59ecb402edd409a249e3f010128909da80f92fe7f80ff8459afe5",
+    "businessDataAfterHash": "e160d12eaab59ecb402edd409a249e3f010128909da80f92fe7f80ff8459afe5",
+    "businessDataIntact": true,
+    "attendanceBeforeHash": "fe990177ea9d9786190e9968f1e3c967d4203530325d98819eb6205cc53bc360",
+    "attendanceAfterHash": "fe990177ea9d9786190e9968f1e3c967d4203530325d98819eb6205cc53bc360",
+    "attendanceChangeApproved": true,
+    "attendanceChangeSummary": {
+      "restoredFailedCheckIns": 0,
+      "autoClosedMissedCheckouts": 0
+    }
+  },
+  "backupPath": "/var/lib/crystalbio/crystalbio-db.json.pre-attendance-repair-2026-06-28T18-35-46-676Z.bak"
+}

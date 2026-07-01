@@ -45,6 +45,48 @@ For live-user problems, Bloom should include:
 
 ## Current bug queue
 
+### BUG-20260701-022 — Admin Field Entry search still zooms on iPhone keyboard
+
+- Reported by: Amrutha
+- Time noticed: 2026-07-01 afternoon
+- Screen: Admin Field Entry → search customer or agent
+- User journey affected: Admin searches submitted entries on iPhone and expects the screen to stay stable while typing.
+- Actual behavior: The page still zooms/crops when the Field Entry search box is focused and the iPhone keyboard opens.
+- Expected behavior: Search boxes must use the same anti-zoom rule as forms: focused inputs should stay at 16px or larger on iPhone so Safari does not auto-zoom the page.
+- Severity: Medium for admin usability; not a data-loss issue.
+- Status: Built/tested locally; scheduled for 9:00 PM IST night deploy on 2026-07-01 as approved by Amrutha. Not deployed live yet.
+- Periwinkle source review: the earlier anti-zoom fix covered Sales/Service form inputs globally, but `.visit-search-card input` overrode it back to `13px`. Admin Field Entry uses that search-card style, so iPhone Safari still zoomed even though the form fields were fixed.
+- Fix update: `.visit-search-card input` now uses `16px`, so the Field Entry search input should no longer trigger iPhone focus zoom.
+- Verification: `npm test -- --run src/App.test.tsx` passed 23/23 and `npm run build` passed. Night deployment job scheduled as `c9b58317daa0` for 2026-07-01 21:00 IST / 15:30 UTC; live deploy/check is still pending.
+
+### BUG-20260701-021 — Admin submitted-form detail also shows Leave approval detail
+
+- Reported by: Amrutha
+- Time noticed: 2026-07-01 morning
+- Screen: Admin overview / dashboard → Total visits → submitted Sales/Service form detail
+- User journey affected: Admin opens any submitted form from the dashboard and expects only that submitted Sales/Service detail.
+- Actual behavior: The Leave approval detail can appear at the same time as the submitted-form detail, making it look like the Leave page also opened.
+- Expected behavior: Opening a submitted Sales/Service form must show only that submitted-form detail. Leave approvals should appear only when the admin opens the Leave/Approvals path.
+- Severity: Medium for admin clarity; not a data-loss issue.
+- Status: Fixed and deployed live as version `20260701023648` after Amrutha approved fixing it now.
+- Periwinkle source review: Admin overview kept approvals renderable on the overview screen, and a previously selected pending leave approval could stay active while a submitted-form detail was opened. This was a state/rendering mix-up, not a backend/data problem.
+- Fix update: Opening a submitted Sales/Service form now clears the active Leave approval detail and hides overview approvals while the submitted-form detail is open, so only the selected form is shown.
+- Verification: `npm test -- --run src/App.test.tsx` passed 23/23, including the overlap regression path with a pending Leave approval and submitted dashboard form. `npm run build` passed. Live API health returned OK, live `version.json` returned `20260701023648`, and the served live bundle is `assets/index-Dp3ldM4Z.js`. Bloom QA Admin live login opened the admin overview; there were 0 live Bloom-visible visits/leaves, so no new QA form/leave records were created just to force the overlap.
+
+### BUG-20260626-020 — Admin overview Checked in card shows checked-out people
+
+- Reported by: Amrutha
+- Time noticed: 2026-06-26 morning
+- Screen: Admin overview → Checked in card
+- User journey affected: Admin opens `Checked in` expecting only agents active right now.
+- Actual behavior: The card count could show `0 Checked in`, but the expanded detail still listed people who had attendance today and were already checked out or auto checked out.
+- Expected behavior: `Checked in` must show only currently active checked-in agents. If count is 0, the expanded detail should say `No agents currently checked in.` Checked-out/auto-checked-out people belong in attendance history/Agents, not this active-now card.
+- Severity: Medium for admin clarity during live use
+- Status: Verified by Bloom on live app in the 2026-06-30 night stabilization QA; waiting for Periwinkle/Rahul acceptance.
+- Fix update: Admin overview now filters the `Checked in` expanded detail to `attendance === checked in` only, changes the expanded heading to `Checked in now`, and uses the clear empty state `No agents currently checked in.`
+- Verification: `npm test -- --run src/App.test.tsx src/backend/crystalBioApi.test.ts src/backend/crystalBioHttpServer.test.ts` passed 47/47; `npm run build` passed; `npm run backend:build` passed; live `version.json` returned `20260627041940`; live bundle contains the session-cookie marker and matching app version.
+- Bloom retest update — 2026-06-30 21:05 IST: Passed with assigned Bloom QA Admin. The expanded live Admin overview card says `Checked in now`, listed 7 active checked-in agents, showed check-in times and work-mode chips, and did not list checked-out Bloom QA attendance after cleanup. Evidence: `docs/qa-runs/QA_RUN_BLOOM_2026-06-30_NIGHT_STABILIZATION.md` and `dogfood-output/bloom-nightly-stability-live-2026-06-30.json`.
+
 ### BUG-20260624-019 — Agent report download does not download a PDF
 
 - Reported by: Amrutha
@@ -69,10 +111,12 @@ For live-user problems, Bloom should include:
 - Actual behavior: Amrutha reports being logged out every day. Live monitor shows repeated `/auth/session` 401 entries, meaning the app opened with a missing/invalid saved session and returned to Login. Current backend code does not intentionally expire sessions daily, and the live DB currently still contains real user sessions, so this needs a focused root-cause check around deploy/restart/cleanup/browser storage behavior.
 - Expected behavior: A valid saved login should survive normal reopen, refresh, nightly backend restart, and frontend deployment. Only explicit logout, inactive account, or approved full reset should force login.
 - Severity: High for daily usability and trust
-- Status: Deployed live by Periwinkle on 2026-06-24 as version `20260624031243`; needs overnight/Bloom verification before acceptance.
-- Recommended next step: Test saved login across live deploy/reopen/backend restart using Bloom accounts; inspect whether session cleanup or frontend validation is clearing valid real sessions; then fix the root cause without changing access rules.
-- Source update: Saved local session is now restored immediately while backend validation runs, instead of showing Login first during validation. Invalid/inactive sessions still clear safely. Verification: App tests/build/backend build passed.
-- Live verification: API health OK; live app version `20260624031243`; Bloom admin login and admin data endpoints returned 200 after backend restart.
+- Status: Reopened by Amrutha on 2026-06-27 because she is still being logged out daily. Earlier live fix in version `20260624031243` was incomplete. Live version `20260627041940` now has the additional first-party app-domain saved-session fallback; do not mark accepted until real overnight/same-phone persistence is verified.
+- Recommended next step: Treat as an urgent reliability fix, not routine polish. Test saved login across live deploy/reopen/backend restart using Bloom accounts; inspect whether session cleanup or frontend validation is clearing valid real sessions; then fix the root cause without changing access rules.
+- Source update 2026-06-24: Saved local session is now restored immediately while backend validation runs, instead of showing Login first during validation. Invalid/inactive sessions still clear safely. Verification: App tests/build/backend build passed.
+- Live verification 2026-06-24: API health OK; live app version `20260624031243`; Bloom admin login and admin data endpoints returned 200 after backend restart.
+- Root-cause evidence 2026-06-27: Live API health is OK and the live DB still contains real sessions, so the backend is not intentionally expiring everyone daily. Client-error logs show repeated 401 `Login session is required` bursts on admin refresh endpoints and `/auth/session`, meaning already-open phones/tabs are trying to refresh with a missing or invalid saved token. The earlier fix relied mainly on localStorage plus an API-domain cookie fallback; mobile/home-screen browsers can lose or not send that fallback reliably because the API is on `work-api.convogenie.ai` while the app is on `work.convogenie.ai`.
+- Fix update 2026-06-27: Added a first-party app-domain saved-session cookie fallback in addition to localStorage. On login/session validation, the app now stores the session in both places; on reopen, it restores from the app cookie if mobile storage is missing; logout clears both. Verification: `npm test -- --run src/App.test.tsx src/backend/crystalBioApi.test.ts src/backend/crystalBioHttpServer.test.ts` passed 47/47; `npm run build` passed; `npm run backend:build` passed; live API health OK; live `version.json` returned `20260627041940`; live bundle contains `crystalbio_frontend_session`, `Checking saved login`, and matching app version. Bloom/same-phone overnight retest is still required before acceptance.
 
 ### BUG-20260623-017 — Admin dashboard entry Back goes to wrong place and form inputs zoom on phone
 
@@ -88,7 +132,7 @@ For live-user problems, Bloom should include:
 - Verification: `npm test -- --run src/App.test.tsx` passed 20/20; `npm run build` passed; `npm run backend:build` passed; built dist contained `Back to dashboard`, 16px input CSS, and no old `20260623020524` marker. Live API health returned OK; live `version.json` returned `20260623170035`; live JS/CSS markers confirmed `Back to dashboard`, 16px input CSS, new app build version, and no old app build version. Mobile-sized Chromium loaded the live login page with no runtime-error lines.
 - Deploy note: Frontend-only deploy; backend was not restarted. Backup created at `/var/www/crystalbio.backup-20260623170035-pre-admin-back-zoom`. The monitor page file `public/periwinkle-live-monitor-a93f27.html` was not intentionally included in this deploy.
 - Bloom follow-up: Full post-deploy user-journey QA remains scheduled for 2026-06-23 23:15 IST using only Bloom assigned credentials.
-- Bloom post-deploy QA update — 2026-06-23 17:45 UTC: Passed with assigned Bloom QA admin/agent accounts. Live version/API health OK; Admin dashboard entry detail showed `Back to dashboard` and returned to Overview; Field Entry detail showed `Back to field entries` and returned to Field Entry; Sales form inputs/textareas/selects computed at 16px and Chromium focus did not zoom. Bloom also checked login/session, attendance, Sales/Service save/update/persistence, admin Field Entry/Agents/Approvals/Reports/PDF/Profile, mobile baseline, console errors, and Bloom-only cleanup. Cleanup removed only Bloom-created QA records after dry-run/backup/backend restart; live post-clean checks showed 0 Bloom post-deploy field rows, no current Bloom attendance, and 0 Bloom leave rows. Evidence: `docs/qa-runs/QA_RUN_BLOOM_POST_DEPLOY_BUG-20260623-017_2026-06-23.md` and `dogfood-output/bloom-postdeploy-20260623-api-e2e-20260623174734.json`. Status: Needs Periwinkle review for acceptance.
+- Bloom post-deploy QA update — 2026-06-23 17:45 UTC: Passed with assigned Bloom QA admin/agent accounts. Live version/API health OK; Admin dashboard entry detail showed `Back to dashboard` and returned to Overview; Field Entry detail showed `Back to field entries` and returned to Field Entry; Sales form inputs/textareas/selects computed at 16px and Chromium focus did not zoom. Bloom also checked login/session, attendance, Sales/Service save/update/persistence, admin Field Entry/Agents/Approvals/Reports/PDF/Profile, mobile baseline, console errors, and Bloom-only cleanup. Cleanup removed only Bloom-created QA records after dry-run/backup/backend restart; live post-clean checks showed 0 Bloom post-deploy field rows, no current Bloom attendance, and 0 Bloom leave rows. Evidence: `docs/qa-runs/QA_RUN_BLOOM_POST_DEPLOY_BUG-20260623-017_2026-06-23.md` and `dogfood-output/bloom-postdeploy-20260623-api-e2e-20260623174734.json`. Final acceptance: Accepted by Periwinkle on 2026-06-25 morning after Bloom's live retest evidence; no further Iris work unless a regression is reported.
 
 ### BUG-20260623-016 — Admin data does not refresh live while screen stays open
 

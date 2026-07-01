@@ -1,34 +1,36 @@
 # CrystalBio Bot Coordination Status
 
-Last refreshed: 2026-06-23 08:37 IST / 2026-06-23 03:07 UTC
+Last refreshed: 2026-07-01 07:30 IST / 2026-07-01 02:00 UTC
 
 Purpose: one simple dashboard so Rahul can see what Periwinkle, Bloom, and Iris are doing without reading logs.
 
 ## Simple summary right now
 
-- Live app/API are up.
-- BUG-20260623-017 is deployed live as version `20260623170035`: Admin dashboard entry detail now returns to dashboard, and phone form inputs use 16px anti-zoom sizing.
-- One-week live usage update from Amrutha: employees are using the app well; only one or two minor issues were seen; no big outage occurred.
+- Live API health is up (`/health` returned `{"status":"ok"}` on 2026-07-01 morning).
+- Latest Bloom night QA report is `docs/qa-runs/QA_RUN_BLOOM_2026-06-30_NIGHT_STABILIZATION.md`: live app/API were up, no new Critical or High launch blocker was confirmed, and Bloom-only Sales/Service/attendance QA rows from the run were cleaned after dry-run/write verification.
+- BUG-20260624-018 saved-login/session restore remains the main open reliability item. Live version `20260627041940` includes the first-party app-domain saved-session cookie fallback and Bloom confirmed saved-session restore in the cron browser context, but real iPhone/Android same-phone overnight persistence still needs Bloom/user acceptance before final acceptance.
+- Ready for Periwinkle/Rahul acceptance after Bloom live retest: BUG-20260624-019 Agent report PDF download for Attendance / Visit / Combined, and BUG-20260626-020 admin `Checked in` card clarity.
+- BUG-20260623-016 admin refresh has supporting Bloom evidence from repeated live admin/report API checks, but keep it under Periwinkle review unless Rahul/Amrutha want a real open-screen phone retest.
+- BUG-20260623-017 remains accepted by Periwinkle after Bloom's live post-deploy QA passed: Admin dashboard entry detail returns to dashboard, and Sales/Service phone form inputs use 16px anti-zoom sizing.
+- One-week live usage update from Amrutha remains positive: employees are using the app well; only one or two minor issues were seen; no big outage occurred.
 - No current Critical or High launch-blocking bug is approved for Iris.
-- Latest Bloom night QA found no new Critical or High launch blocker.
-- The latest report-button correction is deployed live: Admin uses direct `Download PDF`; Agent uses `Download report`.
-- Today’s approved polish item is done live: Camera/Upload controls are clean and no native `Choose File` text appears inside the custom buttons.
-- Admin usability corrections from Amrutha's screenshots are done live: Reports Today count is date-range-only, Field Entry has Sales/Service filters, detail Back restores list position, photos preview in-app, and entry details use one sticky Back with native browser/Android Back support.
-- Simplified follow-up layout deployed as version `20260623015713`: saved entries show the top action, a compact Follow-up details composer, Visit updates, then original Step 1/2/3 details.
-- Bloom cleanup correction recorded: first cleanup checked the database file but missed live backend in-memory state, so one Bloom `test` row reappeared. Correct live cleanup sequence is now documented in `docs/BACKUPS_AND_MONITORING.md`: dry-run, stop backend briefly, write Bloom-only cleanup, restart, verify health, then verify Bloom live Recent visits/API count is 0.
-- Bloom field-test entries are currently verified removed from the live API: Bloom agent Recent visits = 0; remaining Bloom Sales/Service records = 0; real user records untouched.
-- Sunday deploy completed after Amrutha's swipe-back follow-up: native browser/iOS edge-swipe/Android Back support is now live selectively for safe admin detail journeys — Field Entry/Reports entry details, Approvals detail, Agents person detail, and Profile person detail.
-- Production Stage 1–2 managed staging setup is prepared: scripts now check required managed credentials, create/verify the Cloudflare R2 staging bucket when credentials are available, and run the PostgreSQL staging migration/count check against a managed staging database. External managed Postgres/R2 credentials are not present in this shell yet, so no managed resource was created. Live app still uses JSON; no live database/photo cutover has been done.
+- Admin clarity fix from Amrutha is live: BUG-20260701-021 — opening a submitted dashboard form no longer also shows a pending Leave approval detail. It was a UI state overlap, not data loss. Verified by app regression test/build and live version/API check.
+- Live verified/reporting basics remain stable: Admin uses direct `Download PDF`; Agent report PDFs download; camera/upload controls are clean; key admin usability corrections are live.
+- Bloom field-test entries from the latest run were verified removed from the live API; any new Bloom QA data must still follow the Bloom-only backup/dry-run/write cleanup path.
 - Iris should not start routine fixes unless Periwinkle/Rahul approves a specific bug.
+- CrystalBio remains on the 14-night stabilization rhythm: Bloom full QA at 9:00 PM IST, Bloom fix retest sweep at 2:30 AM IST, and Periwinkle morning stability summary at 7:30 AM IST. Daytime stays monitor/review only unless Amrutha/Rahul approves an urgent live change.
 
 ## Who owns what
 
 ### Periwinkle — lead/reviewer
 
 - Reviews Bloom's QA findings.
-- Decides which bugs are safe and important enough for Iris.
-- Gives final acceptance after Bloom retests.
-- Produces the morning summary.
+- Separates real-user issues, needs-classification items, and Bloom/testing failures before asking Iris to act.
+- Decides which bugs are safe and important enough for Iris, or asks Rahul/Amrutha for a decision when the change is risky/product-facing.
+- Approves only exact fixes, not broad nearby cleanup.
+- Gives final acceptance after Bloom retests and evidence is recorded.
+- Produces short owner-facing summaries that list live/verified, waiting for Bloom retest, waiting for acceptance, approved Iris queue, and user decisions.
+- Maintains `docs/agents/PERIWINKLE_LEAD_BOT.md` and must update durable docs when Rahul/Amrutha has to repeat an instruction.
 
 ### Bloom — QA/testing/monitoring
 
@@ -46,12 +48,11 @@ Purpose: one simple dashboard so Rahul can see what Periwinkle, Bloom, and Iris 
 ## Scheduled work
 
 - Every 5 minutes: live API monitor checks CrystalBio health.
-- 9:00 PM IST: Bloom heavy QA starts.
-- 10:30 PM IST tonight: Periwinkle deployed the approved narrow fix for BUG-20260623-017 as version `20260623170035` — Admin dashboard entry Back returns to dashboard, and form inputs stop phone focus-zoom.
-- 11:15 PM IST tonight: Bloom runs a full post-deploy user-journey QA using only Bloom assigned credentials, including dashboard Back, Field Entry Back, Sales/Service, Attendance, Admin, Reports/PDF, mobile input zoom, console/API errors, and Bloom-only cleanup (`d59a22793e7a`).
-- 00:05 AM IST: nightly attendance auto-checkout and Bloom QA cleanup/audit runs after the calendar day changes (`faeccaf5a2d2`).
-- 2:30 AM IST: Bloom retests any Iris fixes if a separate approved Iris fix exists.
-- 7:30 AM IST: Periwinkle morning summary.
+- 9:00 PM IST for 14 nights from 2026-06-24: Bloom full stability QA using only Bloom assigned credentials; no fixing/deploying.
+- 2:30 AM IST for 14 nights: Bloom retests only fixes marked ready/deployed for verification.
+- 3:10 AM IST for 14 nights: post-retest cleanup removes only Bloom-owned QA activity after backup/dry-run and live verification, so retest records do not remain visible in Admin the next morning.
+- 7:30 AM IST for 14 mornings: Periwinkle sends a short stability summary before daytime use.
+- 00:05 AM IST: nightly attendance auto-checkout and early Bloom QA cleanup/audit runs after the calendar day changes (`faeccaf5a2d2`).
 
 ## Current bug/fix status
 

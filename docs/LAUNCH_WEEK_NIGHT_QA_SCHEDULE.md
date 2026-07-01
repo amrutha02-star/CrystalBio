@@ -47,6 +47,29 @@ Use this order:
 6. Bloom retests Iris's fixes.
 7. Periwinkle/Rahul gives final approval.
 
+## Stabilization rhythm from 2026-06-24
+
+Amrutha approved moving from daily small fixes to a structured stability cycle starting tonight.
+
+For the next 14 nights:
+
+1. **9:00 PM IST — Bloom full stability QA**
+   - Full live app journey check using only Bloom assigned credentials.
+   - No fixing and no deploys.
+   - Confirm login/session, attendance, Sales/Service, saved entries, Admin, Field Entry, Agents, Reports/PDF, Profile, mobile layout, back behavior, and console/API errors.
+   - Clean only Bloom-created QA records after backup/dry-run and live verification.
+2. **2:30 AM IST — Bloom fix retest sweep**
+   - Retest only items marked ready/deployed for Bloom verification.
+   - Test original bug path, one nearby normal path, and one edge path.
+3. **3:10 AM IST — Bloom-owned QA cleanup**
+   - Remove only Bloom-created QA activity after backup/dry-run and live verification.
+   - This runs after the retest sweep so retest records do not remain visible in Admin the next morning.
+4. **7:30 AM IST — Periwinkle stability summary**
+   - Short business-facing morning update before daytime users start.
+   - Show live/verified, waiting for Bloom retest, waiting for acceptance, approved Iris queue, blocked/user decision, and whether the app is safe for daytime use.
+
+Daytime remains monitor/review only unless Amrutha/Rahul approve an urgent live change.
+
 ## Recommended India-time schedule
 
 - 9:00 PM IST: Bloom full QA run starts.

@@ -1,0 +1,93 @@
+{
+  "mode": "written",
+  "checkedAt": "2026-06-26T18:35:47.130Z",
+  "dbPath": "/var/lib/crystalbio/crystalbio-db.json",
+  "clientErrorLogPath": "/var/lib/crystalbio/crystalbio-client-errors.jsonl",
+  "today": "2026-06-27",
+  "bloomAgentIds": [
+    "agent_130",
+    "agent_132"
+  ],
+  "beforeCounts": {
+    "agents": 17,
+    "sessions": 66,
+    "attendance": 56,
+    "sales": 55,
+    "service": 20,
+    "leaveRequests": 0
+  },
+  "afterCounts": {
+    "agents": 17,
+    "sessions": 55,
+    "attendance": 54,
+    "sales": 54,
+    "service": 19,
+    "leaveRequests": 0
+  },
+  "removedBloom": {
+    "sessions": 11,
+    "attendance": 2,
+    "sales": 1,
+    "service": 1,
+    "leaveRequests": 0,
+    "salesVisits": 2,
+    "serviceVisits": 2
+  },
+  "restoredFailedCheckIns": [],
+  "autoClosedMissedCheckouts": [
+    {
+      "id": "attendance_701",
+      "agentId": "agent_12",
+      "agentName": "Girish",
+      "date": "2026-06-26",
+      "checkInAt": "2026-06-26T04:00:41.147Z",
+      "checkOutAt": "2026-06-26T18:29:00.000Z"
+    },
+    {
+      "id": "attendance_704",
+      "agentId": "agent_14",
+      "agentName": "Ajay",
+      "date": "2026-06-26",
+      "checkInAt": "2026-06-26T05:50:52.878Z",
+      "checkOutAt": "2026-06-26T18:29:00.000Z"
+    },
+    {
+      "id": "attendance_706",
+      "agentId": "agent_7",
+      "agentName": "Deekshak",
+      "date": "2026-06-26",
+      "checkInAt": "2026-06-26T06:33:33.176Z",
+      "checkOutAt": "2026-06-26T18:29:00.000Z"
+    },
+    {
+      "id": "attendance_712",
+      "agentId": "agent_13",
+      "agentName": "Prasanna",
+      "date": "2026-06-26",
+      "checkInAt": "2026-06-26T07:36:45.339Z",
+      "checkOutAt": "2026-06-26T18:29:00.000Z"
+    }
+  ],
+  "openAttendanceAfter": [],
+  "bloomLeftAfter": {
+    "sessions": 0,
+    "attendance": 0,
+    "sales": 0,
+    "service": 0,
+    "leaveRequests": 0
+  },
+  "clientDataAudit": {
+    "scope": "Non-Bloom client business data is audited separately from the approved attendance repair. Sales, Service, leave, and user profiles must stay hash-identical after Bloom cleanup filtering. Attendance may differ only by restored failed check-ins and auto-checkout fields on stale open sessions.",
+    "businessDataBeforeHash": "e160d12eaab59ecb402edd409a249e3f010128909da80f92fe7f80ff8459afe5",
+    "businessDataAfterHash": "e160d12eaab59ecb402edd409a249e3f010128909da80f92fe7f80ff8459afe5",
+    "businessDataIntact": true,
+    "attendanceBeforeHash": "4828310e0e0501e6ba32c7eae5df909bb89273df93f272943606b91448c5306e",
+    "attendanceAfterHash": "41ac14bf5fb2891f978e7b05f3c45878ba32fdbe71b5d8d8a485b864b0d56b92",
+    "attendanceChangeApproved": true,
+    "attendanceChangeSummary": {
+      "restoredFailedCheckIns": 0,
+      "autoClosedMissedCheckouts": 4
+    }
+  },
+  "backupPath": "/var/lib/crystalbio/crystalbio-db.json.pre-attendance-repair-2026-06-26T18-35-46-885Z.bak"
+}
