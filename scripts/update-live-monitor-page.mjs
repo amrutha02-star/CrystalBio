@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 const API_URL = 'https://work-api.convogenie.ai/public/monitor?loginLimit=500&errorLimit=500';
 const LOGIN_LOG_PATH = process.env.CRYSTALBIO_LOGIN_ACTIVITY_LOG_PATH ?? '/var/lib/crystalbio/crystalbio-login-activity.jsonl';
 const CLIENT_ERROR_LOG_PATH = process.env.CRYSTALBIO_CLIENT_ERROR_LOG_PATH ?? '/var/lib/crystalbio/crystalbio-client-errors.jsonl';
-const OUTPUT = 'public/periwinkle-live-monitor-a93f27.html';
+const OUTPUT = process.env.CRYSTALBIO_MONITOR_OUTPUT ?? 'public/periwinkle-live-monitor-a93f27.html';
 
 const escapeHtml = (value) => String(value ?? '')
   .replaceAll('&', '&amp;')
