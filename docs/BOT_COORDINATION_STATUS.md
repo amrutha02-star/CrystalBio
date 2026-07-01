@@ -1,20 +1,21 @@
 # CrystalBio Bot Coordination Status
 
-Last refreshed: 2026-07-01 07:30 IST / 2026-07-01 02:00 UTC
+Last refreshed: 2026-07-02 02:35 IST / 2026-07-01 21:05 UTC
 
 Purpose: one simple dashboard so Rahul can see what Periwinkle, Bloom, and Iris are doing without reading logs.
 
 ## Simple summary right now
 
-- Live API health is up (`/health` returned `{"status":"ok"}` on 2026-07-01 morning).
-- Latest Bloom night QA report is `docs/qa-runs/QA_RUN_BLOOM_2026-06-30_NIGHT_STABILIZATION.md`: live app/API were up, no new Critical or High launch blocker was confirmed, and Bloom-only Sales/Service/attendance QA rows from the run were cleaned after dry-run/write verification.
-- BUG-20260624-018 saved-login/session restore remains the main open reliability item. Live version `20260627041940` includes the first-party app-domain saved-session cookie fallback and Bloom confirmed saved-session restore in the cron browser context, but real iPhone/Android same-phone overnight persistence still needs Bloom/user acceptance before final acceptance.
+- Live API health is up (`/health` returned `{"status":"ok"}` during the 2026-07-02 2:30 AM IST retest).
+- Latest Bloom fix retest report is `docs/qa-runs/QA_RUN_BLOOM_2026-07-02_230_RETEST.md`: live app/API were up, BUG-20260624-019 Agent report PDFs passed, no new failure was confirmed, and no QA records were created.
+- BUG-20260624-018 saved-login/session restore remains the main open reliability item. Bloom's 2026-07-02 2:30 AM cron/browser/API retest again passed bearer/session-cookie restore, but real iPhone/Android same-phone overnight persistence still needs Bloom/user acceptance before final acceptance.
 - Ready for Periwinkle/Rahul acceptance after Bloom live retest: BUG-20260624-019 Agent report PDF download for Attendance / Visit / Combined, and BUG-20260626-020 admin `Checked in` card clarity.
 - BUG-20260623-016 admin refresh has supporting Bloom evidence from repeated live admin/report API checks, but keep it under Periwinkle review unless Rahul/Amrutha want a real open-screen phone retest.
 - BUG-20260623-017 remains accepted by Periwinkle after Bloom's live post-deploy QA passed: Admin dashboard entry detail returns to dashboard, and Sales/Service phone form inputs use 16px anti-zoom sizing.
 - One-week live usage update from Amrutha remains positive: employees are using the app well; only one or two minor issues were seen; no big outage occurred.
 - No current Critical or High launch-blocking bug is approved for Iris.
 - Admin clarity fix from Amrutha is live: BUG-20260701-021 — opening a submitted dashboard form no longer also shows a pending Leave approval detail. It was a UI state overlap, not data loss. Verified by app regression test/build and live version/API check.
+- BUG-20260701-022 Field Entry search anti-zoom fix is not Bloom-verified live yet: at the 2026-07-02 2:30 AM sweep, live `version.json` was still `20260701023648`, so Bloom did not retest or accept the scheduled search-input fix.
 - Live verified/reporting basics remain stable: Admin uses direct `Download PDF`; Agent report PDFs download; camera/upload controls are clean; key admin usability corrections are live.
 - Bloom field-test entries from the latest run were verified removed from the live API; any new Bloom QA data must still follow the Bloom-only backup/dry-run/write cleanup path.
 - Iris should not start routine fixes unless Periwinkle/Rahul approves a specific bug.
