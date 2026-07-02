@@ -1,13 +1,15 @@
 # CrystalBio Bot Coordination Status
 
-Last refreshed: 2026-07-02 02:35 IST / 2026-07-01 21:05 UTC
+Last refreshed: 2026-07-02 07:31 IST / 2026-07-02 02:01 UTC
 
 Purpose: one simple dashboard so Rahul can see what Periwinkle, Bloom, and Iris are doing without reading logs.
 
 ## Simple summary right now
 
-- Live API health is up (`/health` returned `{"status":"ok"}` during the 2026-07-02 2:30 AM IST retest).
-- Latest Bloom fix retest report is `docs/qa-runs/QA_RUN_BLOOM_2026-07-02_230_RETEST.md`: live app/API were up, BUG-20260624-019 Agent report PDFs passed, no new failure was confirmed, and no QA records were created.
+- Live API health is up (`/health` returned `{"status":"ok"}` during the 2026-07-02 morning stability check).
+- Latest Bloom fix retest report is `docs/qa-runs/QA_RUN_BLOOM_2026-07-02_230_RETEST.md`: live app/API were up, BUG-20260624-019 Agent report PDFs passed, no new failure was confirmed, and no QA records were created in that retest.
+- Latest overnight user-journey report is `docs/qa-runs/QA_RUN_BLOOM_E2E_USER_JOURNEY_2026-07-02.md`: core login/session, attendance refresh/checkout, Sales/Service save/detail reopen, admin visibility, approvals, and PDFs mostly passed. Five steps are marked needs-review, but their attached evidence shows successful create/201 responses, so Periwinkle has not classified them as confirmed product bugs yet.
+- Bloom's 2026-07-02 E2E run created Bloom-only QA records (`attendance_936`, `sales_937`/`sales_visit_938`, `service_939`/`service_visit_940`, `leave_941`). Bloom cleanup/verification is needed before saying reports are clean for admin review.
 - BUG-20260624-018 saved-login/session restore remains the main open reliability item. Bloom's 2026-07-02 2:30 AM cron/browser/API retest again passed bearer/session-cookie restore, but real iPhone/Android same-phone overnight persistence still needs Bloom/user acceptance before final acceptance.
 - Ready for Periwinkle/Rahul acceptance after Bloom live retest: BUG-20260624-019 Agent report PDF download for Attendance / Visit / Combined, and BUG-20260626-020 admin `Checked in` card clarity.
 - BUG-20260623-016 admin refresh has supporting Bloom evidence from repeated live admin/report API checks, but keep it under Periwinkle review unless Rahul/Amrutha want a real open-screen phone retest.
@@ -17,7 +19,6 @@ Purpose: one simple dashboard so Rahul can see what Periwinkle, Bloom, and Iris 
 - Admin clarity fix from Amrutha is live: BUG-20260701-021 — opening a submitted dashboard form no longer also shows a pending Leave approval detail. It was a UI state overlap, not data loss. Verified by app regression test/build and live version/API check.
 - BUG-20260701-022 Field Entry search anti-zoom fix is not Bloom-verified live yet: at the 2026-07-02 2:30 AM sweep, live `version.json` was still `20260701023648`, so Bloom did not retest or accept the scheduled search-input fix.
 - Live verified/reporting basics remain stable: Admin uses direct `Download PDF`; Agent report PDFs download; camera/upload controls are clean; key admin usability corrections are live.
-- Bloom field-test entries from the latest run were verified removed from the live API; any new Bloom QA data must still follow the Bloom-only backup/dry-run/write cleanup path.
 - Iris should not start routine fixes unless Periwinkle/Rahul approves a specific bug.
 - CrystalBio remains on the 14-night stabilization rhythm: Bloom full QA at 9:00 PM IST, Bloom fix retest sweep at 2:30 AM IST, and Periwinkle morning stability summary at 7:30 AM IST. Daytime stays monitor/review only unless Amrutha/Rahul approves an urgent live change.
 
