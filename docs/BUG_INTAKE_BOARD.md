@@ -45,6 +45,19 @@ For live-user problems, Bloom should include:
 
 ## Current bug queue
 
+### BUG-20260702-023 — Sales/location permission prevents field update save
+
+- Reported by: Amrutha
+- Time noticed: 2026-07-02 evening IST
+- Screen: Sales/Service field update with GPS/location capture
+- User journey affected: Field agent tries to add/save location while submitting field work.
+- Actual behavior: User report says sales agent Meera cannot add location. Live client-error logs around 2026-07-02 12:21-12:22 UTC show repeated `Allow location permission to save this field update.` on Android Chrome; the identified logged-in sales account in those logs is Dr. Swati Priya (`agent_6`). The current live account list does not show an active account named Meera, though historical login logs contain `meera.service@crystalbio.in` failed-login attempts from 2026-06-15.
+- Expected behavior: If location is required, the app should either capture it when browser permission is allowed or give a very clear user path to enable location and retry without losing work.
+- Severity: Needs Periwinkle review; potentially High if a real field agent is blocked from saving a visit, Medium if it is only denied phone/browser permission with clear recovery.
+- Status: Needs Periwinkle review. Do not approve Iris yet.
+- Periwinkle initial check: Live API health is OK. Backend intentionally requires GPS for attendance and Sales/Service visits. Existing Bloom evidence shows Sales/Service saves work when browser GPS is allowed. Multiple real/mobile logs show the same permission message, so this is not a backend outage, but it may be a product/UX recovery problem rather than only a user-phone setting.
+- Recommended next step: Ask the affected user to allow Location for the browser/app and retry once; in parallel, Bloom should reproduce the denied-location path on mobile and check whether the app gives enough guidance and preserves typed data. If the user still cannot save after permission is allowed, escalate to Iris with exact journey evidence.
+
 ### BUG-20260701-022 — Admin Field Entry search still zooms on iPhone keyboard
 
 - Reported by: Amrutha
