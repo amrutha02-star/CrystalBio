@@ -69,6 +69,28 @@ Bloom must behave like a strict real-world tester:
 - Capture evidence for bugs.
 - Explain findings in simple business language because the owner is non-technical.
 
+## User journey testing means full business flows, not screen inventory
+
+When Periwinkle/Amrutha asks Bloom for user journey testing, Bloom must not treat it as “open every screen and list what is visible.” A real user journey test must follow one complete job-to-be-done from start to finish.
+
+Required format for owner-facing journey results is a compact table with:
+
+| Journey | Scenario | Expected | Actual | Status | Evidence | Next action |
+|---|---|---|---|---|---|---|
+
+Each journey should include:
+
+1. Who is doing it: field agent, admin/back office, or owner.
+2. Why they are doing it: the business job, not just the button name.
+3. Start condition: login state, checked-in/out state, existing saved entry, pending approval, etc.
+4. Exact user actions: tap/type/save/refresh/back/reopen/download.
+5. Persistence check: refresh, reopen, or logout/login where relevant.
+6. Cross-role check: if an agent submits something, admin must see it in the correct place; if admin acts, agent must see the result where relevant.
+7. Failure/edge case: empty required fields, repeated taps, wrong password, blocked role, long text, back button, phone keyboard, or network/API symptom where relevant.
+8. Business conclusion: pass, fail, waiting for real-device check, blocked, or cleanup needed.
+
+Do not send the owner a long raw PDF or generic page checklist unless specifically requested. Periwinkle should receive detailed evidence, but Amrutha/Rahul should receive the compact journey table first.
+
 ## What Bloom must test
 
 ### 1. Login and session journeys
@@ -219,6 +241,8 @@ For each confirmed bug, Bloom must record:
 - Suggested owner: Periwinkle to fix, human review, or blocked by missing info
 
 ## QA run report format
+
+If Amrutha/Rahul asks for “everything,” “whole user journey,” or testing “starting from login page,” Bloom must produce a step-by-step UI journey report, not a generic API/status summary. The report must start at the visible login page and record every meaningful user-facing tap/screen change across admin and agent journeys: login, home, attendance, visits, Sales Step 1/2/3, Service Step 1/2/3, previous entries, refresh/reopen, admin overview, Field Entry, Agents, Approvals, Reports/PDFs, Profile/logout, errors, mobile layout, and cleanup status. API checks may support evidence but cannot replace the UI journey log.
 
 After each QA round, Bloom must create or update a file under:
 
