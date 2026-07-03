@@ -54,11 +54,12 @@ For live-user problems, Bloom should include:
 - Actual behavior: Local backend challenge showed a second Sales visit at a different time but same date/note/status returned the first visit ID instead of creating a second visit.
 - Expected behavior: True accidental double-taps should be deduplicated, but a materially separate visit at a different time should be saved as a separate update.
 - Severity: Medium
-- Status: **Source-fixed and built/tested locally; waiting for Bloom retest before live deploy/acceptance.**
+- Status: **Source-fixed and Bloom source-retested; waiting for safe deploy/live retest before acceptance.**
 - Evidence: `docs/qa-runs/BACKEND_LOGIC_STRATEGY_AUDIT_BLOOM_2026-07-03.md`; targeted local API output showed `firstValidVisit.id = sales_visit_11`, `sameContentDifferentTime.id = sales_visit_11`.
 - Fix update: exact duplicate resubmits still return the existing visit, but same-day visits at a different time now create a separate update. Added Sales and Service regression tests.
 - Verification: `npm test` passed 115/115; `npm run backend:build` passed; `npm run build` passed.
-- Next step: Bloom retest in safe/night window before any live acceptance.
+- Bloom source retest: Passed on 2026-07-03. Evidence: `docs/qa-runs/BACKEND_AUDIT_HARDENING_SOURCE_RETEST_BLOOM_2026-07-03.md`.
+- Next step: Safe deploy/live retest before any live acceptance.
 
 ### BUG-20260703-026 — Password reset/setup can reactivate an old session token
 
@@ -69,11 +70,12 @@ For live-user problems, Bloom should include:
 - Actual behavior: Local backend challenge showed an old token was rejected while the user was pending reset, but became valid again after password setup completed.
 - Expected behavior: Password reset/setup should permanently invalidate previous sessions; the user should login again with the new password.
 - Severity: High
-- Status: **Source-fixed and built/tested locally; waiting for Bloom retest before live deploy/acceptance.**
+- Status: **Source-fixed and Bloom source-retested; waiting for safe deploy/live retest before acceptance.**
 - Evidence: `docs/qa-runs/BACKEND_LOGIC_STRATEGY_AUDIT_BLOOM_2026-07-03.md`; targeted output showed `oldSessionAfterRequestLink.status = 401`, then `oldSessionAfterNewPassword.status = 200`.
 - Fix update: password reset/request and setup now clear existing sessions for that user, so old tokens stay invalid after the new password is set.
 - Verification: `npm test` passed 115/115; `npm run backend:build` passed; `npm run build` passed.
-- Next step: Bloom retest in safe/night window before any live acceptance.
+- Bloom source retest: Passed on 2026-07-03. Evidence: `docs/qa-runs/BACKEND_AUDIT_HARDENING_SOURCE_RETEST_BLOOM_2026-07-03.md`.
+- Next step: Safe deploy/live retest before any live acceptance.
 
 ### BUG-20260703-025 — GPS validation accepts impossible latitude/longitude values
 
@@ -84,11 +86,12 @@ For live-user problems, Bloom should include:
 - Actual behavior: Local backend challenge saved a Sales visit with GPS `{ latitude: 999, longitude: 999 }` and returned HTTP 201.
 - Expected behavior: Backend should reject latitude outside `-90..90` and longitude outside `-180..180`.
 - Severity: High
-- Status: **Source-fixed and built/tested locally; waiting for Bloom retest before live deploy/acceptance.**
+- Status: **Source-fixed and Bloom source-retested; waiting for safe deploy/live retest before acceptance.**
 - Evidence: `docs/qa-runs/BACKEND_LOGIC_STRATEGY_AUDIT_BLOOM_2026-07-03.md`; targeted output showed `invalidGpsVisit.status = 201`.
 - Fix update: backend now rejects latitude outside `-90..90` and longitude outside `-180..180` for attendance, Sales visits, and Service visits.
 - Verification: `npm test` passed 115/115; `npm run backend:build` passed; `npm run build` passed.
-- Next step: Bloom retest in safe/night window before any live acceptance. This does not close the wider mobile GPS capture bug.
+- Bloom source retest: Passed on 2026-07-03. Evidence: `docs/qa-runs/BACKEND_AUDIT_HARDENING_SOURCE_RETEST_BLOOM_2026-07-03.md`.
+- Next step: Safe deploy/live retest before any live acceptance. This does not close the wider mobile GPS capture bug.
 
 ### BUG-20260703-024 — Backend allows service users to create Sales records and sales users to create Service records
 
@@ -99,11 +102,12 @@ For live-user problems, Bloom should include:
 - Actual behavior: Local API challenge showed a service-only user could create a Sales opportunity and a sales-only user could create a Service record, both returning HTTP 201.
 - Expected behavior: Backend should enforce role boundaries, not rely only on frontend hiding. Service-only users should not create Sales records; sales-only users should not create Service records; `both` users can use both if approved.
 - Severity: High
-- Status: **Source-fixed and built/tested locally; waiting for Bloom retest before live deploy/acceptance.**
+- Status: **Source-fixed and Bloom source-retested; waiting for safe deploy/live retest before acceptance.**
 - Evidence: `docs/qa-runs/BACKEND_LOGIC_STRATEGY_AUDIT_BLOOM_2026-07-03.md`; targeted output showed `serviceCreatesSales.status = 201` and `salesCreatesService.status = 201`.
 - Fix update: backend now requires Sales/both/admin role for Sales create/visit routes and Service/both/admin role for Service create/visit routes.
 - Verification: `npm test` passed 115/115; `npm run backend:build` passed; `npm run build` passed.
-- Next step: Bloom retest in safe/night window before any live acceptance.
+- Bloom source retest: Passed on 2026-07-03. Evidence: `docs/qa-runs/BACKEND_AUDIT_HARDENING_SOURCE_RETEST_BLOOM_2026-07-03.md`.
+- Next step: Safe deploy/live retest before any live acceptance.
 
 ### BUG-20260702-023 — Sales/location permission prevents field update save
 
