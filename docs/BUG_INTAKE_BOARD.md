@@ -45,6 +45,58 @@ For live-user problems, Bloom should include:
 
 ## Current bug queue
 
+### BUG-20260703-027 — Duplicate-save logic ignores visit time and may collapse real separate visits
+
+- Reported by: Bloom
+- Time noticed: 2026-07-03 10:24 IST
+- Screen/API: Sales/Service visit save backend duplicate handling
+- User journey affected: Field agent records two real visits to the same customer on the same day with similar notes/status but different times.
+- Actual behavior: Local backend challenge showed a second Sales visit at a different time but same date/note/status returned the first visit ID instead of creating a second visit.
+- Expected behavior: True accidental double-taps should be deduplicated, but a materially separate visit at a different time should be saved as a separate update.
+- Severity: Medium
+- Status: New from Bloom / needs Periwinkle review
+- Evidence: `docs/qa-runs/BACKEND_LOGIC_STRATEGY_AUDIT_BLOOM_2026-07-03.md`; targeted local API output showed `firstValidVisit.id = sales_visit_11`, `sameContentDifferentTime.id = sales_visit_11`.
+- Recommended next step: Periwinkle should decide the approved duplicate rule before Iris changes it.
+
+### BUG-20260703-026 — Password reset/setup can reactivate an old session token
+
+- Reported by: Bloom
+- Time noticed: 2026-07-03 10:24 IST
+- Screen/API: Login/session backend, password setup/reset flow
+- User journey affected: User resets password or receives setup link and expects old sessions to stay invalid.
+- Actual behavior: Local backend challenge showed an old token was rejected while the user was pending reset, but became valid again after password setup completed.
+- Expected behavior: Password reset/setup should permanently invalidate previous sessions; the user should login again with the new password.
+- Severity: High
+- Status: New from Bloom / needs Periwinkle review
+- Evidence: `docs/qa-runs/BACKEND_LOGIC_STRATEGY_AUDIT_BLOOM_2026-07-03.md`; targeted output showed `oldSessionAfterRequestLink.status = 401`, then `oldSessionAfterNewPassword.status = 200`.
+- Recommended next step: Approve a small security hardening fix if Periwinkle agrees.
+
+### BUG-20260703-025 — GPS validation accepts impossible latitude/longitude values
+
+- Reported by: Bloom
+- Time noticed: 2026-07-03 10:24 IST
+- Screen/API: Attendance/Sales/Service GPS validation backend
+- User journey affected: Field visit and attendance saves require real current GPS.
+- Actual behavior: Local backend challenge saved a Sales visit with GPS `{ latitude: 999, longitude: 999 }` and returned HTTP 201.
+- Expected behavior: Backend should reject latitude outside `-90..90` and longitude outside `-180..180`.
+- Severity: High
+- Status: New from Bloom / needs Periwinkle review
+- Evidence: `docs/qa-runs/BACKEND_LOGIC_STRATEGY_AUDIT_BLOOM_2026-07-03.md`; targeted output showed `invalidGpsVisit.status = 201`.
+- Recommended next step: Treat this as part of GPS/location hardening before accepting the open GPS bug as solved.
+
+### BUG-20260703-024 — Backend allows service users to create Sales records and sales users to create Service records
+
+- Reported by: Bloom
+- Time noticed: 2026-07-03 10:24 IST
+- Screen/API: Backend role access for Sales/Service create routes
+- User journey affected: Role correctness and admin data trust.
+- Actual behavior: Local API challenge showed a service-only user could create a Sales opportunity and a sales-only user could create a Service record, both returning HTTP 201.
+- Expected behavior: Backend should enforce role boundaries, not rely only on frontend hiding. Service-only users should not create Sales records; sales-only users should not create Service records; `both` users can use both if approved.
+- Severity: High
+- Status: New from Bloom / needs Periwinkle review
+- Evidence: `docs/qa-runs/BACKEND_LOGIC_STRATEGY_AUDIT_BLOOM_2026-07-03.md`; targeted output showed `serviceCreatesSales.status = 201` and `salesCreatesService.status = 201`.
+- Recommended next step: Periwinkle should classify this before Iris fixes; likely safe backend hardening with focused tests.
+
 ### BUG-20260702-023 — Sales/location permission prevents field update save
 
 - Reported by: Amrutha
