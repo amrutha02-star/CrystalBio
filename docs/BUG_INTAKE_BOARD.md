@@ -121,6 +121,7 @@ For live-user problems, Bloom should include:
 - Status: **Open / not accepted.** A generic source/live mitigation was deployed in version `20260703033332` after the bad Chrome-specific copy was removed, but this is not verified or accepted as the real fix. Further changes need Periwinkle/Rahul decision because recent-GPS reuse has compliance implications.
 - Periwinkle current check: Live API is OK and backend intentionally requires GPS for attendance and Sales/Service visits. Logs show failures across Android Chrome, Samsung Browser, iPhone Chrome/WebKit-style agents, and test automation. Treat this as cross-phone/browser GPS capture failure, not user error and not Chrome-only.
 - Required next step: diagnose/test the capture/save flow across Android Chrome, Samsung Browser, iPhone Safari, iPhone Chrome, and home-screen/PWA where possible. Preserve typed form data; do not save without valid latitude/longitude; do not add browser-specific field-form copy without owner approval. Bloom retest is required before acceptance.
+- Bloom nightly update — 2026-07-03 21:23 IST: In the live browser QA check, Attendance → `Use current location` showed `Location could not be captured. Your typed details are still here...`. This supports keeping the GPS capture issue open; it is not accepted as fixed. Evidence: `docs/qa-runs/QA_RUN_BLOOM_NIGHT_STABILIZATION_2026-07-03_2123IST.md`.
 
 ### BUG-20260701-022 — Admin Field Entry search still zooms on iPhone keyboard
 
