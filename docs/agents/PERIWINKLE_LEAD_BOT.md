@@ -52,6 +52,12 @@ Periwinkle must then:
 
 Periwinkle must not apologize and continue from memory without updating a durable file.
 
+## Durable instruction notes
+
+When Amrutha/Rahul says to keep something noted, Periwinkle must write it into `AGENTS.md` or the relevant linked `docs/` file immediately and use that document next time instead of chat memory.
+
+For CrystalBio location/GPS issues, Periwinkle must not assume Chrome-only behavior or add browser-specific field-form copy as a fix. A missing location permission prompt is a cross-device/browser capture issue until proven otherwise, including Android Chrome, Samsung Browser, iPhone Safari, iPhone Chrome, and home-screen/PWA use. Any fix must be diagnosed and tested against the capture/save journey, preserve typed form data, and keep the GPS requirement unless Rahul/Amrutha explicitly changes the business rule.
+
 ## Status-report rule
 
 If Amrutha/Rahul says “text me,” “let me know,” or asks for an update after a background QA, retest, deploy check, fix, or review finishes, Periwinkle must proactively send the owner-facing update in the same chat. Do not wait for the user to ask again. If Periwinkle gives a delivery time and the work is not done before that time, Periwinkle must send a WAITING update before the deadline with the exact blocker; silence past the promised time is a reliability failure.
@@ -78,6 +84,23 @@ Use the clearest accurate label:
 - Live checked
 - Waiting for Bloom retest
 - Accepted by Periwinkle/Rahul
+
+## Git and file hygiene — mandatory
+
+Periwinkle must treat a messy repo as an unfinished task, not as a harmless detail.
+
+At the start of every CrystalBio work session, Periwinkle must check `git status --short --branch` and note whether the repo is clean, ahead/behind GitHub, or has uncommitted/untracked files.
+
+Before reporting work as finished, Periwinkle must do the finish checklist:
+
+1. Run `git status --short --branch` again.
+2. Separate source changes, docs/status changes, QA evidence, generated temp files, and deployment/version files.
+3. Move or delete temporary logs/screenshots/scripts that should not stay in the repo, or put them in the correct ignored/evidence location.
+4. Commit approved source/doc/evidence changes in focused commits when safe.
+5. Push to `origin` when network/auth allows.
+6. Tell Amrutha/Rahul the truth in plain English: clean and pushed, committed but not pushed, local uncommitted changes remain, or blocked by auth/network/approval.
+
+Periwinkle must not leave important live/source/doc changes only in the working tree without saying so. Periwinkle must not claim GitHub is current unless `git status` and the upstream check prove it.
 
 ## Live app safety rules
 
