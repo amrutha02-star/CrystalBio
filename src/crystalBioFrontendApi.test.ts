@@ -1,7 +1,11 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createCrystalBioFrontendApi } from './crystalBioFrontendApi';
 
 describe('CrystalBio frontend API client', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it('logs in and checks in against configured backend URL with selected work type', async () => {
     const fetcher = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
       if (String(url).endsWith('/auth/login')) {
@@ -562,7 +566,65 @@ describe('CrystalBio frontend API client', () => {
       accountName: 'Apollo Diagnostics',
       note: 'Requirement confirmed',
       nextAction: 'no_follow_up',
-    })).rejects.toThrow(/Location permission|Allow location permission/);
+    })).rejects.toThrow(/Location could not be captured|phone location access|Your typed details are still here/);
+  });
+
+  it('retries browser GPS with a lower-accuracy request when Chrome does not return a first fix', async () => {
+    const getCurrentPosition = vi.fn((success: PositionCallback, error: PositionErrorCallback, _options?: PositionOptions) => {
+      if (getCurrentPosition.mock.calls.length === 1) {
+        error({ code: 3, message: 'timeout', PERMISSION_DENIED: 1, POSITION_UNAVAILABLE: 2, TIMEOUT: 3 } as GeolocationPositionError);
+        return;
+      }
+      success({ coords: { latitude: 12.9352, longitude: 77.6245, accuracy: 72 } } as GeolocationPosition);
+    });
+    vi.stubGlobal('navigator', { geolocation: { getCurrentPosition } });
+
+    const fetcher = vi.fn(async (url: RequestInfo | URL) => {
+      if (String(url).endsWith('/auth/login')) {
+        return new Response(JSON.stringify({
+          session: { token: 'token-1', agentId: 'agent_2', agentName: 'QA Test Agent', role: 'sales' },
+        }), { status: 200, headers: { 'content-type': 'application/json' } });
+      }
+      if (String(url).endsWith('/sales-opportunities')) {
+        return new Response(JSON.stringify({
+          opportunity: { id: 'sales_1', ownerAgentId: 'agent_2', accountName: 'Apollo Diagnostics', status: 'open' },
+        }), { status: 201, headers: { 'content-type': 'application/json' } });
+      }
+      return new Response(JSON.stringify({
+        visit: {
+          id: 'sales_visit_1',
+          opportunityId: 'sales_1',
+          agentId: 'agent_2',
+          agentName: 'QA Test Agent',
+          visitNumber: 1,
+          visitDate: '2026-06-08',
+          visitTime: '16:48',
+          gps: { latitude: 12.9352, longitude: 77.6245, accuracyMeters: 72 },
+          note: 'Requirement confirmed',
+          nextAction: 'no_follow_up',
+        },
+      }), { status: 201, headers: { 'content-type': 'application/json' } });
+    }) as unknown as typeof fetch;
+    const api = createCrystalBioFrontendApi({
+      baseUrl: 'http://127.0.0.1:8787',
+      fetcher,
+      now: () => new Date('2026-06-08T11:18:00.000Z'),
+    });
+
+    const session = await api.login('agent_2');
+    await api.submitSalesVisit(session, {
+      accountName: 'Apollo Diagnostics',
+      note: 'Requirement confirmed',
+      nextAction: 'no_follow_up',
+    });
+
+    expect(getCurrentPosition).toHaveBeenCalledTimes(2);
+    expect(getCurrentPosition.mock.calls[0][2]).toMatchObject({ enableHighAccuracy: true, timeout: 12000 });
+    expect(getCurrentPosition.mock.calls[1][2]).toMatchObject({ enableHighAccuracy: false, timeout: 8000 });
+    expect(fetcher).toHaveBeenCalledWith(
+      'http://127.0.0.1:8787/sales-opportunities/sales_1/visits',
+      expect.objectContaining({ body: expect.stringContaining('"latitude":12.9352') }),
+    );
   });
 
   it('creates service record and visit through configured backend with session authorization', async () => {

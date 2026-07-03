@@ -348,22 +348,75 @@ type ApiClientOptions = {
 };
 
 const demoGps: FrontendGps = { latitude: 12.9716, longitude: 77.5946, accuracyMeters: 18 };
+const cachedGpsStorageKey = 'crystalbio.last-good-gps.v1';
+const gpsCacheMaxAgeMs = 30 * 60 * 1000;
+const gpsPermissionHelpMessage = 'Location could not be captured. Your typed details are still here. Please check phone location access for this browser or app, then tap Use current location again.';
+
+type CachedFrontendGps = FrontendGps & { capturedAt: number };
+
+const toFrontendGps = (position: GeolocationPosition): FrontendGps => ({
+  latitude: position.coords.latitude,
+  longitude: position.coords.longitude,
+  accuracyMeters: position.coords.accuracy,
+});
+
+const readCachedGps = (nowMs = Date.now()): FrontendGps | null => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(cachedGpsStorageKey) || 'null') as Partial<CachedFrontendGps> | null;
+    if (!parsed || typeof parsed.capturedAt !== 'number') return null;
+    if (nowMs - parsed.capturedAt > gpsCacheMaxAgeMs) return null;
+    const latitude = parsed.latitude;
+    const longitude = parsed.longitude;
+    if (typeof latitude !== 'number' || typeof longitude !== 'number' || !Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+    return {
+      latitude,
+      longitude,
+      ...(Number.isFinite(parsed.accuracyMeters) ? { accuracyMeters: parsed.accuracyMeters } : {}),
+    };
+  } catch {
+    return null;
+  }
+};
+
+const rememberCachedGps = (gps: FrontendGps) => {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(cachedGpsStorageKey, JSON.stringify({ ...gps, capturedAt: Date.now() }));
+  } catch {
+    // Location save must not fail because browser storage is unavailable.
+  }
+};
+
+const requestBrowserGps = (options: PositionOptions): Promise<FrontendGps> => new Promise((resolve, reject) => {
+  navigator.geolocation.getCurrentPosition(
+    (position) => resolve(toFrontendGps(position)),
+    reject,
+    options,
+  );
+});
 
 const browserGpsProvider = async (): Promise<FrontendGps> => {
   if (typeof navigator === 'undefined' || !navigator.geolocation) {
-    throw new Error('Location permission is required before saving field updates.');
+    const cachedGps = readCachedGps();
+    if (cachedGps) return cachedGps;
+    throw new Error(gpsPermissionHelpMessage);
   }
-  return new Promise((resolve, reject) => {
-    navigator.geolocation.getCurrentPosition(
-      (position) => resolve({
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude,
-        accuracyMeters: position.coords.accuracy,
-      }),
-      () => reject(new Error('Allow location permission to save this field update.')),
-      { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 },
-    );
-  });
+  try {
+    const gps = await requestBrowserGps({ enableHighAccuracy: true, timeout: 12000, maximumAge: 5 * 60 * 1000 });
+    rememberCachedGps(gps);
+    return gps;
+  } catch {
+    try {
+      const gps = await requestBrowserGps({ enableHighAccuracy: false, timeout: 8000, maximumAge: 15 * 60 * 1000 });
+      rememberCachedGps(gps);
+      return gps;
+    } catch {
+      const cachedGps = readCachedGps();
+      if (cachedGps) return cachedGps;
+      throw new Error(gpsPermissionHelpMessage);
+    }
+  }
 };
 
 const trimSlash = (value: string) => value.replace(/\/$/, '');

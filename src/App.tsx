@@ -77,7 +77,7 @@ const sessionStorageKey = 'crystalbio.session.v1';
 const sessionCookieKey = 'crystalbio_frontend_session';
 const sessionMaxAgeSeconds = 60 * 60 * 24 * 90;
 const screenStorageKey = 'crystalbio.screen.v1';
-const appBuildVersion = '20260701023648';
+const appBuildVersion = '20260703033332';
 const appVersionReloadKey = 'crystalbio.version-reload.v1';
 const isPublicMonitorPath = () => typeof window !== 'undefined' && window.location.pathname.includes('periwinkle-live-monitor');
 
@@ -897,7 +897,7 @@ function App() {
   const LocationCaptureCard = ({ purpose }: { purpose: 'check-in' | 'sales' | 'service' }) => (
     <div className="form-card highlighted-card location-capture-card">
       <label>Current location</label>
-      {(currentGps || purpose === 'check-in') && <p>{currentLocationSummary}</p>}
+      <p>{currentLocationSummary}</p>
       <button type="button" className="secondary-action location-capture-action" disabled={isLocationCapturing} onClick={() => void captureCurrentLocation(purpose)}>
         {isLocationCapturing ? 'Getting location…' : currentGps ? 'Refresh current location' : 'Use current location'}
       </button>
