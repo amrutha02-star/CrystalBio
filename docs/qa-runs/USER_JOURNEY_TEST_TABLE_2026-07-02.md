@@ -23,7 +23,7 @@ This is not a screen checklist. Each row below follows a real business flow: use
 | 10 | Admin downloads business report | Admin opens Reports and downloads combined PDF | Admin report should download real saved backend data | Admin combined PDF returned `200 application/pdf` with `%PDF` content | PASS | QA report step 34; screenshot `10-admin-reports.png`; file `admin-report-2026-07-01-to-2026-07-02.pdf` | None |
 | 11 | Login/session access safety | Empty login, wrong password, correct admin/agent login, saved session restore, bad session, agent opening admin API | Invalid access should be blocked; valid Bloom users should enter correct role; saved session should restore in test context | Empty/wrong login rejected; Bloom Admin and Agent login worked; saved agent bearer session restored; bad session rejected; agent admin API blocked | PASS for automated context | QA report steps 5-11; screenshots `01-visible-login-page.png`, `02-empty-login.png`, `03-wrong-login.png` | Real iPhone/Android overnight saved-login acceptance still open |
 | 12 | Same-phone daily login reliability | Real field/admin user opens same phone next day after normal night/backend/deploy cycle | Should stay logged in unless explicit logout/inactive/reset | Automated bearer/session-cookie restore passed, but real same-phone overnight acceptance is not closed | WAITING | BUG-20260624-018; 2:30 retest report | Needs real phone overnight acceptance before final closure |
-| 13 | iPhone Field Entry search keyboard behavior | Admin taps Field Entry search on iPhone | Page should not zoom/crop when keyboard opens | Source fix exists, but Bloom could not live-retest because live version had not updated at 2:30 AM | WAITING | BUG-20260701-022 | Needs live phone retest after deploy/version check |
+| 13 | iPhone Field Entry search keyboard behavior | Admin taps Field Entry search on iPhone/mobile viewport | Page should not zoom/crop when keyboard opens | Bloom 2026-07-03 live retest confirmed the focused Field Entry search input computed at `16px` on the mobile viewport | PASS / waiting acceptance | BUG-20260701-022; `QA_RUN_BLOOM_2026-07-03_230_RETEST.md` | Periwinkle/Rahul acceptance |
 
 ## Business conclusion
 
@@ -32,7 +32,7 @@ This is not a screen checklist. Each row below follows a real business flow: use
 | Did Bloom/Periwinkle test real user journeys, not just screens? | Evidence exists for the main end-to-end flows, but the earlier owner report was wrongly presented as a screen checklist. This table is the corrected user-journey view. |
 | Is there a confirmed Critical/High live-user outage from this run? | No confirmed Critical/High outage in the evidence reviewed. |
 | Is the app broadly usable today? | Yes, with cleanup and two waiting acceptance items separated. |
-| What is not closed? | Real same-phone overnight login persistence, iPhone Field Entry search zoom live retest, Bloom-only QA cleanup. |
+| What is not closed? | Real same-phone overnight login persistence and GPS/location capture across real phone browsers. Field Entry search live retest and Bloom-only cleanup have since passed in the 2026-07-03 retest/cleanup evidence. |
 | Should Iris fix anything right now? | No. No new fix is approved from this table. |
 | Should we deploy in daytime? | No routine daytime deploy. |
 

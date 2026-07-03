@@ -1,28 +1,21 @@
 # CrystalBio Bot Coordination Status
 
-Last refreshed: 2026-07-02 07:31 IST / 2026-07-02 02:01 UTC
+Last refreshed: 2026-07-03 after project-control cleanup
 
 Purpose: one simple dashboard so Rahul can see what Periwinkle, Bloom, and Iris are doing without reading logs.
 
 ## Simple summary right now
 
-- Live API health is up (`/health` returned `{"status":"ok"}` during the 2026-07-02 morning stability check).
-- Latest Bloom fix retest report is `docs/qa-runs/QA_RUN_BLOOM_2026-07-02_230_RETEST.md`: live app/API were up, BUG-20260624-019 Agent report PDFs passed, no new failure was confirmed, and no QA records were created in that retest.
-- Amrutha corrected Periwinkle/Bloom's user-journey testing standard on 2026-07-02: a screen inventory or long PDF is not acceptable. The corrected owner-facing journey table is `docs/qa-runs/USER_JOURNEY_TEST_TABLE_2026-07-02.md`; it follows business flows end-to-end and separates pass, waiting, and cleanup items.
-- Latest Bloom night stabilization report is `docs/qa-runs/QA_RUN_BLOOM_2026-07-02_NIGHT_STABILIZATION_1531UTC.md`: live app/API were up; no new confirmed Critical/High product bug was found; API login/session, attendance, Sales/Service Step 1/2/3, saved-entry reopen, admin visibility, and PDFs passed; browser/mobile smoke passed for main admin/agent screens with known automation limits on visible Sales/Service save-button tapping.
-- Bloom's 2026-07-02 15:31 UTC run created Bloom-only QA records (`attendance_996`, `sales_997`/`sales_visit_998`, `service_999`/`service_visit_1000`, `leave_1001`) and cleanup is complete: Bloom-only dry-run/write backup `/var/lib/crystalbio/crystalbio-db.json.pre-clean-2026-07-02T15-34-42-903Z.bak`, backend restart, API health OK, and live API verification showed no Bloom rows/current attendance/leave left.
-- BUG-20260624-018 saved-login/session restore remains the main open reliability item. Bloom's 2026-07-02 2:30 AM cron/browser/API retest again passed bearer/session-cookie restore, but real iPhone/Android same-phone overnight persistence still needs Bloom/user acceptance before final acceptance.
-- Ready for Periwinkle/Rahul acceptance after Bloom live retest: BUG-20260624-019 Agent report PDF download for Attendance / Visit / Combined, and BUG-20260626-020 admin `Checked in` card clarity.
-- BUG-20260623-016 admin refresh has supporting Bloom evidence from repeated live admin/report API checks, but keep it under Periwinkle review unless Rahul/Amrutha want a real open-screen phone retest.
-- BUG-20260623-017 remains accepted by Periwinkle after Bloom's live post-deploy QA passed: Admin dashboard entry detail returns to dashboard, and Sales/Service phone form inputs use 16px anti-zoom sizing.
-- One-week live usage update from Amrutha remains positive: employees are using the app well; only one or two minor issues were seen; no big outage occurred.
-- BUG-20260702-023 location capture issue is active after Amrutha reported a Sales agent cannot add location. Periwinkle made a bad Chrome-specific live copy change and corrected course: this must be tested as a cross-phone/browser location-capture problem, not patched with browser-specific text. Live API is OK and backend still requires GPS by design.
-- No current Critical or High launch-blocking bug is approved for Iris.
-- Admin clarity fix from Amrutha is live: BUG-20260701-021 — opening a submitted dashboard form no longer also shows a pending Leave approval detail. It was a UI state overlap, not data loss. Verified by app regression test/build and live version/API check.
-- BUG-20260701-022 Field Entry search anti-zoom fix is not Bloom-verified live yet: at the 2026-07-02 2:30 AM sweep, live `version.json` was still `20260701023648`, so Bloom did not retest or accept the scheduled search-input fix.
-- Live verified/reporting basics remain stable: Admin uses direct `Download PDF`; Agent report PDFs download; camera/upload controls are clean; key admin usability corrections are live.
-- Iris should not start routine fixes unless Periwinkle/Rahul approves a specific bug.
-- CrystalBio remains on the 14-night stabilization rhythm: Bloom full QA at 9:00 PM IST, Bloom fix retest sweep at 2:30 AM IST, and Periwinkle morning stability summary at 7:30 AM IST. Daytime stays monitor/review only unless Amrutha/Rahul approves an urgent live change.
+- Live app is up at `https://work.convogenie.ai`; live `version.json` is `20260703033332`; live API health is OK.
+- GitHub was clean and synced at the start of this cleanup batch; this status-truth cleanup is being committed/pushed separately.
+- Daily database backups are active at 02:15 UTC / 07:45 IST, with recent backups present through 2026-07-03.
+- Latest Bloom fix retest report is `docs/qa-runs/QA_RUN_BLOOM_2026-07-03_230_RETEST.md`: live app/API were up; Field Entry search anti-zoom passed live retest; Admin submitted-form/Leave overlap passed live retest; saved-login restore passed another automated support check.
+- Latest corrected user-journey table is `docs/qa-runs/USER_JOURNEY_TEST_TABLE_2026-07-02.md`. The raw July 2 E2E report had five rows marked `FAIL`, but their evidence shows successful saves/creates; Periwinkle classifies those five as **QA labeling errors / needs-review corrected to pass evidence**, not confirmed product bugs.
+- Bloom-created QA records from the July 2 and July 3 runs were cleaned through Bloom-only backup/write/restart/verification paths; no real-user cleanup was done by guess.
+- BUG-20260702-023 location/GPS remains the main active product issue. The bad Chrome-specific copy was removed live. Current source/live includes generic retry/recent-GPS behavior, but the issue is **not accepted** because Android/iPhone/Samsung/iPhone Chrome/Safari capture paths are not fully verified and 30-minute recent-GPS reuse needs owner review.
+- BUG-20260624-018 saved-login/session restore remains open for real same-phone overnight acceptance, even though automated bearer/session-cookie checks pass.
+- Ready for Periwinkle/Rahul acceptance after Bloom evidence: Agent report PDF downloads, Admin `Checked in` card clarity, Field Entry search anti-zoom, and Admin submitted-form/Leave overlap.
+- No current Critical/High launch-blocking bug is approved for routine daytime deploy. Daytime stays review/status/monitor only unless Amrutha/Rahul explicitly approve an urgent live fix.
 
 ## Who owns what
 

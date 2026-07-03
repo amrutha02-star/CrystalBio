@@ -112,3 +112,18 @@ Bloom QA marker: BLOOM E2E 2026-07-02 15-31-47
 - Agent submits leave request: {"status":201,"leaveId":"leave_1001","requestStatus":"pending"}
 
 Raw evidence JSON: /root/workspace/CrystalBio/dogfood-output/bloom-e2e-user-journey-2026-07-02-2026-07-02T15-31-47-492Z.json
+
+
+## Periwinkle classification update — 2026-07-03
+
+The five rows marked `FAIL` above are **not confirmed product failures** based on their own evidence. Each row shows a successful backend/API result, so Periwinkle classifies them as QA labeling mistakes / needs-review rows that should be read as pass evidence unless a separate UI failure is reproduced.
+
+| Original row | Evidence shown | Periwinkle classification |
+|---|---|---|
+| Agent checks in with selected work mode | `201`, attendance created, work types saved | PASS evidence; not a confirmed bug |
+| Sales Step 1 saves quick visit with GPS and follow-up | opportunity/visit IDs created, visit status `201` | PASS evidence; not a confirmed bug |
+| Repeated Sales same-content save does not create duplicate latest rows | `201`, returned existing `sales_visit_998` | PASS evidence for duplicate-prevention path; not a confirmed bug |
+| Service Step 1 saves quick service visit with GPS | service record/visit IDs created | PASS evidence; not a confirmed bug |
+| Agent submits leave request | `201`, leave request pending | PASS evidence; not a confirmed bug |
+
+Owner-facing status should use the corrected journey table in `docs/qa-runs/USER_JOURNEY_TEST_TABLE_2026-07-02.md`, not the raw fail labels above.

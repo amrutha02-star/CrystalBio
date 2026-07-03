@@ -53,10 +53,10 @@ For live-user problems, Bloom should include:
 - User journey affected: Field agent tries to add/save location while submitting field work.
 - Actual behavior: User report says sales agent Meera cannot add location. Live client-error logs around 2026-07-02 12:21-12:22 UTC show repeated `Allow location permission to save this field update.` on Android Chrome; the identified logged-in sales account in those logs is Dr. Swati Priya (`agent_6`). Amrutha also reproduced the issue and corrected Periwinkle: this must not be treated as a Chrome-only problem because the office uses different phones/browsers, including iPhone/Safari.
 - Expected behavior: If location is required, the app should capture a valid browser/phone location across supported mobile browsers, avoid repeated permission prompts after a valid grant, preserve typed form data, and show only minimal generic recovery copy if location cannot be captured. Do not add browser-specific instructions in the field form without owner approval.
-- Severity: High, because Amrutha confirmed she tested in Chrome and location is still not being captured for the field save journey.
-- Status: Approved for Iris source fix; no live deploy until Amrutha/Rahul approval or an explicitly urgent live-fix instruction.
-- Periwinkle initial check: Live API health is OK. Backend intentionally requires GPS for attendance and Sales/Service visits. Existing Bloom evidence shows Sales/Service saves work when browser GPS is allowed, but multiple real/mobile logs show the same permission message and Amrutha reproduced Chrome not taking location. Treat this as our app-side location-capture/retry/UX failure, not user error.
-- Iris fix scope: Smallest safe fix only. Improve Chrome/mobile location capture and retry guidance for Sales/Service/Attendance save paths without weakening GPS requirement, changing data rules, or redesigning screens. Preserve typed form data. Add/update tests for denied/unavailable/timeout GPS and successful retry. Run targeted tests and build before handoff to Bloom.
+- Severity: High, because Amrutha confirmed she tested the journey and location is still not reliably captured for the field save journey.
+- Status: **Open / not accepted.** A generic source/live mitigation was deployed in version `20260703033332` after the bad Chrome-specific copy was removed, but this is not verified or accepted as the real fix. Further changes need Periwinkle/Rahul decision because recent-GPS reuse has compliance implications.
+- Periwinkle current check: Live API is OK and backend intentionally requires GPS for attendance and Sales/Service visits. Logs show failures across Android Chrome, Samsung Browser, iPhone Chrome/WebKit-style agents, and test automation. Treat this as cross-phone/browser GPS capture failure, not user error and not Chrome-only.
+- Required next step: diagnose/test the capture/save flow across Android Chrome, Samsung Browser, iPhone Safari, iPhone Chrome, and home-screen/PWA where possible. Preserve typed form data; do not save without valid latitude/longitude; do not add browser-specific field-form copy without owner approval. Bloom retest is required before acceptance.
 
 ### BUG-20260701-022 — Admin Field Entry search still zooms on iPhone keyboard
 
@@ -67,11 +67,10 @@ For live-user problems, Bloom should include:
 - Actual behavior: The page still zooms/crops when the Field Entry search box is focused and the iPhone keyboard opens.
 - Expected behavior: Search boxes must use the same anti-zoom rule as forms: focused inputs should stay at 16px or larger on iPhone so Safari does not auto-zoom the page.
 - Severity: Medium for admin usability; not a data-loss issue.
-- Status: Built/tested locally; scheduled for 9:00 PM IST night deploy on 2026-07-01 as approved by Amrutha. Not deployed live yet.
-- Periwinkle source review: the earlier anti-zoom fix covered Sales/Service form inputs globally, but `.visit-search-card input` overrode it back to `13px`. Admin Field Entry uses that search-card style, so iPhone Safari still zoomed even though the form fields were fixed.
+- Status: **Verified by Bloom on live app; waiting for Periwinkle/Rahul acceptance.**
+- Periwinkle source review: the earlier anti-zoom fix covered Sales/Service form inputs globally, but `.visit-search-card input` overrode it back to `13px`. Admin Field Entry uses that search-card style, so iPhone Safari could still zoom.
 - Fix update: `.visit-search-card input` now uses `16px`, so the Field Entry search input should no longer trigger iPhone focus zoom.
-- Verification: `npm test -- --run src/App.test.tsx` passed 23/23 and `npm run build` passed. Night deployment job scheduled as `c9b58317daa0` for 2026-07-01 21:00 IST / 15:30 UTC; live deploy/check is still pending.
-- Bloom 2:30 AM retest note — 2026-07-02 02:31 IST: Not retested/verified because the live app still reports version `20260701023648`; the 16px Field Entry search fix is not live yet. Evidence: `docs/qa-runs/QA_RUN_BLOOM_2026-07-02_230_RETEST.md`.
+- Verification: source tests/build passed before deploy. Bloom 2026-07-03 2:30 AM retest passed on live app version `20260702164134`: Field Entry search input placeholder was `Search customer or agent` and focused input computed at `16px`; no JavaScript crash. Evidence: `docs/qa-runs/QA_RUN_BLOOM_2026-07-03_230_RETEST.md`.
 
 ### BUG-20260701-021 — Admin submitted-form detail also shows Leave approval detail
 
@@ -82,10 +81,10 @@ For live-user problems, Bloom should include:
 - Actual behavior: The Leave approval detail can appear at the same time as the submitted-form detail, making it look like the Leave page also opened.
 - Expected behavior: Opening a submitted Sales/Service form must show only that submitted-form detail. Leave approvals should appear only when the admin opens the Leave/Approvals path.
 - Severity: Medium for admin clarity; not a data-loss issue.
-- Status: Fixed and deployed live as version `20260701023648` after Amrutha approved fixing it now.
+- Status: **Verified by Bloom on live app; waiting for Periwinkle/Rahul acceptance.** Fixed and deployed live as version `20260701023648` after Amrutha approved fixing it now.
 - Periwinkle source review: Admin overview kept approvals renderable on the overview screen, and a previously selected pending leave approval could stay active while a submitted-form detail was opened. This was a state/rendering mix-up, not a backend/data problem.
 - Fix update: Opening a submitted Sales/Service form now clears the active Leave approval detail and hides overview approvals while the submitted-form detail is open, so only the selected form is shown.
-- Verification: `npm test -- --run src/App.test.tsx` passed 23/23, including the overlap regression path with a pending Leave approval and submitted dashboard form. `npm run build` passed. Live API health returned OK, live `version.json` returned `20260701023648`, and the served live bundle is `assets/index-Dp3ldM4Z.js`. Bloom QA Admin live login opened the admin overview; there were 0 live Bloom-visible visits/leaves, so no new QA form/leave records were created just to force the overlap.
+- Verification: `npm test -- --run src/App.test.tsx` passed 23/23, including the overlap regression path with a pending Leave approval and submitted dashboard form. `npm run build` passed. Live API health returned OK, live `version.json` returned `20260701023648`, and the served live bundle is `assets/index-Dp3ldM4Z.js`. Bloom QA Admin live login opened the admin overview; there were 0 live Bloom-visible visits/leaves, so no new QA form/leave records were created just to force the overlap. Bloom 2026-07-03 2:30 AM retest then created a pending Bloom leave and Sales entry, opened the dashboard Sales submitted form, and confirmed the Bloom leave reason text was absent. Cleanup removed only Bloom-owned rows after backup/restart/live verification. Evidence: `docs/qa-runs/QA_RUN_BLOOM_2026-07-03_230_RETEST.md`.
 
 ### BUG-20260626-020 — Admin overview Checked in card shows checked-out people
 
