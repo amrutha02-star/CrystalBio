@@ -11,7 +11,9 @@
 
 Bloom confirms the backend hardening findings are **fixed in source and passing local/source verification**.
 
-This is not live acceptance yet. The live app/API are still up, but Periwinkle explicitly did not deploy these backend code changes during active-use time. These items should stay as: **source-fixed + Bloom source-retested, waiting for safe deploy/live retest before acceptance.**
+Update from 2026-07-03 09:35 UTC / 15:05 IST: Bloom rechecked after Amrutha reported that GitHub and backend were fixed. GitHub is now clean and synced with `origin/main` at `253f5f9 docs: record Bloom backend hardening source retest`; the backend source checks still pass.
+
+This is not live acceptance yet. The live app/API are still up, but Bloom has not confirmed a live deploy of these backend hardening code paths through production user journeys. These items should stay as: **source-fixed + Bloom source-retested, GitHub synced, waiting for safe deploy/live retest before acceptance.**
 
 ## Verification summary
 
