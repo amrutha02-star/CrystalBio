@@ -185,3 +185,30 @@ But I would not say “all fixed.” I would say:
 3. Have Bloom do the next live GPS/location retest path before accepting BUG-20260702-023.
 4. Keep same-phone login persistence open until a real iPhone/Android overnight check is accepted.
 5. Later, schedule a safe backend/security hardening pass for Nodemailer and the backend findings from Bloom's backend strategy audit.
+
+
+## Periwinkle follow-up update — after backend hardening commit
+
+This re-audit was accurate when Bloom wrote it, but part of it is now historical because Periwinkle completed the next backend hardening batch afterward.
+
+Current updates:
+
+| Re-audit finding | Current status after Periwinkle follow-up |
+|---|---|
+| Dependency audit / Nodemailer high advisory | **Source-fixed and pushed** in commit `0b9a16f`; `npm audit --audit-level=moderate --omit=dev` now reports 0 vulnerabilities. |
+| Backend strategy audit findings | **Source-fixed and locally verified** for role boundary, GPS coordinate bounds, reset/session invalidation, duplicate visit matching, and secure setup/session token generation. Not live-deployed or Bloom-accepted yet. |
+| Raw July 2 report still contains misleading `FAIL` lines | **Corrected in place**: the five mislabeled rows now read `PASS` with correction notes, and the summary says 0 confirmed product failures. |
+| GPS/location real phone capture | Still open / not accepted. Backend coordinate bounds are fixed in source, but this does not close the phone/browser capture issue. |
+| Same-phone daily login persistence | Still open until real iPhone/Android overnight acceptance. |
+| Frontend maintainability / React test warnings | Still open; not part of the backend hardening fix. |
+
+Verification after follow-up:
+
+- Targeted backend/API tests: 40/40 passed.
+- Full test suite: 115/115 passed.
+- Backend build: passed.
+- Frontend build: passed.
+- Production dependency audit: 0 vulnerabilities.
+- Live API remains up and live app version remains `20260703033332`.
+
+Current truthful label: **backend audit items are source-fixed and pushed, but not live-deployed or accepted. GPS phone capture and same-phone overnight login remain open.**
