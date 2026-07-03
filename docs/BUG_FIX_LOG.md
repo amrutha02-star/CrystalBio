@@ -23,6 +23,21 @@ Use this file to keep a simple history of what was fixed, how it was checked, an
 
 ## Fixes
 
+### 2026-07-03 — Backend audit hardening: roles, GPS, reset sessions, duplicate visits
+
+- Fixed by: Periwinkle source pass after Bloom backend audit
+- Approved by: Amrutha asked Periwinkle to work on the backend audit findings
+- Source bug report: `docs/qa-runs/BACKEND_LOGIC_STRATEGY_AUDIT_BLOOM_2026-07-03.md`; BUG-20260703-024, BUG-20260703-025, BUG-20260703-026, BUG-20260703-027
+- Severity: High for role boundary, GPS validation, reset/session safety; Medium for duplicate-visit matching
+- Journey: Backend role access, GPS compliance, password reset/session safety, repeated Sales/Service visit saves
+- Problem: Backend challenge found wrong-role Sales/Service creates succeeded, impossible GPS coordinates were accepted, old reset-session tokens could become valid again, different-time same-day visits could be collapsed as duplicates, and production dependency audit flagged vulnerable Nodemailer.
+- Fix made: Added backend role guards for Sales/Service create and visit update paths; added GPS coordinate bounds; cleared existing sessions when reset/setup links are issued/completed; included visit time in Sales/Service duplicate matching so exact resubmits dedupe but different-time visits are saved separately; upgraded Nodemailer to `^9.0.3`; replaced predictable setup/session token generation with crypto-random tokens.
+- Checks run: `npm test -- --run src/backend/crystalBioBackend.test.ts src/backend/crystalBioApi.test.ts`; full `npm test`; `npm run backend:build`; `npm run build`; `npm audit --audit-level=moderate --omit=dev`.
+- Result: Targeted backend/API tests passed 40/40 before dependency upgrade; full suite passed 115/115; backend and frontend builds passed; production audit now reports 0 vulnerabilities.
+- Bloom retest: Needed before live acceptance.
+- Final acceptance: Not accepted yet.
+- Notes: Source/test/docs only so far. No live deploy was done in this batch. Wider mobile GPS capture bug remains open and is not closed by coordinate validation alone.
+
 ### 2026-06-21 — Login Enter/Go submits from password field again
 
 - Fixed by: Iris

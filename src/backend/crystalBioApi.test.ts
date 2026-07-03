@@ -180,6 +180,7 @@ describe('CrystalBio API layer', () => {
     expect(invite.status).toBe(201);
     expect(invite.body.agent.active).toBe(false);
     expect(invite.body.agent.inviteStatus).toBe('pending');
+    expect(invite.body.agent.inviteToken).toMatch(/^invite_agent_\d+_setup_[A-Za-z0-9_-]{32}$/);
 
     const beforeSetup = api.handle({ method: 'POST', path: '/auth/login', body: { email: 'new.sales@crystalbio.in', password: 'NewPassword123' } });
     expect(beforeSetup.status).toBe(400);
@@ -190,7 +191,48 @@ describe('CrystalBio API layer', () => {
 
     const login = api.handle({ method: 'POST', path: '/auth/login', body: { email: 'new.sales@crystalbio.in', password: 'NewPassword123' } });
     expect(login.status).toBe(200);
+    expect(login.body.session.token).toMatch(/^session_[A-Za-z0-9_-]{32}$/);
     expect(login.body.session.agentName).toBe('New Sales');
+  });
+
+
+  it('invalidates old sessions permanently after password reset/setup', () => {
+    const backend = createCrystalBioBackend();
+    const admin = createLoginAgent(backend, { name: 'Admin User', role: 'admin', email: 'admin.reset@crystalbio.in' });
+    const agent = createLoginAgent(backend, { name: 'Reset User', role: 'sales', email: 'reset.user@crystalbio.in' });
+    const api = createCrystalBioApi(backend);
+    const oldToken = loginToken(api, agent.email!);
+    const adminToken = loginToken(api, admin.email!);
+
+    const reset = api.handle({
+      method: 'POST',
+      path: `/admin/agents/${agent.id}/reset-invite`,
+      headers: { authorization: `Bearer ${adminToken}` },
+    });
+    expect(reset.status).toBe(200);
+    expect(api.handle({ method: 'GET', path: '/auth/session', headers: { authorization: `Bearer ${oldToken}` } }).status).toBe(401);
+
+    const setup = api.handle({ method: 'POST', path: '/auth/setup-password', body: { inviteToken: reset.body.agent.inviteToken, password: 'NewPassword123' } });
+    expect(setup.status).toBe(200);
+    expect(api.handle({ method: 'GET', path: '/auth/session', headers: { authorization: `Bearer ${oldToken}` } }).status).toBe(401);
+    expect(api.handle({ method: 'POST', path: '/auth/login', body: { email: agent.email, password: 'NewPassword123' } }).status).toBe(200);
+  });
+
+  it('rejects wrong-role Sales and Service create attempts at the API boundary', () => {
+    const backend = createCrystalBioBackend();
+    const salesAgent = createLoginAgent(backend, { name: 'Sales User', role: 'sales', email: 'sales.boundary@crystalbio.in' });
+    const serviceAgent = createLoginAgent(backend, { name: 'Service User', role: 'service', email: 'service.boundary@crystalbio.in' });
+    const api = createCrystalBioApi(backend);
+    const salesToken = loginToken(api, salesAgent.email!);
+    const serviceToken = loginToken(api, serviceAgent.email!);
+
+    const serviceCreatesSales = api.handle({ method: 'POST', path: '/sales-opportunities', headers: { authorization: `Bearer ${serviceToken}` }, body: { accountName: 'Wrong Sales' } });
+    const salesCreatesService = api.handle({ method: 'POST', path: '/service-records', headers: { authorization: `Bearer ${salesToken}` }, body: { customerName: 'Wrong Service' } });
+
+    expect(serviceCreatesSales.status).toBe(400);
+    expect(serviceCreatesSales.body.error).toBe('Sales access is required');
+    expect(salesCreatesService.status).toBe(400);
+    expect(salesCreatesService.body.error).toBe('Service access is required');
   });
 
   it('blocks protected routes without a valid session token', () => {

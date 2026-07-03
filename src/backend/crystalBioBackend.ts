@@ -1,3 +1,5 @@
+import { randomBytes } from 'node:crypto';
+
 export type AgentRole = 'sales' | 'service' | 'both' | 'admin';
 
 export type GPSLocation = {
@@ -276,6 +278,13 @@ const requireGps = (gps: GPSLocation | undefined) => {
   if (!Number.isFinite(gps.latitude) || !Number.isFinite(gps.longitude)) {
     throw new ValidationError('Valid GPS latitude and longitude are required');
   }
+  if (gps.latitude < -90 || gps.latitude > 90 || gps.longitude < -180 || gps.longitude > 180) {
+    throw new ValidationError('Valid GPS latitude and longitude are required');
+  }
+};
+
+const requireRole = (agent: Agent, allowedRoles: AgentRole[], message: string) => {
+  if (!allowedRoles.includes(agent.role)) throw new ValidationError(message);
 };
 
 const createIdFactory = () => {
@@ -283,7 +292,8 @@ const createIdFactory = () => {
   return (prefix: string) => `${prefix}_${next++}`;
 };
 
-const createInviteToken = (agentId: string) => `invite_${agentId}_${Math.random().toString(36).slice(2, 12)}`;
+const createSecureToken = (prefix: string) => `${prefix}_${randomBytes(24).toString('base64url')}`;
+const createInviteToken = (agentId: string) => `invite_${agentId}_${createSecureToken('setup')}`;
 
 export function createCrystalBioBackend(initialState?: CrystalBioBackendState) {
   let nextNumericId = initialState?.nextId ?? 1;
@@ -326,6 +336,12 @@ export function createCrystalBioBackend(initialState?: CrystalBioBackendState) {
     const agent = getAgent(agentId);
     if (agent.role !== 'admin') throw new ValidationError('Admin access is required');
     return agent;
+  };
+
+  const clearSessionsForAgent = (agentId: string) => {
+    [...sessions.entries()].forEach(([token, session]) => {
+      if (session.agentId === agentId) sessions.delete(token);
+    });
   };
 
   return {
@@ -397,6 +413,7 @@ export function createCrystalBioBackend(initialState?: CrystalBioBackendState) {
       const agent = agents.get(agentId);
       if (!agent) throw new ValidationError('Agent profile not found');
       if (agent.role === 'admin' && agent.id === adminAgentId) throw new ValidationError('Admins cannot reset their own access from this screen');
+      clearSessionsForAgent(agent.id);
       agent.active = false;
       delete agent.password;
       delete agent.passcode;
@@ -409,6 +426,7 @@ export function createCrystalBioBackend(initialState?: CrystalBioBackendState) {
       requireText(email, 'Registered email is required');
       const agent = [...agents.values()].find((candidate) => candidate.email?.toLowerCase() === email.trim().toLowerCase());
       if (!agent) return null;
+      clearSessionsForAgent(agent.id);
       agent.active = false;
       delete agent.password;
       delete agent.passcode;
@@ -433,6 +451,7 @@ export function createCrystalBioBackend(initialState?: CrystalBioBackendState) {
       if (input.password.trim().length < 8) throw new ValidationError('Password must be at least 8 characters');
       const agent = [...agents.values()].find((candidate) => candidate.inviteToken === input.inviteToken && candidate.inviteStatus === 'pending');
       if (!agent) throw new ValidationError('Valid invite token is required');
+      clearSessionsForAgent(agent.id);
       agent.password = input.password;
       agent.passcode = input.password;
       agent.active = true;
@@ -463,7 +482,7 @@ export function createCrystalBioBackend(initialState?: CrystalBioBackendState) {
         if (!agent) throw new ValidationError('Invalid login code or passcode');
       }
       const session: LoginSession = {
-        token: nextId('session'),
+        token: createSecureToken('session'),
         agentId: agent.id,
         agentName: agent.name,
         role: agent.role,
@@ -562,7 +581,8 @@ export function createCrystalBioBackend(initialState?: CrystalBioBackendState) {
     },
 
     createSalesOpportunity(agentId: string, input: SalesOpportunityInput): SalesOpportunity {
-      getAgent(agentId);
+      const agent = getAgent(agentId);
+      requireRole(agent, ['sales', 'both', 'admin'], 'Sales access is required');
       requireText(input.accountName, 'Account name is required');
       const opportunity: SalesOpportunity = {
         id: nextId('sales'),
@@ -655,6 +675,7 @@ export function createCrystalBioBackend(initialState?: CrystalBioBackendState) {
 
     addSalesVisitUpdate(agentId: string, opportunityId: string, input: SalesVisitInput): SalesVisitUpdate {
       const agent = getAgent(agentId);
+      requireRole(agent, ['sales', 'both', 'admin'], 'Sales access is required');
       const opportunity = sales.get(opportunityId);
       if (!opportunity) throw new ValidationError('Sales opportunity not found');
       if (opportunity.ownerAgentId !== agentId && agent.role !== 'admin') {
@@ -671,6 +692,7 @@ export function createCrystalBioBackend(initialState?: CrystalBioBackendState) {
       const duplicateVisit = opportunity.visits.find((visit) =>
         visit.agentId === agent.id
         && visit.visitDate === input.visitDate
+        && visit.visitTime === input.visitTime
         && visit.note.trim() === input.note.trim()
         && visit.nextAction === input.nextAction
         && (visit.followUpDate ?? '') === (input.followUpDate ?? '')
@@ -692,7 +714,8 @@ export function createCrystalBioBackend(initialState?: CrystalBioBackendState) {
     },
 
     createServiceRecord(agentId: string, input: ServiceRecordInput): ServiceRecord {
-      getAgent(agentId);
+      const agent = getAgent(agentId);
+      requireRole(agent, ['service', 'both', 'admin'], 'Service access is required');
       requireText(input.customerName, 'Customer name is required');
       const record: ServiceRecord = {
         id: nextId('service'),
@@ -763,6 +786,7 @@ export function createCrystalBioBackend(initialState?: CrystalBioBackendState) {
 
     addServiceVisitUpdate(agentId: string, serviceRecordId: string, input: ServiceVisitInput): ServiceVisitUpdate {
       const agent = getAgent(agentId);
+      requireRole(agent, ['service', 'both', 'admin'], 'Service access is required');
       const record = service.get(serviceRecordId);
       if (!record) throw new ValidationError('Service record not found');
       if (record.ownerAgentId !== agentId && agent.role !== 'admin') {
@@ -779,6 +803,7 @@ export function createCrystalBioBackend(initialState?: CrystalBioBackendState) {
       const duplicateVisit = record.visits.find((visit) =>
         visit.agentId === agent.id
         && visit.visitDate === input.visitDate
+        && visit.visitTime === input.visitTime
         && visit.serviceType === input.serviceType
         && visit.workDone.trim() === input.workDone.trim()
         && visit.supportRequired === input.supportRequired
