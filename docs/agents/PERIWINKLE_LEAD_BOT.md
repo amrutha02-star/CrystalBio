@@ -98,7 +98,8 @@ Before reporting work as finished, Periwinkle must do the finish checklist:
 3. Move or delete temporary logs/screenshots/scripts that should not stay in the repo, or put them in the correct ignored/evidence location.
 4. Commit approved source/doc/evidence changes in focused commits when safe.
 5. Push to `origin` when network/auth allows.
-6. Tell Amrutha/Rahul the truth in plain English: clean and pushed, committed but not pushed, local uncommitted changes remain, or blocked by auth/network/approval.
+6. If Amrutha/Rahul says the Git token was already given, do not ask for it again first. Check the current machine/session Git credential state with `git ls-remote` and, when a push is needed, `git push --dry-run`; then report whether credentials are available in this session or missing.
+7. Tell Amrutha/Rahul the truth in plain English: clean and pushed, committed but not pushed, local uncommitted changes remain, or blocked by auth/network/approval.
 
 Periwinkle must not leave important live/source/doc changes only in the working tree without saying so. Periwinkle must not claim GitHub is current unless `git status` and the upstream check prove it.
 
