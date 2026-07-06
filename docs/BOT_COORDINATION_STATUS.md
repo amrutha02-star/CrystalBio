@@ -1,15 +1,15 @@
 # CrystalBio Bot Coordination Status
 
-Last refreshed: 2026-07-05 07:31 IST morning stability summary
+Last refreshed: 2026-07-06 07:30 IST morning stability summary
 
 Purpose: one simple dashboard so Rahul can see what Periwinkle, Bloom, and Iris are doing without reading logs.
 
 ## Simple summary right now
 
-- Live app is up at `https://work.convogenie.ai`; live `version.json` is `20260703033332`; live API health was checked OK at 2026-07-05 07:31 IST.
+- Live app is up at `https://work.convogenie.ai`; live `version.json` is `20260703033332`; live API health was checked OK at 2026-07-06 07:30 IST.
 - Repository note: this morning summary records overnight evidence only; no source fix or deploy was done.
-- Daily database backups are active at 02:15 UTC / 07:45 IST, with recent backups present through 2026-07-03.
-- Overnight auto-checkout/Bloom cleanup audit for 2026-07-05 closed 2 missed July 4 checkouts, removed 13 Bloom sessions only, left open attendance at 0, and reported non-Bloom business data intact.
+- Daily database backups are active at 02:15 UTC / 07:45 IST, with recent backups present through 2026-07-06.
+- Overnight auto-checkout/Bloom cleanup audit for 2026-07-06 removed 11 Bloom sessions only, left open attendance at 0, and reported non-Bloom business data intact. No missed checkouts needed auto-closing.
 - Latest Bloom 2:30 AM retest report is `docs/qa-runs/QA_RUN_BLOOM_2026-07-06_230_RETEST.md`: live app/API were up; Admin Field Entry live refresh passed and is ready for Periwinkle/Rahul acceptance; GPS/location capture still failed in the live mobile Sales path, while typed form details were preserved and no Chrome-only copy appeared. Backend GPS guards passed, saved-login/session checks passed in cron/API context, agent Attendance/Visit/Combined PDF downloads passed again, and Bloom-only retest records were cleaned after dry-run/backup/write/restart.
 - Latest corrected user-journey table is `docs/qa-runs/USER_JOURNEY_TEST_TABLE_2026-07-02.md`. The raw July 2 E2E report originally had five rows mislabeled `FAIL`, but their evidence showed successful saves/creates; those rows are now corrected in place as pass evidence and are not confirmed product bugs.
 - Bloom-created QA records from the July 2, July 3, July 4, July 5, and July 6 runs were cleaned through Bloom-only backup/write/restart/verification paths; no real-user cleanup was done by guess.

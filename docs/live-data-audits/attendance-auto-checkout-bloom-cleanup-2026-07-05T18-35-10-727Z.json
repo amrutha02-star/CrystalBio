@@ -1,0 +1,63 @@
+{
+  "mode": "written",
+  "checkedAt": "2026-07-05T18:35:11.031Z",
+  "dbPath": "/var/lib/crystalbio/crystalbio-db.json",
+  "clientErrorLogPath": "/var/lib/crystalbio/crystalbio-client-errors.jsonl",
+  "today": "2026-07-06",
+  "bloomAgentIds": [
+    "agent_130",
+    "agent_132",
+    "agent_1032",
+    "agent_1033",
+    "agent_1034"
+  ],
+  "beforeCounts": {
+    "agents": 20,
+    "sessions": 91,
+    "attendance": 98,
+    "sales": 70,
+    "service": 33,
+    "leaveRequests": 0
+  },
+  "afterCounts": {
+    "agents": 20,
+    "sessions": 80,
+    "attendance": 98,
+    "sales": 70,
+    "service": 33,
+    "leaveRequests": 0
+  },
+  "removedBloom": {
+    "sessions": 11,
+    "attendance": 0,
+    "sales": 0,
+    "service": 0,
+    "leaveRequests": 0,
+    "salesVisits": 0,
+    "serviceVisits": 0
+  },
+  "restoredFailedCheckIns": [],
+  "autoClosedMissedCheckouts": [],
+  "openAttendanceAfter": [],
+  "bloomLeftAfter": {
+    "sessions": 0,
+    "attendance": 0,
+    "sales": 0,
+    "service": 0,
+    "leaveRequests": 0
+  },
+  "clientDataAudit": {
+    "scope": "Non-Bloom client business data is audited separately from the approved attendance repair. Sales, Service, leave, and user profiles must stay hash-identical after Bloom cleanup filtering. Attendance may differ only by restored failed check-ins and auto-checkout fields on stale open sessions.",
+    "businessDataBeforeHash": "dc00e38bfa2edfd87c80be3eb345576c765d304447faa19d92382b7437570057",
+    "businessDataAfterHash": "dc00e38bfa2edfd87c80be3eb345576c765d304447faa19d92382b7437570057",
+    "businessDataIntact": true,
+    "attendanceBeforeHash": "4fded3b6058606a59044c6d35cafa58fab2676070b932f1bf20a76ff528dea12",
+    "attendanceAfterHash": "4fded3b6058606a59044c6d35cafa58fab2676070b932f1bf20a76ff528dea12",
+    "attendanceChangeApproved": true,
+    "attendanceChangeSummary": {
+      "restoredFailedCheckIns": 0,
+      "autoClosedMissedCheckouts": 0
+    }
+  },
+  "backupPath": "/var/lib/crystalbio/crystalbio-db.json.pre-attendance-repair-2026-07-05T18-35-10-727Z.bak"
+}
