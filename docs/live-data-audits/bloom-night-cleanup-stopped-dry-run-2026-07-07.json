@@ -1,0 +1,41 @@
+
+> clean:pilot-data
+> node scripts/clean-pilot-test-data.mjs --bloom-only
+
+{
+  "mode": "dry-run",
+  "bloomOnly": true,
+  "dbPath": "/var/lib/crystalbio/crystalbio-db.json",
+  "bloomAgentIds": [
+    "agent_130",
+    "agent_132",
+    "agent_1032",
+    "agent_1033",
+    "agent_1034"
+  ],
+  "before": {
+    "agents": 20,
+    "sessions": 92,
+    "attendance": 108,
+    "sales": 83,
+    "service": 36,
+    "leaveRequests": 1
+  },
+  "after": {
+    "agents": 20,
+    "sessions": 92,
+    "attendance": 107,
+    "sales": 82,
+    "service": 35,
+    "leaveRequests": 0
+  },
+  "removed": {
+    "sessions": 0,
+    "attendance": 1,
+    "sales": 1,
+    "service": 1,
+    "leaveRequests": 1,
+    "salesVisits": 1,
+    "serviceVisits": 1
+  }
+}
