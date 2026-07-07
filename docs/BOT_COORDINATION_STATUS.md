@@ -1,6 +1,6 @@
 # CrystalBio Bot Coordination Status
 
-Last refreshed: 2026-07-07 07:31 IST morning stability summary
+Last refreshed: 2026-07-07 21:09 IST daily testing stopped
 
 Purpose: one simple dashboard so Rahul can see what Periwinkle, Bloom, and Iris are doing without reading logs.
 
@@ -19,6 +19,7 @@ Purpose: one simple dashboard so Rahul can see what Periwinkle, Bloom, and Iris 
 - Backend audit fixes 024-027 are now **deployed live, Bloom live-retested, and accepted by Periwinkle**. Evidence: `docs/qa-runs/BACKEND_AUDIT_HARDENING_LIVE_RETEST_BLOOM_2026-07-03.md`. Live retest passed for role enforcement, impossible GPS coordinate rejection, password reset/session invalidation, duplicate-visit matching, and cleanup. Periwinkle restored the backend to the managed `crystalbio-backend.service` after Bloom cleanup and verified live API health OK. These backend audit items are closed; wider real-phone GPS capture and same-phone overnight login remain open.
 - Ready for Periwinkle/Rahul acceptance after Bloom evidence: Agent report PDF downloads, Admin `Checked in` card clarity, Field Entry search anti-zoom, Admin submitted-form/Leave overlap, and Admin live data refresh while Field Entry stays open.
 - No current Critical/High launch-blocking bug is approved for routine daytime deploy. Daytime stays review/status/monitor only unless Amrutha/Rahul explicitly approve an urgent live fix.
+- Amrutha stopped everyday Bloom testing from today. The scheduled nightly Bloom stability QA, 2:30 AM retest sweep, post-retest Bloom cleanup, and 7:30 AM Periwinkle morning summary are paused. Live health monitoring and the nightly attendance auto-checkout/QA cleanup audit remain active for safety.
 
 ## Who owns what
 
@@ -48,10 +49,7 @@ Purpose: one simple dashboard so Rahul can see what Periwinkle, Bloom, and Iris 
 ## Scheduled work
 
 - Every 5 minutes: live API monitor checks CrystalBio health.
-- 9:00 PM IST for 14 nights from 2026-06-24: Bloom full stability QA using only Bloom assigned credentials; no fixing/deploying.
-- 2:30 AM IST for 14 nights: Bloom retests only fixes marked ready/deployed for verification.
-- 3:10 AM IST for 14 nights: post-retest cleanup removes only Bloom-owned QA activity after backup/dry-run and live verification, so retest records do not remain visible in Admin the next morning.
-- 7:30 AM IST for 14 mornings: Periwinkle sends a short stability summary before daytime use.
+- Paused from 2026-07-07 by Amrutha: 9:00 PM IST Bloom full stability QA, 2:30 AM IST Bloom fix retest sweep, 3:10 AM IST post-retest Bloom QA cleanup, and 7:30 AM IST Periwinkle stability summary.
 - 00:05 AM IST: nightly attendance auto-checkout and early Bloom QA cleanup/audit runs after the calendar day changes (`faeccaf5a2d2`).
 
 ## Current bug/fix status

@@ -51,6 +51,8 @@ Use this order:
 
 Amrutha approved moving from daily small fixes to a structured stability cycle starting tonight.
 
+**Paused from 2026-07-07:** Amrutha stopped everyday Bloom testing from today. Do not run the scheduled nightly Bloom stability QA, 2:30 AM fix retest sweep, post-retest Bloom QA cleanup, or automatic 7:30 AM stability summary unless Amrutha/Rahul asks to resume. Keep safety monitoring separate from heavy daily testing.
+
 For the next 14 nights:
 
 1. **9:00 PM IST — Bloom full stability QA**
