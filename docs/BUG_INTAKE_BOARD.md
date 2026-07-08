@@ -45,6 +45,20 @@ For live-user problems, Bloom should include:
 
 ## Current bug queue
 
+### BUG-20260708-028 — Admin Field Entry does not show every recorded field entry
+
+- Reported by: Amrutha / Periwinkle live check
+- Time noticed: 2026-07-08 16:11 IST
+- Screen/API: Admin Field Entry / `/field-visits?scope=team` compared with Admin Reports
+- User journey affected: Admin wants to confirm every agent Sales/Service entry is recorded and visible in admin accounts.
+- Actual behavior: Live Admin Reports API shows entries are being recorded in the backend: 2026 total is 90 Sales visits, 35 Service visits, and 110 attendance records; today shows 3 Sales visits and 3 attendance records. But Admin Field Entry `All entries` returns only 30 Sales/Service cards, starting from 30 Jun onward, while the full 2026 report has 125 Sales/Service visit records. The UI initially shows `10 of 30 shown`; clicking `Show all 30 entries` did not expand during Periwinkle's browser check.
+- Expected behavior: Admin should have a clear way to see/search/export every saved Sales/Service entry for the selected period/account, not only the latest 30 cards. If the visible list is intentionally recent-only, the UI must say so and provide the full admin path.
+- Severity: High for admin review confidence; current evidence points to a visibility/listing limitation, not confirmed data loss.
+- Status: **Needs Periwinkle/Rahul decision before Iris fix.** Do not change live during daytime without approval.
+- Evidence: Live health OK; Bloom QA Admin login OK; `/admin/reports?fromDate=2026-01-01&toDate=2026-12-31` returned 90 Sales / 35 Service visit details; `/field-visits?scope=team` returned 30 cards; browser screenshot showed Admin Field Entry `10 of 30 shown` with `Show all 30 entries` still visible after clicks. Agent-by-agent audit saved at `docs/live-data-audits/admin-agent-entry-visibility-audit-2026-07-08.md`.
+- Source clue: `/field-visits` builds latest Sales/Service cards and then slices the result to 30, so the Field Entry screen can hide older saved entries even when Admin Reports still counts them.
+- Recommended next step: Approve a focused night fix so Field Entry can list/search all saved entries safely, with clear loading/pagination/date filters and Bloom retest using assigned QA credentials only.
+
 ### BUG-20260703-027 — Duplicate-save logic ignores visit time and may collapse real separate visits
 
 - Reported by: Bloom
