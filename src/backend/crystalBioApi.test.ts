@@ -621,4 +621,99 @@ describe('CrystalBio API layer', () => {
     });
     expect(report.body.report.agentSummaries.find((summary: { agentName: string }) => summary.agentName === 'Raghavendra').salesVisitCount).toBe(2);
   });
+
+  it('lets admin team Field Entry access more than 30 lightweight saved Sales and Service visits while agents stay scoped', () => {
+    const backend = createCrystalBioBackend();
+    const admin = createLoginAgent(backend, { name: 'Admin User', role: 'admin', email: 'admin.fieldentry.all@crystalbio.in' });
+    const salesAgent = createLoginAgent(backend, { name: 'Sales Agent', role: 'sales', email: 'sales.fieldentry.all@crystalbio.in' });
+    const serviceAgent = createLoginAgent(backend, { name: 'Service Agent', role: 'service', email: 'service.fieldentry.all@crystalbio.in' });
+    const api = createCrystalBioApi(backend);
+    const adminToken = loginToken(api, admin.email!);
+    const salesToken = loginToken(api, salesAgent.email!);
+    const serviceToken = loginToken(api, serviceAgent.email!);
+    let detailVisitId = '';
+
+    for (let index = 1; index <= 35; index += 1) {
+      const opportunity = api.handle({
+        method: 'POST',
+        path: '/sales-opportunities',
+        headers: { authorization: `Bearer ${salesToken}` },
+        body: { accountName: `Team Sales Customer ${index}` },
+      });
+      const visit = api.handle({
+        method: 'POST',
+        path: `/sales-opportunities/${opportunity.body.opportunity.id}/visits`,
+        headers: { authorization: `Bearer ${salesToken}` },
+        body: {
+          visitDate: '2026-07-08',
+          visitTime: `${String(9 + Math.floor(index / 60)).padStart(2, '0')}:${String(index % 60).padStart(2, '0')}`,
+          gps,
+          note: `Sales team visit ${index}`,
+          nextAction: 'no_follow_up',
+          photos: [{ source: 'upload', fileName: `sales-proof-${index}.jpg`, contentType: 'image/jpeg', sizeBytes: 300000, dataUrl: `data:image/jpeg;base64,sales-proof-${index}` }],
+        },
+      });
+      if (index === 1) detailVisitId = visit.body.visit.id;
+    }
+
+    for (let index = 1; index <= 5; index += 1) {
+      const record = api.handle({
+        method: 'POST',
+        path: '/service-records',
+        headers: { authorization: `Bearer ${serviceToken}` },
+        body: { customerName: `Team Service Customer ${index}`, equipmentName: 'Analyzer' },
+      });
+      api.handle({
+        method: 'POST',
+        path: `/service-records/${record.body.serviceRecord.id}/visits`,
+        headers: { authorization: `Bearer ${serviceToken}` },
+        body: {
+          visitDate: '2026-07-08',
+          visitTime: `15:${String(index).padStart(2, '0')}`,
+          gps,
+          serviceType: 'breakdown',
+          workDone: `Service team visit ${index}`,
+          nextAction: 'closed',
+          photos: [],
+        },
+      });
+    }
+
+    const teamVisits = api.handle({
+      method: 'GET',
+      path: '/field-visits?scope=team',
+      headers: { authorization: `Bearer ${adminToken}` },
+    });
+    expect(teamVisits.status).toBe(200);
+    expect(teamVisits.body.entries).toHaveLength(40);
+    expect(teamVisits.body.entries.filter((entry: { type: string }) => entry.type === 'Sales')).toHaveLength(35);
+    expect(teamVisits.body.entries.filter((entry: { type: string }) => entry.type === 'Service')).toHaveLength(5);
+    expect(JSON.stringify(teamVisits.body.entries)).not.toContain('sales-proof-1');
+
+    const limitedTeamVisits = api.handle({
+      method: 'GET',
+      path: '/field-visits?scope=team&limit=32',
+      headers: { authorization: `Bearer ${adminToken}` },
+    });
+    expect(limitedTeamVisits.status).toBe(200);
+    expect(limitedTeamVisits.body.entries).toHaveLength(32);
+
+    const detail = api.handle({
+      method: 'GET',
+      path: `/field-visits?scope=team&entryId=${detailVisitId}&includePayload=true`,
+      headers: { authorization: `Bearer ${adminToken}` },
+    });
+    expect(detail.status).toBe(200);
+    expect(detail.body.entries).toHaveLength(1);
+    expect(detail.body.entries[0].photoPayload).toContain('sales-proof-1');
+
+    const salesAgentOwnVisits = api.handle({
+      method: 'GET',
+      path: '/field-visits',
+      headers: { authorization: `Bearer ${salesToken}` },
+    });
+    expect(salesAgentOwnVisits.status).toBe(200);
+    expect(salesAgentOwnVisits.body.entries.every((entry: { agentName: string }) => entry.agentName === 'Sales Agent')).toBe(true);
+    expect(salesAgentOwnVisits.body.entries.some((entry: { customer: string }) => entry.customer.startsWith('Team Service Customer'))).toBe(false);
+  });
 });

@@ -30,5 +30,14 @@ Live audit using Bloom QA Admin credentials only. No real-user credentials used.
 
 ## Preliminary conclusion
 - Backend/admin reports are recording entries and attendance by agent.
-- Admin Field Entry is not enough to prove every entry is visible because the live list returns only 30 Sales/Service cards while the 2026 admin report has 125 Sales/Service visit records.
-- This supports BUG-20260708-028 as an admin visibility/listing problem until fixed and retested.
+- Admin Field Entry was not enough to prove every entry was visible before the fix because the live list returned only 30 Sales/Service cards while the 2026 admin report had 125 Sales/Service visit records.
+- This supported BUG-20260708-028 as an admin visibility/listing problem, not data loss.
+
+## Post-fix live check — 2026-07-08 21:40 IST
+- Source fix: `/field-visits?scope=team` now returns all matching lightweight Sales/Service visit entries for admin Field Entry up to the guarded admin limit, instead of slicing the sorted team list to 30. Detail fetch by `entryId` still loads the selected payload; list responses do not include photo/base64 payloads.
+- Local verification: `npm test -- --run src/backend/crystalBioApi.test.ts` passed 20/20; full `npm test -- --run` passed 116/116; `npm run build` passed; `npm run backend:build` passed.
+- Live deploy/backup: backend restarted after backup `/var/lib/crystalbio/backups/crystalbio-db-20260708-bug028-pre-backend-restart.json`; live API health returned OK. Frontend version remains `20260703033332` because this was a backend-only fix.
+- Live API verification with Bloom QA Admin: Admin Reports for 2026 still returned 90 Sales + 35 Service visit details; `/field-visits?scope=team` returned 125 entries: 90 Sales + 35 Service. The list response had no photo/base64 payload; `/field-visits?scope=team&limit=30` still returned 30 when explicitly requested; selected `entryId` detail returned one entry.
+- Live browser verification with Bloom QA Admin: Admin Field Entry `All entries` showed `10 of 125 shown`; Show all expanded to `125 of 125 shown`; searching `Dr. Swati` showed 10 older entries; console had 0 messages / 0 JavaScript errors.
+- No real-user records were changed and no QA records were created.
+- Status: deployed live and Periwinkle live-checked; waiting for Bloom retest / owner acceptance.

@@ -473,19 +473,35 @@ export function createCrystalBioApi(backend: Backend, options: { mailer?: Crysta
           const state = backend.exportState();
           const canSeeAll = session.role === 'admin' && query.scope === 'team';
           const requestedEntryId = query.entryId?.trim();
+          const requestedLimit = Number.parseInt(query.limit ?? '', 10);
+          const listLimit = requestedEntryId
+            ? Number.POSITIVE_INFINITY
+            : Number.isFinite(requestedLimit)
+              ? Math.min(Math.max(requestedLimit, 1), canSeeAll ? 500 : 100)
+              : canSeeAll
+                ? 250
+                : 30;
           const includePhotoPayload = query.includePayload === 'true' || Boolean(requestedEntryId);
           const visibleSalesVisits = state.sales.flatMap((opportunity) => {
             const matchingVisits = opportunity.visits
               .filter((visit) => canSeeAll || visit.agentId === session.agentId || opportunity.ownerAgentId === session.agentId)
               .sort((first, second) => `${second.visitDate}T${second.visitTime}`.localeCompare(`${first.visitDate}T${first.visitTime}`));
-            const visitsToShow = requestedEntryId ? matchingVisits.filter((visit) => visit.id === requestedEntryId) : matchingVisits.slice(0, 1);
+            const visitsToShow = requestedEntryId
+              ? matchingVisits.filter((visit) => visit.id === requestedEntryId)
+              : canSeeAll
+                ? matchingVisits
+                : matchingVisits.slice(0, 1);
             return visitsToShow.map((visit) => ({ opportunity, visit }));
           });
           const visibleServiceVisits = state.service.flatMap((record) => {
             const matchingVisits = record.visits
               .filter((visit) => canSeeAll || visit.agentId === session.agentId || record.ownerAgentId === session.agentId)
               .sort((first, second) => `${second.visitDate}T${second.visitTime}`.localeCompare(`${first.visitDate}T${first.visitTime}`));
-            const visitsToShow = requestedEntryId ? matchingVisits.filter((visit) => visit.id === requestedEntryId) : matchingVisits.slice(0, 1);
+            const visitsToShow = requestedEntryId
+              ? matchingVisits.filter((visit) => visit.id === requestedEntryId)
+              : canSeeAll
+                ? matchingVisits
+                : matchingVisits.slice(0, 1);
             return visitsToShow.map((visit) => ({ record, visit }));
           });
           const entries = [
@@ -573,7 +589,7 @@ export function createCrystalBioApi(backend: Backend, options: { mailer?: Crysta
               })),
           ]
             .sort((first, second) => second.sortDate.localeCompare(first.sortDate))
-            .slice(0, 30)
+            .slice(0, listLimit)
             .map(({ sortDate, ...entry }) => entry);
           return ok({ entries });
         }
