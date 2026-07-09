@@ -28,10 +28,21 @@ Live audit using Bloom QA Admin credentials only. No real-user credentials used.
 | Sanjeev | sales | 1 | 0 | 0 | 31 | 0 | 6 | 8 |
 | Surendra | service | 0 | 0 | 1 | 0 | 8 | 18 | 3 |
 
+## Follow-up exact-name check for Swati Priya and Madhu
+
+A narrower live recheck by exact `agentName` showed:
+
+| Agent | Admin report Sales | Admin report Service | Admin report Attendance | Matching Field Entry cards in latest list |
+|---|---:|---:|---:|---:|
+| Dr. Swati Priya | 10 | 0 | 6 | 10 |
+| Madhu | 0 | 5 | 11 | 5 |
+
+Correction: the earlier agent-by-agent table counted Field Entry cards primarily by `agentId`, which made some older/name-only cards look like 0 visible for those agents. By exact visible name, Swati Priya and Madhu's Sales/Service entries are present in Admin Field Entry as of this recheck.
+
 ## Preliminary conclusion
 - Backend/admin reports are recording entries and attendance by agent.
-- Admin Field Entry was not enough to prove every entry was visible before the fix because the live list returned only 30 Sales/Service cards while the 2026 admin report had 125 Sales/Service visit records.
-- This supported BUG-20260708-028 as an admin visibility/listing problem, not data loss.
+- Swati Priya and Madhu's known Sales/Service entries are not missing from admin reports, and the exact-name Field Entry recheck found their matching cards.
+- BUG-20260708-028 still stands because Admin Field Entry's general team list is capped/limited to 30 Sales/Service cards while the 2026 admin report has 125 Sales/Service visit records; this can hide other/older entries and does not give a reliable "show everything" admin view until fixed and retested.
 
 ## Post-fix live check — 2026-07-08 21:40 IST
 - Source fix: `/field-visits?scope=team` now returns all matching lightweight Sales/Service visit entries for admin Field Entry up to the guarded admin limit, instead of slicing the sorted team list to 30. Detail fetch by `entryId` still loads the selected payload; list responses do not include photo/base64 payloads.
