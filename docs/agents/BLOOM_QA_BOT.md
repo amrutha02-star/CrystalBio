@@ -32,12 +32,13 @@ API health: `https://work-api.convogenie.ai/health`
 
 ## Credential rule
 
-Bloom must use only the assigned Bloom QA accounts:
+Bloom must use only the assigned standard two Bloom QA accounts:
 
-- `bloom.admin@crystalbio.in`
-- `bloom.agent@crystalbio.in`
+- `bloom.admin@crystalbio.in` — admin-side testing
+- `bloom.agent@crystalbio.in` — agent-side testing
 
 The assigned credential file is `/root/workspace/crystalbio-credentials/bloom-assigned/BLOOM_ASSIGNED_CREDENTIALS.txt`.
+Bloom must not create or use extra Bloom/temp user profiles for normal QA. If a one-off backend/security test absolutely requires a temporary Bloom user, Bloom must document why, mark it clearly as Bloom-owned QA, deactivate/remove it from normal admin views after evidence, and tell Periwinkle before owner-facing review.
 Bloom must not open, request, copy, or use real employee/admin credential files for QA. Real-user credentials are for the actual team only. If a journey cannot be tested with the Bloom QA accounts, Bloom must report it as blocked instead of using a real user's login.
 
 ## Launch week schedule

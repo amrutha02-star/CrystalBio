@@ -1,0 +1,53 @@
+{
+  "status": "written",
+  "timestamp_utc": "2026-07-13T06-34-41-242035Z",
+  "db": "/var/lib/crystalbio/crystalbio-db.json",
+  "backup": "/var/lib/crystalbio/backups/crystalbio-db-before-bloom-temp-profile-cleanup-2026-07-13T06-34-41-242035Z.json",
+  "removed_temp_profiles": [
+    {
+      "id": "agent_1032",
+      "name": "Bloom QA Temp SALES BLOOM BACKEND LIVE RETEST 2026-07-03",
+      "email": "bloom.backend.live.retest.sales.20260703t094302@example.com",
+      "role": "sales",
+      "active": false,
+      "inviteStatus": "accepted",
+      "employeeId": "BLOOM-SALES-20260703T094302"
+    },
+    {
+      "id": "agent_1033",
+      "name": "Bloom QA Temp SERVICE BLOOM BACKEND LIVE RETEST 2026-07-03",
+      "email": "bloom.backend.live.retest.service.20260703t094302@example.com",
+      "role": "service",
+      "active": false,
+      "inviteStatus": "accepted",
+      "employeeId": "BLOOM-SERVICE-20260703T094302"
+    },
+    {
+      "id": "agent_1034",
+      "name": "Bloom QA Temp RESET BLOOM BACKEND LIVE RETEST 2026-07-03",
+      "email": "bloom.backend.live.retest.reset.20260703t094302@example.com",
+      "role": "sales",
+      "active": false,
+      "inviteStatus": "accepted",
+      "employeeId": "BLOOM-RESET-20260703T094302"
+    }
+  ],
+  "standard_bloom_accounts_kept": [
+    "bloom.admin@crystalbio.in",
+    "bloom.agent@crystalbio.in"
+  ],
+  "removed_related_counts": {
+    "sessions": 0,
+    "attendance": 0,
+    "leaveRequests": 0,
+    "salesOwned": 0,
+    "serviceOwned": 0,
+    "salesVisits": 0,
+    "serviceVisits": 0
+  },
+  "non_temp_hash_before": "1e55dd46b4892d4a1299dc3ecab57d232ad9b1458bd8ecac6ecaf48363a6bcd1",
+  "non_temp_hash_after": "1e55dd46b4892d4a1299dc3ecab57d232ad9b1458bd8ecac6ecaf48363a6bcd1",
+  "non_temp_hash_unchanged": true,
+  "agent_count_before": 20,
+  "agent_count_after": 17
+}
