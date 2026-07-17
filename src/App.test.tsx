@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom/vitest';
 import { act } from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
 import { crystalBioFrontendApi } from './crystalBioFrontendApi';
@@ -550,6 +550,14 @@ describe('Crystal Bio agent view shell', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Show all 11 entries' }));
     expect(screen.getByText('11 of 11 shown')).toBeInTheDocument();
     expect(screen.getByText('Visibility Test Customer 1')).toBeInTheDocument();
+
+    const overviewNavButtons = screen.getAllByRole('button', { name: 'Overview' });
+    fireEvent.click(overviewNavButtons[overviewNavButtons.length - 1]);
+    fireEvent.click(screen.getByRole('button', { name: /total visits today show forms/i }));
+    const totalVisitsDetail = screen.getByLabelText('Total visits details');
+    expect(within(totalVisitsDetail).getByText('Total visits')).toBeInTheDocument();
+    expect(within(totalVisitsDetail).getByText('11')).toBeInTheDocument();
+    expect(within(totalVisitsDetail).getByRole('button', { name: 'Open all in Field Entry' })).toBeInTheDocument();
   }, 20000);
 
   it('keeps report entry details inside Reports instead of jumping to Agents', async () => {

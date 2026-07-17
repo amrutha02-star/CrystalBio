@@ -3193,13 +3193,14 @@ function App() {
     const checkedInCount = adminRows.filter((row) => row.attendance === 'checked in').length;
     const needsReviewCount = adminRows.filter((row) => row.status !== 'Ready').length;
     const followUpCount = adminRows.reduce((sum, row) => sum + row.followUpsDue.length, 0);
+    const pendingLeaveCount = adminLeaveRequests.filter((request) => request.status === 'pending').length;
     const period = {
       label: adminPeriod === 'custom' ? `${formatShortDate(adminReportFromDate)} to ${formatShortDate(adminReportToDate)}` : adminPeriod === 'today' ? 'Today' : adminPeriod === 'week' ? 'This week' : 'This month',
       active: totalVisits ? `${totalVisits} field updates today` : 'No submitted work yet today',
       summary: adminRows.length ? `${checkedInCount} checked in • ${needsReviewCount} need check • ${followUpCount} follow-ups` : 'No field activity has been saved yet.',
       visits: String(totalVisits),
       checkedIn: String(checkedInCount),
-      leave: String(adminLeaveRequests.filter((request) => request.status === 'pending').length),
+      leave: String(pendingLeaveCount),
       followUps: String(followUpCount),
     };
     const overviewPeriod = period;
@@ -3268,12 +3269,18 @@ function App() {
       checkedIn: activeAttendanceOverviewDetails.length
         ? activeAttendanceOverviewDetails.map((row) => `${row.detail} • ${row.workModeLabel}`)
         : ['No agents currently checked in.'],
-      leave: adminLeaveRequests.filter((request) => request.status === 'pending').length
+      leave: pendingLeaveCount
         ? adminLeaveRequests.filter((request) => request.status === 'pending').map((request) => `${request.agentName} • ${formatShortDate(request.fromDate)} to ${formatShortDate(request.toDate)}`)
         : ['No leave requests waiting.'],
       followUps: followUpCount
         ? adminRows.flatMap((row) => row.followUpsDue.map((detail) => `${row.name} • ${detail}`))
         : ['No follow-up action waiting.'],
+    };
+    const overviewMetricCounts: Record<AdminOverviewMetric, number> = {
+      visits: totalVisits,
+      checkedIn: checkedInCount,
+      leave: pendingLeaveCount,
+      followUps: followUpCount,
     };
     const adminOverviewMetrics: Array<{ key: AdminOverviewMetric; value: string; label: string; hint: string; action: string }> = [
       { key: 'visits', value: overviewPeriod.visits, label: 'Total visits', hint: 'Today', action: 'Show forms' },
@@ -3571,7 +3578,7 @@ function App() {
                   const shownDetailRows = expandedAdminMetric === 'checkedIn' ? detailRows : detailRows.slice(0, 4);
                   return (
                   <section className="admin-metric-expanded-card" aria-label={`${metric?.label ?? 'Overview'} details`}>
-                    <div className="admin-report-heading"><label>{expandedAdminMetric === 'checkedIn' ? 'Checked in now' : metric?.label}</label><span>{expandedAdminMetric === 'checkedIn' ? `${checkedInCount} active` : detailRows.length}</span></div>
+                    <div className="admin-report-heading"><label>{expandedAdminMetric === 'checkedIn' ? 'Checked in now' : metric?.label}</label><span>{overviewMetricCounts[expandedAdminMetric]}</span></div>
                     <div className="admin-metric-expanded-list">
                       {expandedAdminMetric === 'visits' && overviewVisibleEntries.length
                         ? overviewVisibleEntries.map((entry) => (
@@ -3587,7 +3594,10 @@ function App() {
                         ))
                         : shownDetailRows.map((detail) => <span key={detail}>{detail}</span>)}
                     </div>
-                    {expandedAdminMetric === 'leave' && adminLeaveRequests.some((request) => request.status === 'pending') && <button type="button" className="secondary-action admin-view-all-entries" onClick={() => openAdminTab('approvals')}>Open approvals</button>}
+                    {expandedAdminMetric === 'visits' && totalVisits > overviewVisibleEntries.length && (
+                      <button type="button" className="secondary-action admin-view-all-entries" onClick={() => { setAdminFieldEntryScope('all'); setAdminFieldEntryTypeFilter('all'); setAdminFieldEntrySearch(''); setShowAllAdminFieldEntries(false); openAdminTab('fieldEntry'); }}>Open all in Field Entry</button>
+                    )}
+                    {expandedAdminMetric === 'leave' && pendingLeaveCount > 0 && <button type="button" className="secondary-action admin-view-all-entries" onClick={() => openAdminTab('approvals')}>Open approvals</button>}
                     {expandedAdminMetric === 'followUps' && followUpCount > 0 && <button type="button" className="secondary-action admin-view-all-entries" onClick={() => openAdminTab('agents')}>Open agents</button>}
                   </section>
                   );

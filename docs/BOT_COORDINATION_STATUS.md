@@ -1,11 +1,12 @@
 # CrystalBio Bot Coordination Status
 
-Last refreshed: 2026-07-08 21:40 IST BUG-20260708-028 live checked
+Last refreshed: 2026-07-17 BUG-20260717-029 source-fixed locally
 
 Purpose: one simple dashboard so Rahul can see what Periwinkle, Bloom, and Iris are doing without reading logs.
 
 ## Simple summary right now
 
+- Amrutha’s Admin Overview Total visits discrepancy is confirmed as a dashboard display mismatch, not data loss: the expanded panel was counting the four preview rows while the card showed the real total. BUG-20260717-029 is source-fixed locally and verified with `src/App.test.tsx` 23/23 plus production build; not live deployed yet, waiting for safe deploy/Bloom retest or owner daytime approval.
 - Live app is up at `https://work.convogenie.ai`; live `version.json` remains `20260703033332`; live API health was checked OK at 2026-07-08 21:40 IST after the BUG-20260708-028 backend restart.
 - 2026-07-09 Periwinkle recheck for Amrutha: backend/admin reports are recording real agent activity. Admin Reports now returns 91 Sales + 35 Service = 126 forms for 2026, and Admin Field Entry `All entries` API also returns 126 entries with 0 agent-by-agent mismatches. Live browser showed `10 of 126 shown`; search found all 10 older Dr. Swati entries; console had 0 errors. In this Hermes browser run, tapping `Show all 126 entries` did not expand, so BUG-20260708-028 is recording/API live-checked but still waiting for Bloom/Periwinkle UI retest or owner acceptance on the Show all behavior. No QA records were created.
 - Repository/source note: the focused backend source/test/docs change is prepared for commit/push; unrelated untracked attendance auto-checkout audit JSON files are being left untouched.

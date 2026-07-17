@@ -45,6 +45,20 @@ For live-user problems, Bloom should include:
 
 ## Current bug queue
 
+### BUG-20260717-029 — Admin Overview Total visits expanded card shows a smaller number
+
+- Reported by: Amrutha
+- Time noticed: 2026-07-17
+- Screen/API: Admin Overview → Total visits card
+- User journey affected: Admin checks today’s total field visits from the dashboard and expands the card for quick review.
+- Actual behavior: The top Total visits count can show the true total for today, but the expanded `TOTAL VISITS` panel showed only the number of rows displayed in the compact preview. Example from Amrutha’s screenshot: card/header showed 6 field updates, expanded panel showed 4 because only the first four rows were listed.
+- Expected behavior: The expanded card header must repeat the same total count as the Total visits card. If the dashboard preview shows only a few recent rows, it should clearly hand off to Field Entry for the full list.
+- Severity: Medium for admin trust/clarity; this is a dashboard display mismatch, not evidence of data loss.
+- Status: **Source-fixed and locally verified; not live deployed yet. Waiting for safe deploy/Bloom retest or owner approval for daytime deploy.**
+- Fix update: Admin Overview now uses the real metric count in the expanded header instead of the preview row count, and shows `Open all in Field Entry` when today has more visits than the compact dashboard preview.
+- Verification: `npm test -- --run src/App.test.tsx` passed 23/23; `npm run build` passed.
+- Scope preserved: Field Entry remains the full submitted-form lookup owner; Admin Overview stays a compact snapshot and does not become a full submitted-work list.
+
 ### BUG-20260708-028 — Admin Field Entry does not show every recorded field entry
 
 - Reported by: Amrutha / Periwinkle live check
