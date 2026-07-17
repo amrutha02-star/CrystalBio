@@ -54,9 +54,9 @@ For live-user problems, Bloom should include:
 - Actual behavior: The top Total visits count can show the true total for today, but the expanded `TOTAL VISITS` panel showed only the number of rows displayed in the compact preview. Example from Amrutha’s screenshot: card/header showed 6 field updates, expanded panel showed 4 because only the first four rows were listed.
 - Expected behavior: The expanded card header must repeat the same total count as the Total visits card. If the dashboard preview shows only a few recent rows, it should clearly hand off to Field Entry for the full list.
 - Severity: Medium for admin trust/clarity; this is a dashboard display mismatch, not evidence of data loss.
-- Status: **Approved by Amrutha for tonight deployment on 2026-07-17. Source-fixed, pushed, and locally verified; deploy during the night window, then live-check and keep waiting for Bloom/owner retest.**
+- Status: **Deployed live and Periwinkle live-checked on 2026-07-17 as frontend version `20260717153237`; waiting for Bloom/owner retest before acceptance.**
 - Fix update: Admin Overview now uses the real metric count in the expanded header instead of the preview row count, and shows `Open all in Field Entry` when today has more visits than the compact dashboard preview.
-- Verification: `npm test -- --run src/App.test.tsx` passed 23/23; `npm run build` passed.
+- Verification: Pre-deploy `npm test -- --run` passed 116/116 and `npm run build` passed. Live `https://work.convogenie.ai` loaded, API health returned OK, live `version.json` returned `20260717153237`, live bundle contained the new version marker and `Open all in Field Entry`, and browser Admin Overview showed `11 Total visits` with expanded `TOTAL VISITS` also `11`; the handoff button opened Admin Field Entry. Frontend-only deploy; backend data/cleanup were not touched.
 - Scope preserved: Field Entry remains the full submitted-form lookup owner; Admin Overview stays a compact snapshot and does not become a full submitted-work list.
 
 ### BUG-20260708-028 — Admin Field Entry does not show every recorded field entry

@@ -1,15 +1,15 @@
 # CrystalBio Bot Coordination Status
 
-Last refreshed: 2026-07-17 BUG-20260717-029 approved for tonight deploy
+Last refreshed: 2026-07-17 BUG-20260717-029 deployed live / waiting retest
 
 Purpose: one simple dashboard so Rahul can see what Periwinkle, Bloom, and Iris are doing without reading logs.
 
 ## Simple summary right now
 
-- Amrutha’s Admin Overview Total visits discrepancy is confirmed as a dashboard display mismatch, not data loss: the expanded panel was counting the four preview rows while the card showed the real total. BUG-20260717-029 is source-fixed locally, pushed to GitHub, and verified with full tests/build; Amrutha approved deploying it tonight on 2026-07-17. Do not deploy during daytime unless she changes that instruction.
-- Live app is up at `https://work.convogenie.ai`; live `version.json` remains `20260703033332`; live API health was checked OK at 2026-07-08 21:40 IST after the BUG-20260708-028 backend restart.
+- Amrutha’s Admin Overview Total visits discrepancy was a dashboard display mismatch, not data loss. BUG-20260717-029 is now deployed live and Periwinkle live-checked on 2026-07-17 as frontend version `20260717153237`; waiting for Bloom/owner retest before acceptance.
+- Live app is up at `https://work.convogenie.ai`; live `version.json` is `20260717153237`; live API health returned OK during the BUG-20260717-029 deploy check.
 - 2026-07-09 Periwinkle recheck for Amrutha: backend/admin reports are recording real agent activity. Admin Reports now returns 91 Sales + 35 Service = 126 forms for 2026, and Admin Field Entry `All entries` API also returns 126 entries with 0 agent-by-agent mismatches. Live browser showed `10 of 126 shown`; search found all 10 older Dr. Swati entries; console had 0 errors. In this Hermes browser run, tapping `Show all 126 entries` did not expand, so BUG-20260708-028 is recording/API live-checked but still waiting for Bloom/Periwinkle UI retest or owner acceptance on the Show all behavior. No QA records were created.
-- Repository/source note: the focused backend source/test/docs change is prepared for commit/push; unrelated untracked attendance auto-checkout audit JSON files are being left untouched.
+- Repository/source note: BUG-20260717-029 deploy/status changes were committed/pushed after live verification; unrelated untracked attendance auto-checkout audit JSON files are being left untouched.
 - Daily database backups are active at 02:15 UTC / 07:45 IST, with recent backups present through 2026-07-06.
 - Overnight auto-checkout/Bloom cleanup audit for 2026-07-06 removed 11 Bloom sessions only, left open attendance at 0, and reported non-Bloom business data intact. No missed checkouts needed auto-closing.
 - Latest Bloom nightly stabilization report is `docs/qa-runs/QA_RUN_BLOOM_NIGHT_STABILIZATION_2026-07-07_2103IST.md`: live app/API were up; login/session, attendance check-in/out/re-check-in, Sales/Service Step 1/2/3 API saves, saved entries, Admin Field Entry/Agents/Approvals/Reports/PDF, Agent report PDFs, Profile/logout, and role guards passed with Bloom assigned accounts. Live browser Sales GPS/location capture still failed with typed details preserved and one blank JS exception. Bloom-only QA records were cleaned after dry-run/backup/write/restart and live API verification showed 0 Bloom rows/current attendance/leave rows.

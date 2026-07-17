@@ -77,7 +77,7 @@ const sessionStorageKey = 'crystalbio.session.v1';
 const sessionCookieKey = 'crystalbio_frontend_session';
 const sessionMaxAgeSeconds = 60 * 60 * 24 * 90;
 const screenStorageKey = 'crystalbio.screen.v1';
-const appBuildVersion = '20260703033332';
+const appBuildVersion = '20260717153237';
 const appVersionReloadKey = 'crystalbio.version-reload.v1';
 const isPublicMonitorPath = () => typeof window !== 'undefined' && window.location.pathname.includes('periwinkle-live-monitor');
 
